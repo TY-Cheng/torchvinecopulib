@@ -1,0 +1,10 @@
+torchvinecopulib.vinecop package
+================================
+
+Module contents
+---------------
+
+.. automodule:: torchvinecopulib.vinecop
+   :members:
+   :undoc-members:
+   :show-inheritance:
