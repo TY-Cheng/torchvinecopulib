@@ -1,0 +1,344 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" />
+
+    <!-- Generated with Sphinx 7.2.6 and Furo 2024.01.29 -->
+        <title>torchvinecopulib package - torchvinecopulib 2024.3.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">torchvinecopulib 2024.3.2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  
+  <span class="sidebar-brand-text">torchvinecopulib 2024.3.2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="torchvinecopulib.vinecop.html">torchvinecopulib.vinecop package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="torchvinecopulib.bicop.html">torchvinecopulib.bicop package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="torchvinecopulib.util.html">torchvinecopulib.util package</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="torchvinecopulib-package">
+<h1>torchvinecopulib package<a class="headerlink" href="#torchvinecopulib-package" title="Link to this heading">#</a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading">#</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="torchvinecopulib.bicop.html">torchvinecopulib.bicop package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="torchvinecopulib.bicop.html#module-torchvinecopulib.bicop">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop"><code class="docutils literal notranslate"><span class="pre">DataBiCop</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.aic"><code class="docutils literal notranslate"><span class="pre">DataBiCop.aic</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.bic"><code class="docutils literal notranslate"><span class="pre">DataBiCop.bic</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.cdf"><code class="docutils literal notranslate"><span class="pre">DataBiCop.cdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.fam"><code class="docutils literal notranslate"><span class="pre">DataBiCop.fam</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.hfunc1"><code class="docutils literal notranslate"><span class="pre">DataBiCop.hfunc1()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.hfunc2"><code class="docutils literal notranslate"><span class="pre">DataBiCop.hfunc2()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.hinv1"><code class="docutils literal notranslate"><span class="pre">DataBiCop.hinv1()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.hinv2"><code class="docutils literal notranslate"><span class="pre">DataBiCop.hinv2()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.l_pdf"><code class="docutils literal notranslate"><span class="pre">DataBiCop.l_pdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.negloglik"><code class="docutils literal notranslate"><span class="pre">DataBiCop.negloglik</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.num_obs"><code class="docutils literal notranslate"><span class="pre">DataBiCop.num_obs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.num_par"><code class="docutils literal notranslate"><span class="pre">DataBiCop.num_par</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.par"><code class="docutils literal notranslate"><span class="pre">DataBiCop.par</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.rot"><code class="docutils literal notranslate"><span class="pre">DataBiCop.rot</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.sim"><code class="docutils literal notranslate"><span class="pre">DataBiCop.sim()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.DataBiCop.tau"><code class="docutils literal notranslate"><span class="pre">DataBiCop.tau</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.bicop.html#torchvinecopulib.bicop.bcp_from_obs"><code class="docutils literal notranslate"><span class="pre">bcp_from_obs()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="torchvinecopulib.util.html">torchvinecopulib.util package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="torchvinecopulib.util.html#module-torchvinecopulib.util">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.ENUM_FUNC_BIDEP"><code class="docutils literal notranslate"><span class="pre">ENUM_FUNC_BIDEP</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.ENUM_FUNC_BIDEP.chatterjee_xi"><code class="docutils literal notranslate"><span class="pre">ENUM_FUNC_BIDEP.chatterjee_xi</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.ENUM_FUNC_BIDEP.ferreira_tail_dep_coeff"><code class="docutils literal notranslate"><span class="pre">ENUM_FUNC_BIDEP.ferreira_tail_dep_coeff</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.ENUM_FUNC_BIDEP.kendall_tau"><code class="docutils literal notranslate"><span class="pre">ENUM_FUNC_BIDEP.kendall_tau</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.ENUM_FUNC_BIDEP.mutual_info"><code class="docutils literal notranslate"><span class="pre">ENUM_FUNC_BIDEP.mutual_info</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.ENUM_FUNC_BIDEP.wasserstein_dist_ind"><code class="docutils literal notranslate"><span class="pre">ENUM_FUNC_BIDEP.wasserstein_dist_ind</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.cdf_func_kernel"><code class="docutils literal notranslate"><span class="pre">cdf_func_kernel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.chatterjee_xi"><code class="docutils literal notranslate"><span class="pre">chatterjee_xi()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.debye1"><code class="docutils literal notranslate"><span class="pre">debye1()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.ferreira_tail_dep_coeff"><code class="docutils literal notranslate"><span class="pre">ferreira_tail_dep_coeff()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.kendall_tau_b"><code class="docutils literal notranslate"><span class="pre">kendall_tau_b()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.mutual_info"><code class="docutils literal notranslate"><span class="pre">mutual_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.solve_ITP"><code class="docutils literal notranslate"><span class="pre">solve_ITP()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html#torchvinecopulib.util.wasserstein_dist_ind"><code class="docutils literal notranslate"><span class="pre">wasserstein_dist_ind()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="torchvinecopulib.vinecop.html">torchvinecopulib.vinecop package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="torchvinecopulib.vinecop.html#module-torchvinecopulib.vinecop">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop"><code class="docutils literal notranslate"><span class="pre">DataVineCop</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.aic"><code class="docutils literal notranslate"><span class="pre">DataVineCop.aic</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.bic"><code class="docutils literal notranslate"><span class="pre">DataVineCop.bic</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.cdf"><code class="docutils literal notranslate"><span class="pre">DataVineCop.cdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.dct_bcp"><code class="docutils literal notranslate"><span class="pre">DataVineCop.dct_bcp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.dct_tree"><code class="docutils literal notranslate"><span class="pre">DataVineCop.dct_tree</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.diag"><code class="docutils literal notranslate"><span class="pre">DataVineCop.diag</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.draw"><code class="docutils literal notranslate"><span class="pre">DataVineCop.draw()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.l_pdf"><code class="docutils literal notranslate"><span class="pre">DataVineCop.l_pdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.matrix"><code class="docutils literal notranslate"><span class="pre">DataVineCop.matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.mtd_bidep"><code class="docutils literal notranslate"><span class="pre">DataVineCop.mtd_bidep</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.negloglik"><code class="docutils literal notranslate"><span class="pre">DataVineCop.negloglik</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.num_dim"><code class="docutils literal notranslate"><span class="pre">DataVineCop.num_dim</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.num_obs"><code class="docutils literal notranslate"><span class="pre">DataVineCop.num_obs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.num_par"><code class="docutils literal notranslate"><span class="pre">DataVineCop.num_par</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.ref_count"><code class="docutils literal notranslate"><span class="pre">DataVineCop.ref_count</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.sim"><code class="docutils literal notranslate"><span class="pre">DataVineCop.sim()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.to_json"><code class="docutils literal notranslate"><span class="pre">DataVineCop.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.to_pkl"><code class="docutils literal notranslate"><span class="pre">DataVineCop.to_pkl()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.vcp_from_json"><code class="docutils literal notranslate"><span class="pre">vcp_from_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.vcp_from_obs"><code class="docutils literal notranslate"><span class="pre">vcp_from_obs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.vcp_from_pkl"><code class="docutils literal notranslate"><span class="pre">vcp_from_pkl()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-torchvinecopulib">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-torchvinecopulib" title="Link to this heading">#</a></h2>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024-, Tuoyuan Cheng, Kan Chen
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">torchvinecopulib package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#module-torchvinecopulib">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=e8ad7243"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    </body>
+</html>

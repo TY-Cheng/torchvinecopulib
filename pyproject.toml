@@ -1,0 +1,60 @@
+[tool.poetry]
+package-mode = true
+license = "GNU GPLv3"
+name = "torchvinecopulib"
+version = "2024.3.2"
+description = "yet another vine copula library for PyTorch."
+authors = [
+    "Tuoyuan Cheng <cty120120@gmail.com>",
+    "Xiaosheng You <e1204754@u.nus.edu>",
+]
+maintainers = []
+readme = "README.md"
+# homepage = ""
+# repository = ""
+# documentation = ""
+keywords = ["vine copula", "copula", "torch"]
+classifiers = [
+    "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.1",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+
+
+[tool.poetry.dependencies]
+numpy = "^1.21"
+python = "^3.10"
+scipy = "^1.7"
+torch = "^2"
+
+
+[tool.poetry.group.all.dependencies]
+matplotlib = "*"
+networkx = "*"
+pot = "*"
+scikit-learn = "*"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+furo = "*"
+ipykernel = "*"
+matplotlib = '*'
+networkx = '*'
+pandas = '*'
+pot = '*'
+pytest = "*"
+pyvinecopulib = "*"
+scikit-learn = '*'
+sphinx = "*"
+
+
+# [tool.poetry.urls]
+# "Bug Tracker" = ""
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
