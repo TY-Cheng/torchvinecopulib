@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from scipy.optimize import minimize
 
-from ..util import kendall_tau_b
+from ..util import kendall_tau
 from ._data_bcp import ENUM_FAM_BICOP, DataBiCop, SET_FAMnROT
 
 
@@ -12,12 +12,17 @@ def bcp_from_obs(
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
     mtd_sel: str = "aic",
-    tpl_fam: tuple = tuple(
-        (_ for _ in ENUM_FAM_BICOP._member_names_ if _ != "StudentT")
+    tpl_fam: tuple[str, ...] = (
+        "Clayton",
+        "Frank",
+        "Gaussian",
+        "Gumbel",
+        "Independent",
+        "Joe",
     ),
     topk: int = 2,
 ) -> DataBiCop:
-    """make a bivariate copula dataclass object, fitted from observations
+    """factory method to make a bivariate copula dataclass object, fitted from observations
 
     :param obs_bcp: bivariate copula obs, of shape (num_obs, 2) with values in [0, 1]
     :type obs_bcp: torch.Tensor
@@ -41,7 +46,7 @@ def bcp_from_obs(
     num_obs = obs_bcp.shape[0]
     # * tau from data, for inv-tau/tau2par, whose par is taken as init value for mle
     if tau is None:
-        tau = kendall_tau_b(x=obs_bcp[:, 0], y=obs_bcp[:, 1])
+        tau = kendall_tau(x=obs_bcp[:, 0], y=obs_bcp[:, 1])
 
     def _fit_itau(i_fam: str, i_rot: int) -> DataBiCop:
         # fetch the class

@@ -3,11 +3,12 @@ import os
 import unittest
 
 import pyvinecopulib as pvc
+
 from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pkl
+import random
 
 from . import (
     DCT_FAM,
-    LST_MTD_BIDEP,
     LST_MTD_FIT,
     LST_MTD_SEL,
     compare_chart_vec,
@@ -18,6 +19,42 @@ from . import (
 class TestVineCop(unittest.TestCase):
     def setUp(self):
         pass
+
+    def test_first(self):
+        """test vcp_from_obs given lst_first when fitting cvine/dvine, check if they are prioritized"""
+        mtd_fit = "itau"
+        mtd_sel = "aic"
+        num_dim = 10
+        len_first = 3
+        for fam, (_, bcp_tvc) in DCT_FAM.items():
+            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000, num_dim=num_dim)
+            for mtd_bidep in [
+                "kendall_tau",
+                "ferreira_tail_dep_coeff",
+                "chatterjee_xi",
+                "wasserstein_dist_ind",
+            ]:
+                for mtd_cdrvine in ("cvine", "dvine"):
+                    lst_first = list(
+                        {random.randint(0, num_dim - 1) for _ in range(len_first)}
+                    )
+                    len_first = len(lst_first)
+                    if fam in ("StudentT", "Independent") or mtd_bidep == "mutual_info":
+                        continue
+                    logging.info(
+                        msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
+                    )
+                    res_tvc = vcp_from_obs(
+                        obs_mvcp=V_mvcp,
+                        is_Dissmann=True,
+                        cdrvine=mtd_cdrvine,
+                        lst_first=lst_first,
+                        mtd_bidep=mtd_bidep,
+                        mtd_fit=mtd_fit,
+                        mtd_sel=mtd_sel,
+                        tpl_fam=(fam, "Independent"),
+                    )
+                    assert set(res_tvc.lst_sim[-len_first:]) == set(lst_first)
 
     def test_sim_diag_lpdf_cdf(self):
         """test the simulation, diagonal of structure matrix, l_pdf and cdf"""
@@ -30,7 +67,7 @@ class TestVineCop(unittest.TestCase):
             logging.info(
                 msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
             )
-            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc)
+            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
             num_dim = V_mvcp.shape[1]
             res_tvc = vcp_from_obs(
                 obs_mvcp=V_mvcp,
@@ -51,7 +88,17 @@ class TestVineCop(unittest.TestCase):
                 tpl_fam=(fam,),
             )
             # sim
-            assert sum([(a - b) for a, b in zip(res_tvc.diag, res_sim.diag)]) <= 2
+            assert (
+                sum(
+                    [
+                        (a - b)
+                        for a, b in zip(
+                            res_tvc.matrix.flatten(), res_sim.matrix.flatten()
+                        )
+                    ]
+                )
+                <= 2
+            )
             res_pvc = pvc.Vinecop(
                 data=V_mvcp.cpu(),
                 controls=pvc.FitControlsVinecop(
@@ -63,8 +110,9 @@ class TestVineCop(unittest.TestCase):
             )
             # ! notice the order of the diagonal elements, and indexing starts from 1
             diag_pvc = [res_pvc.matrix[num_dim - 1 - i, i] for i in range(num_dim)]
+            diag_tvc = [res_tvc.matrix[i, i] for i in range(num_dim)]
             # diag
-            assert sum([(1 + a - b) for a, b in zip(res_tvc.diag, diag_pvc)]) <= 2
+            assert sum([(1 + a - b) for a, b in zip(diag_tvc, diag_pvc)]) <= 2
             # l_pdf
             assert res_tvc.negloglik + res_tvc.l_pdf(V_mvcp).sum() <= 1e-6
             # cdf
@@ -85,19 +133,21 @@ class TestVineCop(unittest.TestCase):
 
     def test_from_matrix(self):
         """test vcp_from_obs with tree indicated by matrix"""
-        for mtd_fit in LST_MTD_FIT:
-            for mtd_sel in LST_MTD_SEL:
-                for mtd_bidep in LST_MTD_BIDEP:
-                    for fam, (_, bcp_tvc) in DCT_FAM.items():
-                        if (
-                            fam in ("StudentT", "Independent")
-                            or mtd_bidep == "mutual_info"
-                        ):
+        for fam, (_, bcp_tvc) in DCT_FAM.items():
+            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
+            for mtd_fit in LST_MTD_FIT:
+                for mtd_sel in LST_MTD_SEL:
+                    for mtd_bidep in [
+                        "kendall_tau",
+                        "ferreira_tail_dep_coeff",
+                        "chatterjee_xi",
+                        "wasserstein_dist_ind",
+                    ]:
+                        if fam in ("StudentT", "Independent"):
                             continue
                         logging.info(
                             msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
                         )
-                        V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc)
                         res_tvc = vcp_from_obs(
                             obs_mvcp=V_mvcp,
                             is_Dissmann=True,
@@ -141,7 +191,7 @@ class TestVineCop(unittest.TestCase):
         os.remove(tmp_p)
         assert __ == res_tvc
 
-        tmp_p = res_tvc.to_pkl()
+        tmp_p = res_tvc.vcp_to_pkl()
         __ = vcp_from_pkl(tmp_p)
         os.remove(tmp_p)
         assert __ == res_tvc

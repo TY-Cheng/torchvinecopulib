@@ -197,11 +197,11 @@
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">kendalltau</span><span class="p">,</span> <span class="n">t</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">t</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;ENUM_FUNC_BIDEP&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;kendall_tau_b&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;kendall_tau&quot;</span><span class="p">,</span>
     <span class="s2">&quot;mutual_info&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ferreira_tail_dep_coeff&quot;</span><span class="p">,</span>
     <span class="s2">&quot;chatterjee_xi&quot;</span><span class="p">,</span>
@@ -217,22 +217,22 @@
 <span class="n">_TAU_MIN</span><span class="p">,</span> <span class="n">_TAU_MAX</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.999</span><span class="p">,</span> <span class="mf">0.999</span>
 
 
-<div class="viewcode-block" id="kendall_tau_b">
-<a class="viewcode-back" href="../../torchvinecopulib.util.html#torchvinecopulib.util.kendall_tau_b">[docs]</a>
-<span class="k">def</span> <span class="nf">kendall_tau_b</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span>
-        <span class="nb">min</span><span class="p">(</span>
-            <span class="n">kendalltau</span><span class="p">(</span>
-                <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
-                <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
-                <span class="n">nan_policy</span><span class="o">=</span><span class="s2">&quot;omit&quot;</span><span class="p">,</span>
-                <span class="n">method</span><span class="o">=</span><span class="s2">&quot;asymptotic&quot;</span><span class="p">,</span>
-                <span class="n">variant</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span>
-            <span class="p">)[</span><span class="mi">0</span><span class="p">],</span>
-            <span class="n">_TAU_MAX</span><span class="p">,</span>
-        <span class="p">),</span>
-        <span class="n">_TAU_MIN</span><span class="p">,</span>
+<div class="viewcode-block" id="kendall_tau">
+<a class="viewcode-back" href="../../torchvinecopulib.util.html#torchvinecopulib.util.kendall_tau">[docs]</a>
+<span class="k">def</span> <span class="nf">kendall_tau</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94&quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">sub_pairs</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sign_</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">sub_pairs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="n">sub_pairs</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">div_</span><span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">clamp_</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="n">_TAU_MIN</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">_TAU_MAX</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">item</span><span class="p">()</span>
     <span class="p">)</span></div>
 
 
@@ -409,7 +409,7 @@
 
     <span class="n">chatterjee_xi</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">chatterjee_xi</span><span class="p">)</span>
     <span class="n">ferreira_tail_dep_coeff</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">ferreira_tail_dep_coeff</span><span class="p">)</span>
-    <span class="n">kendall_tau</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">kendall_tau_b</span><span class="p">)</span>
+    <span class="n">kendall_tau</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">kendall_tau</span><span class="p">)</span>
     <span class="n">mutual_info</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">mutual_info</span><span class="p">)</span>
     <span class="n">wasserstein_dist_ind</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">wasserstein_dist_ind</span><span class="p">)</span></div>
 

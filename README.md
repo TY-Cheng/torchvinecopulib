@@ -2,9 +2,8 @@
 
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
-- Even shorter runtimes and lower memory consumption, especially in high dimensions
 - Vectorized tensor computation with GPU (`device='cuda'`) support
-- Memory management in simulation
+- Even shorter runtimes and lower memory consumption, especially in higher dimension simulations
 - Decoupled dataclasses and factory methods
 - Pure `Python` library, tested against [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/)
 - IO and visualization support
@@ -13,9 +12,9 @@ Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started
 
 ```toml
 # inside the `./pyproject.toml` file
-numpy = "^1.21"
+numpy = "*"
 python = "^3.10"
-scipy = "^1.7"
+scipy = "*"
 torch = "^2"
 ```
 
@@ -40,6 +39,7 @@ pip install torchvinecopulib matplotlib networkx pot scikit-learn
 ```
 
 By `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
+Need to use proper file name.
 
 ```bash
 # inside project root folder
@@ -50,7 +50,7 @@ pip install ./dist/torchvinecopulib-2024.3.2.tar.gz
 
 ## Examples
 
-<!-- TODO -->
+Visit the `./examples/` folder for `.ipynb` Jupyter notebooks.
 
 ## Documentation
 
@@ -74,7 +74,7 @@ python -m pytest ./tests
 
 We welcome contributions from everyone, whether it's a bug report, feature suggestion, code contribution, or documentation improvement.
 
-- If you encounter any issues with the project or have ideas for new features, please [open an issue](https://github.com/your-username/your-project/issues) on GitHub or [privately email us](mailto:cty120120@gmail.com). Make sure to include detailed information about the problem or feature request, including steps to reproduce for bugs.
+- If you encounter any issues with the project or have ideas for new features, please [open an issue](https://github.com/TY-Cheng/torchvinecopulib/issues/new) on GitHub or [privately email us](mailto:cty120120@gmail.com). Make sure to include detailed information about the problem or feature request, including steps to reproduce for bugs.
 
 ### Code Contributions
 
@@ -90,6 +90,12 @@ We welcome contributions from everyone, whether it's a bug report, feature sugge
 - Include a clear and descriptive title and description for your pull request.
 - Make sure all tests pass before submitting the pull request.
 - If your pull request addresses an open issue, reference the issue number in the description using the syntax `#issue_number`.
+
+### TODO
+
+1. more `bicop` class in `torch`
+2. `torch` function acceleration by **in-place** operations
+3. bivariate dependence funcs in `util.ENUM_FUNC_BIDEP`, implementation in `torch`
 
 ## License
 

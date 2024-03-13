@@ -12,7 +12,7 @@ from ..util import (
     pbvt,
     pt,
     qt,
-    kendall_tau_b,
+    kendall_tau,
 )
 from ._elliptical import BiCopElliptical
 
@@ -94,7 +94,7 @@ class StudentT(BiCopElliptical):
         **kwargs
     ) -> tuple:
         if tau is None:
-            tau = kendall_tau_b(x=obs[:, 0], y=obs[:, 1])
+            tau = kendall_tau(x=obs[:, 0], y=obs[:, 1])
 
         rho = cls.tau2rho_0(tau=tau)
 

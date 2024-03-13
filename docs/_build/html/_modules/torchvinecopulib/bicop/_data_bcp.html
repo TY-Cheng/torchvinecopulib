@@ -211,6 +211,8 @@
 <span class="kn">from</span> <span class="nn">._studentt</span> <span class="kn">import</span> <span class="n">StudentT</span>
 
 
+<div class="viewcode-block" id="ENUM_FAM_BICOP">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.ENUM_FAM_BICOP">[docs]</a>
 <span class="k">class</span> <span class="nc">ENUM_FAM_BICOP</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;an Enum class to store bivariate copula family names and their corresponding class objects&quot;&quot;&quot;</span>
 
@@ -220,7 +222,8 @@
     <span class="n">Gumbel</span><span class="p">:</span> <span class="n">BiCopAbstract</span> <span class="o">=</span> <span class="n">Gumbel</span>
     <span class="n">Independent</span><span class="p">:</span> <span class="n">BiCopAbstract</span> <span class="o">=</span> <span class="n">Independent</span>
     <span class="n">Joe</span><span class="p">:</span> <span class="n">BiCopAbstract</span> <span class="o">=</span> <span class="n">Joe</span>
-    <span class="n">StudentT</span><span class="p">:</span> <span class="n">BiCopAbstract</span> <span class="o">=</span> <span class="n">StudentT</span>
+    <span class="n">StudentT</span><span class="p">:</span> <span class="n">BiCopAbstract</span> <span class="o">=</span> <span class="n">StudentT</span></div>
+
 
 
 <span class="n">_FAM_ALL</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">ENUM_FAM_BICOP</span><span class="o">.</span><span class="n">_member_names_</span>
@@ -471,12 +474,15 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
         <span class="n">obs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_sim</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
-        <span class="n">obs</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">ENUM_FAM_BICOP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">fam</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">hinv1</span><span class="p">(</span>
-            <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span>
-            <span class="n">par</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">,</span>
-            <span class="n">rot</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rot</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">obs</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fam</span> <span class="o">==</span> <span class="s2">&quot;Independent&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">obs</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obs</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">ENUM_FAM_BICOP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">fam</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">hinv1</span><span class="p">(</span>
+                <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span>
+                <span class="n">par</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">,</span>
+                <span class="n">rot</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rot</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">obs</span></div>
 </div>
 
 </pre></div>

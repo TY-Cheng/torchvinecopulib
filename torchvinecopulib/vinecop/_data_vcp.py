@@ -17,9 +17,11 @@ class DataVineCop(ABC):
     dct_bcp: dict
     """bivariate copulas, stored as {level: {(vertex_left, vertex_right, frozenset_cond): DataBiCop}}"""
     dct_tree: dict
-    """bivariate dependency measures of edges in trees, stored as {level: {(vertex_left, vertex_right, frozenset_cond): float}}"""
+    """bivariate dependency measures of edges in trees, stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}"""
     mtd_bidep: str
     """method to calculate bivariate dependence"""
+    lst_sim: list
+    """the source vertices (pseudo-obs) of simulation paths, read from right to left; some vertices can be given as simulated at the beginning of each simulation workflow"""
 
     @property
     def aic(self) -> float:
@@ -42,36 +44,9 @@ class DataVineCop(ABC):
         return 2.0 * self.negloglik + self.num_par * math.log(self.num_obs)
 
     @property
-    def diag(self) -> list:
-        """diagonal elements in the structure matrix
-
-        :param self: an instance of the DataVineCop dataclass
-        :return: list of diagonal elements
-        :rtype: list
-        """
-        lst_diag = []
-        for lv in sorted(self.dct_tree, reverse=True):
-            v_diag = None
-            for i_lv in range(lv, -1, -1):
-                for v_l, v_r, s_and in self.dct_tree[i_lv]:
-                    if (
-                        (v_diag is None)
-                        and (v_l not in lst_diag)
-                        and (v_r not in lst_diag)
-                    ):
-                        # ! pick the node with smaller index (v_l < v_r), then mat <-> structure is bijection
-                        v_diag = v_l
-                        lst_diag.append(v_diag)
-                        if lv == 0:
-                            lst_diag.append(v_r)
-
-        return lst_diag
-
-    @property
     def matrix(self) -> np.array:
-        """structure matrix: upper triangular, in row-major order (vertices of the same level are in the same row)
+        """structure matrix: upper triangular, in row-major order (each row has a bicop as: vertex_left,...,vertex_right;set_and)
 
-        :param self: an instance of the DataVineCop dataclass
         :return: structure matrix
         :rtype: np.array
         """
@@ -102,7 +77,6 @@ class DataVineCop(ABC):
     def negloglik(self) -> float:
         """nll, as sum of negative log likelihoods of all bivariate copulas
 
-        :param self: an instance of the DataVineCop dataclass
         :return: negative log likelihood
         :rtype: float
         """
@@ -132,27 +106,41 @@ class DataVineCop(ABC):
         )
 
     def _loc_bcp(self, v_down: int, s_down: frozenset) -> tuple:
-        # * locate the bicop on upper level that generates this pseudo obs
+        """locate the bicop on upper level that generates this pseudo obs
+
+        :param v_down: given vertex on lower level
+        :type v_down: int
+        :param s_down: given cond set on lower level
+        :type s_down: frozenset
+        :return: vertex left, vertex right, cond set, and the bicop
+        :rtype: tuple
+        """
         lv_up = len(s_down) - 1
         for (v_l, v_r, s_up), bcp in self.dct_bcp[lv_up].items():
             if ({v_l, v_r} | s_up) == ({v_down} | s_down):
                 return v_l, v_r, s_up, bcp
 
-    @property
-    def ref_count(self) -> dict:
-        """reference counting for each vertex during simulation workflow, for garbage collection
+    def _ref_count(self, lst_first: list[int] = []) -> tuple[dict, list[int]]:
+        """reference counting for each vertex during simulation workflow, for garbage collection (memory release)
 
-        :param self: an instance of the DataVineCop dataclass
+        :param lst_first: list of vertices that are taken as already simulated at the beginning of a simulation workflow, defaults to []
+        :type lst_first: list[int], optional
         :return: reference counting for each vertex
-        :rtype: dict
+        :rtype: tuple[dict, list[int]]
         """
-        # * v for vertex, s for condition set
-        lst_diag = self.diag
-        lst_diag = [
-            (v, frozenset(lst_diag[(idx + 1) :])) for idx, v in enumerate(lst_diag)
+        # * v for vertex, s for condition (frozen)set, read from right to left
+        lst_source = self.lst_sim
+        lst_source = [
+            (
+                (v, frozenset())
+                if v in lst_first
+                else (v, frozenset(lst_source[(idx + 1) :]))
+            )
+            for idx, v in enumerate(lst_source)
         ][::-1]
-        # count in initial sim
-        dct_ref_count = {(v, s): 1 for v, s in lst_diag}
+
+        # ! count in initial sim (pseudo obs that are given at the beginning of each sim path)
+        dct_ref_count = {v_s: 1 for v_s in lst_source}
 
         def visit_hfunc(v_down: int, s_down: frozenset):
             v_l, v_r, s_up, _ = self._loc_bcp(v_down=v_down, s_down=s_down)
@@ -186,22 +174,23 @@ class DataVineCop(ABC):
                 dct_ref_count[v_down, s_up] += 1
             return v_down, s_up
 
-        for v_diag, s in lst_diag:
+        for v_source, s in lst_source:
             if len(s) < 1:
                 continue
             else:
-                v_next, s_next = visit_hinv(v_down=v_diag, s_down=s)
+                v_next, s_next = visit_hinv(v_down=v_source, s_down=s)
                 while len(s_next) > 0:
                     v_next, s_next = visit_hinv(v_down=v_next, s_down=s_next)
 
-        return dct_ref_count
+        return dct_ref_count, lst_source
 
     def __repr__(self) -> str:
         return pformat(
             {
-                "mtd_bidep": self.mtd_bidep,
-                "dct_tree": self.dct_tree,
                 "dct_bcp": self.dct_bcp,
+                "dct_tree": self.dct_tree,
+                "lst_sim": self.lst_sim,
+                "mtd_bidep": self.mtd_bidep,
             },
             indent=2,
             compact=True,
@@ -212,6 +201,7 @@ class DataVineCop(ABC):
     def __str__(self) -> str:
         return pformat(
             object={
+                "mtd_bidep": self.mtd_bidep,
                 "num_dim": self.num_dim,
                 "num_obs": self.num_obs,
                 "num_par": self.num_par,
@@ -219,60 +209,61 @@ class DataVineCop(ABC):
                 "aic": round(self.aic, 4),
                 "bic": round(self.bic, 4),
                 "matrix": self.matrix.__str__(),
+                "lst_sim": self.lst_sim,
             },
             compact=True,
             sort_dicts=False,
             underscore_numbers=True,
         ).replace("\\n", "")
 
-    def draw(
+    def draw_lv(
         self,
         lv: int = 0,
-        is_mst: bool = True,
-        ndigits: int = 2,
+        is_bcp: bool = True,
+        num_digit: int = 2,
         font_size_vertex: int = 8,
         font_size_edge: int = 7,
         f_path: Path = None,
-        figsize: tuple = None,
-    ) -> Path:
-        """draw the vine structure of the given level.
+        fig_size: tuple = None,
+    ) -> tuple:
+        """draw the vine structure at a given level. Each edge corresponds to a fitted bicop. Each node is a bicop of prev lv (is_bcp=True) or pseudo-obs of the given lv (is_bcp=False).
 
-        :param self: an instance of the DataVineCop dataclass
         :param lv: level, defaults to 0
         :type lv: int, optional
-        :param is_mst: draw the minimum spanning tree (of bicops) or pseudo observations, defaults to True
-        :type is_mst: bool, optional
-        :param ndigits: number of digits to round for the weights on edges, defaults to 2
-        :type ndigits: int, optional
+        :param is_bcp: draw the minimum spanning tree (of prev lv bicops) or pseudo observations, defaults to True
+        :type is_bcp: bool, optional
+        :param num_digit: number of digits to round for the weights on edges, defaults to 2
+        :type num_digit: int, optional
         :param font_size_vertex: font size for vertex labels, defaults to 8
         :type font_size_vertex: int, optional
         :param font_size_edge: font size for edge labels, defaults to 7
         :type font_size_edge: int, optional
-        :param f_path: file path to save the figure, defaults to None
+        :param f_path: file path to save the figure, defaults to None for no saving
         :type f_path: Path, optional
-        :param figsize: figure size, defaults to None
-        :type figsize: tuple, optional
-        :return: file path where the figure is saved
-        :rtype: Path
+        :param fig_size: figure size, defaults to None
+        :type fig_size: tuple, optional
+        :return: fig, ax, (and file path if the figure is saved)
+        :rtype: tuple
         """
-        import networkx as nx
         import matplotlib.pyplot as plt
+        import networkx as nx
 
-        if f_path is None:
-            f_path = Path("./vcp.png")
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize)
-        ax.set_title(label=f"Vine Copula, Level {lv}", fontsize=font_size_vertex + 1)
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=fig_size)
+        ax.set_title(
+            label=f"Vine Copula, Level {lv}, BiDep Metric {self.mtd_bidep}",
+            fontsize=font_size_vertex + 1,
+        )
         if lv == 0:
             tpl_uvw = tuple(
-                (u, v, round(w, ndigits=ndigits))
+                (u, v, round(w, ndigits=num_digit))
                 for (u, v, s_and), w in self.dct_tree[lv].items()
             )
-        elif is_mst:
+        elif is_bcp:
             tpl_uvw = tuple(
                 (
                     self._loc_bcp(v_down=u, s_down=s_and),
                     self._loc_bcp(v_down=v, s_down=s_and),
-                    round(w, ndigits=ndigits),
+                    round(w, ndigits=num_digit),
                 )
                 for (u, v, s_and), w in self.dct_tree[lv].items()
             )
@@ -293,7 +284,7 @@ class DataVineCop(ABC):
                 (
                     f"{u}|{','.join([f'{_}' for _ in sorted(s_and)])}",
                     f"{v}|{','.join([f'{_}' for _ in sorted(s_and)])}",
-                    round(w, ndigits=ndigits),
+                    round(w, ndigits=num_digit),
                 )
                 for (u, v, s_and), w in self.dct_tree[lv].items()
             )
@@ -305,7 +296,7 @@ class DataVineCop(ABC):
             pos=pos,
             ax=ax,
             node_color="white",
-            node_shape="s" if is_mst else "o",
+            node_shape="s" if (is_bcp and lv > 0) else "o",
             alpha=0.8,
             linewidths=0.5,
             edgecolors="gray",
@@ -333,12 +324,154 @@ class DataVineCop(ABC):
             font_size=font_size_edge,
         )
         fig.tight_layout()
-        #
-        plt.show()
-        fig.savefig(fname=f_path, bbox_inches="tight")
-        return f_path, fig, ax
+        plt.draw_if_interactive()
+        if f_path:
+            fig.savefig(fname=f_path, bbox_inches="tight")
+            return fig, ax, f_path
+        else:
+            return fig, ax
 
-    def to_json(self, f_path: Path = "./vcp.json") -> Path:
+    def draw_dag(
+        self,
+        lst_first: list[int] = [],
+        font_size_vertex: int = 8,
+        f_path: Path = None,
+        fig_size: tuple = None,
+    ) -> tuple:
+        """draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes. The source nodes in simulation workflow are highlighted in yellow.
+
+        :param lst_first: list of vertices that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to []
+        :type lst_first: list[int], optional
+        :param font_size_vertex: font size for vertex labels, defaults to 8
+        :type font_size_vertex: int, optional
+        :param f_path: file path to save the figure, defaults to None for no saving
+        :type f_path: Path, optional
+        :param fig_size: figure size, defaults to None
+        :type fig_size: tuple, optional
+        :return: fig, ax, (and file path if the figure is saved)
+        :rtype: tuple
+        """
+        import matplotlib.pyplot as plt
+        import networkx as nx
+
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=fig_size)
+        ax.set_title(
+            label=f"Vine Copula, Obs and BiCop",
+            fontsize=font_size_vertex + 1,
+        )
+        G = nx.DiGraph()
+        pos_obs = {}
+        pos_bcp = {}
+        dct_label = {}
+        for lv in self.dct_tree:
+            # given a bcp, locate upper/lower edges and lower nodes
+            lst_node_bcp = []
+            lst_node_down = []
+            lst_edge = []
+            if lv == 0:
+                # locate upper nodes only when lv==0
+                lst_node_up = [(_, frozenset()) for _ in range(self.num_dim)]
+                for _ in lst_node_up:
+                    dct_label[_] = _[0]
+                num_node = len(lst_node_up)
+                loc_x = np.linspace(-num_node / 2, num_node / 2, num=num_node)
+                for _ in range(num_node):
+                    pos_obs[lst_node_up[_]] = loc_x[_], 1
+            for (v_l, v_r, s_and), _ in self.dct_tree[lv].items():
+                # node bcp
+                lst_node_bcp.append((v_l, v_r, s_and))
+                # node down
+                lst_node_down.append((v_l, s_and | {v_r}))
+                lst_node_down.append((v_r, s_and | {v_l}))
+                # edge
+                lst_edge.append(((v_l, s_and), (v_l, v_r, s_and)))
+                lst_edge.append(((v_r, s_and), (v_l, v_r, s_and)))
+                lst_edge.append(((v_l, v_r, s_and), (v_l, s_and | {v_r})))
+                lst_edge.append(((v_l, v_r, s_and), (v_r, s_and | {v_l})))
+            # locate lower nodes
+            num_node = len(lst_node_down)
+            loc_x = np.linspace(-num_node / 2, num_node / 2, num=num_node)
+            for _ in range(num_node):
+                pos_obs[lst_node_down[_]] = loc_x[_], -lv
+            for _ in lst_node_down:
+                dct_label[_] = f"{_[0]}|{','.join([f'{__}' for __ in sorted(_[1])])}"
+            # locate bcp nodes
+            num_node = len(lst_node_bcp)
+            loc_x = np.linspace(-num_node / 2, num_node / 2, num=num_node)
+            for _ in range(num_node):
+                pos_bcp[lst_node_bcp[_]] = loc_x[_], -lv + 0.5
+            for _ in lst_node_bcp:
+                __ = "\n" * min(lv, 1)
+                dct_label[_] = (
+                    f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
+                )
+            G.add_edges_from(lst_edge)
+        # highlight source nodes, given lst_first
+        lst_source = self._ref_count(lst_first=lst_first)[1]
+        # pseudo obs nodes
+        lst_node = [_ for _ in G.nodes if len(_) == 2 and _ not in lst_source]
+        nx.draw_networkx_nodes(
+            G=G,
+            pos=pos_obs | pos_bcp,
+            ax=ax,
+            nodelist=lst_node,
+            node_color="white",
+            node_shape="o",
+            alpha=0.8,
+            linewidths=0.5,
+            edgecolors="gray",
+        )
+        nx.draw_networkx_nodes(
+            G=G,
+            pos=pos_obs | pos_bcp,
+            ax=ax,
+            nodelist=lst_source,
+            node_color="yellow",
+            node_shape="o",
+            alpha=0.8,
+            linewidths=0.5,
+            edgecolors="gray",
+        )
+
+        # bicop nodes
+        lst_node = [_ for _ in G.nodes if len(_) == 3]
+        nx.draw_networkx_nodes(
+            G=G,
+            pos=pos_obs | pos_bcp,
+            ax=ax,
+            nodelist=lst_node,
+            node_color="white",
+            node_shape="s",
+            alpha=0.8,
+            linewidths=0.5,
+            edgecolors="gray",
+        )
+        nx.draw_networkx_labels(
+            G=G,
+            pos=pos_obs | pos_bcp,
+            ax=ax,
+            labels=dct_label,
+            font_size=font_size_vertex,
+            font_color="black",
+        )
+        nx.draw_networkx_edges(
+            G=G,
+            pos=pos_obs | pos_bcp,
+            ax=ax,
+            edge_color="gray",
+            width=0.5,
+            style="--",
+            alpha=0.8,
+        )
+        fig.tight_layout()
+        plt.draw_if_interactive()
+        if f_path:
+            fig.savefig(fname=f_path, bbox_inches="tight")
+            return fig, ax, f_path
+        else:
+            return fig, ax
+
+    def vcp_to_json(self, f_path: Path = "./vcp.json") -> Path:
         """save to a json file
 
         :param self: an instance of the DataVineCop dataclass
@@ -353,7 +486,7 @@ class DataVineCop(ABC):
             file.write(self.__repr__())
         return f_path
 
-    def to_pkl(self, f_path: Path = Path("./vcp.pkl")) -> Path:
+    def vcp_to_pkl(self, f_path: Path = Path("./vcp.pkl")) -> Path:
         """save to a pickle file
 
         :param self: an instance of the DataVineCop dataclass
@@ -431,18 +564,17 @@ class DataVineCop(ABC):
     def sim(
         self,
         num_sim: int,
+        dct_first: dict = {},
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
-        """simulate from the vine copula, as scheduled task with reference counting for garbage collection.
-        Sequentially for each beginning vertex in the diagonal vertices,
-        move upward by calling hinv until the top vertex (whose cond set is empty) is reached.
-        (Recursively) call hfunc for the other upper vertex if necessary.
+        """simulate from the vine copula, as scheduled task with reference counting for garbage collection. Sequentially (from right to left) for each beginning vertex in the lst_sim, move upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
 
-        :param self: an instance of the DataVineCop dataclass
         :param num_sim: number of simulations
         :type num_sim: int
+        :param dct_first: dict of {idx: torch.Tensor(size=(n,1))} in cond sim, where vertices are taken as already simulated at the beginning of a simulation workflow; intentionally asking for explicit user input, defaults to {}
+        :type dct_first: dict, optional
         :param seed: random seed for torch.manual_seed(), defaults to 0
         :type seed: int, optional
         :param device: device for torch.rand(), defaults to 'cpu'
@@ -452,23 +584,9 @@ class DataVineCop(ABC):
         :return: simulated observations of the vine copula, of shape (num_sim, num_dim)
         :rtype: torch.Tensor
         """
-        torch.manual_seed(seed=seed)
-        num_dim = self.num_dim
-        dct_ref_count = self.ref_count
-        # * starting vertices in each path
-        lst_diag = self.diag
-        lst_diag = [
-            (v, frozenset(lst_diag[(idx + 1) :])) for idx, v in enumerate(lst_diag)
-        ][::-1]
-        # * initial sim of U_mvcp (independent uniform multivariate copula)
-        dct_obs = torch.rand(size=(num_sim, num_dim), device=device, dtype=dtype)
-        # * prepare dct_obs and update dct_ref_count
-        dct_obs = {v_s: dct_obs[:, [idx]] for idx, v_s in enumerate(lst_diag)}
-        for v_s in lst_diag:
-            dct_ref_count[v_s] -= 1
-        # ! let the top level obs skip garbage collection
-        for idx in range(num_dim):
-            dct_ref_count[idx, frozenset()] += 1
+        dct_obs = {}
+        # * source vertices in each path; reference counting for whole DAG
+        dct_ref_count, lst_source = self._ref_count(lst_first=list(dct_first))
 
         def _update_ref_count(v: int, s: frozenset) -> None:
             # * countdown and release memory if necessary
@@ -478,7 +596,7 @@ class DataVineCop(ABC):
 
         def visit_hfunc(v_down: int, s_down: frozenset) -> None:
             """
-            hfunc from (v_l,s_up) and (v_r,s_up) (both may not exist yet)
+            hfunc from (v_l,s_up) and (v_r,s_up) (both may not exist yet and recursively call visit_hfunc if necessary)
             to (v_down,s_down); then update dct_obs and dct_ref_count and do garbage collection
             """
             # * locate the bicop on upper level that connects the 3 vertices
@@ -500,7 +618,7 @@ class DataVineCop(ABC):
 
         def visit_hinv(v_down: int, s_down: frozenset) -> tuple:
             """
-            hinv from (v_down,s_down) (surely exist) and (v_up,s_up) (may not exist yet)
+            hinv from (v_down,s_down) (surely exist) and (v_up,s_up) (may not exist yet and recursively call visit_hfunc if necessary)
             to (v_down,s_up); then update dct_obs and dct_ref_count and do garbage collection
             """
             # * locate the bicop on upper level that connects the 3 vertices
@@ -534,13 +652,37 @@ class DataVineCop(ABC):
             # * return the next vertex
             return v_down, s_up
 
-        for v_diag, s in lst_diag:
+        torch.manual_seed(seed=seed)
+        num_dim = self.num_dim
+        # * initial sim of U_mvcp (independent uniform multivariate copula)
+        U_mvcp = torch.rand(
+            size=(num_sim, num_dim - len(dct_first)), device=device, dtype=dtype
+        )
+        # * update dct_obs and dct_ref_count
+        idx = 0
+        for v_s in lst_source:
+            if v_s[0] in dct_first:
+                dct_obs[v_s] = dct_first[v_s[0]]
+            else:
+                dct_obs[v_s] = U_mvcp[:, [idx]]
+                idx += 1
+            # ! let the top level obs (target vertices) escape garbage collection
+            dct_ref_count[v_s[0], frozenset()] += 1
+            # update ref count
+            _update_ref_count(v=v_s[0], s=v_s[1])
+        del seed, num_dim, U_mvcp, dct_first, idx
+
+        for v_source, s in lst_source:
+            # walk the path if cond set is not empty
             if len(s):
-                v_next, s_next = visit_hinv(v_down=v_diag, s_down=s)
+                # call hinv and update vertex/cond-set iteratively to walk towards target vertex (top lv)
+                v_next, s_next = visit_hinv(v_down=v_source, s_down=s)
                 while len(s_next):
                     v_next, s_next = visit_hinv(v_down=v_next, s_down=s_next)
         # * sort pseudo obs by key
-        return torch.hstack([v for _, v in sorted(dct_obs.items(), key=itemgetter(0))])
+        return torch.hstack(
+            [val for _, val in sorted(dct_obs.items(), key=itemgetter(0))]
+        )
 
     def cdf(
         self,

@@ -196,7 +196,7 @@
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">minimize</span>
 
-<span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="n">kendall_tau_b</span>
+<span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="n">kendall_tau</span>
 <span class="kn">from</span> <span class="nn">._data_bcp</span> <span class="kn">import</span> <span class="n">ENUM_FAM_BICOP</span><span class="p">,</span> <span class="n">DataBiCop</span><span class="p">,</span> <span class="n">SET_FAMnROT</span>
 
 
@@ -208,12 +208,17 @@
     <span class="n">mtd_fit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;itau&quot;</span><span class="p">,</span>
     <span class="n">mtd_mle</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;COBYLA&quot;</span><span class="p">,</span>
     <span class="n">mtd_sel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;aic&quot;</span><span class="p">,</span>
-    <span class="n">tpl_fam</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
-        <span class="p">(</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">ENUM_FAM_BICOP</span><span class="o">.</span><span class="n">_member_names_</span> <span class="k">if</span> <span class="n">_</span> <span class="o">!=</span> <span class="s2">&quot;StudentT&quot;</span><span class="p">)</span>
+    <span class="n">tpl_fam</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Clayton&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Frank&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Gaussian&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Gumbel&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Independent&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Joe&quot;</span><span class="p">,</span>
     <span class="p">),</span>
     <span class="n">topk</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataBiCop</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;make a bivariate copula dataclass object, fitted from observations</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;factory method to make a bivariate copula dataclass object, fitted from observations</span>
 
 <span class="sd">    :param obs_bcp: bivariate copula obs, of shape (num_obs, 2) with values in [0, 1]</span>
 <span class="sd">    :type obs_bcp: torch.Tensor</span>
@@ -237,7 +242,7 @@
     <span class="n">num_obs</span> <span class="o">=</span> <span class="n">obs_bcp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="c1"># * tau from data, for inv-tau/tau2par, whose par is taken as init value for mle</span>
     <span class="k">if</span> <span class="n">tau</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">tau</span> <span class="o">=</span> <span class="n">kendall_tau_b</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">y</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">tau</span> <span class="o">=</span> <span class="n">kendall_tau</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">y</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
 
     <span class="k">def</span> <span class="nf">_fit_itau</span><span class="p">(</span><span class="n">i_fam</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">i_rot</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataBiCop</span><span class="p">:</span>
         <span class="c1"># fetch the class</span>

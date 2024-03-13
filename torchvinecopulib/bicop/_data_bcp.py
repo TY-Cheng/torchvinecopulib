@@ -255,9 +255,12 @@ class DataBiCop(ABC):
         """
         torch.manual_seed(seed=seed)
         obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
-        obs[:, [1]] = ENUM_FAM_BICOP[self.fam].value.hinv1(
-            obs=obs,
-            par=self.par,
-            rot=self.rot,
-        )
-        return obs
+        if self.fam == "Independent":
+            return obs
+        else:
+            obs[:, [1]] = ENUM_FAM_BICOP[self.fam].value.hinv1(
+                obs=obs,
+                par=self.par,
+                rot=self.rot,
+            )
+            return obs

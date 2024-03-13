@@ -3,11 +3,11 @@ from enum import Enum
 from functools import partial
 
 import torch
-from scipy.stats import kendalltau, t
+from scipy.stats import t
 
 __all__ = [
     "ENUM_FUNC_BIDEP",
-    "kendall_tau_b",
+    "kendall_tau",
     "mutual_info",
     "ferreira_tail_dep_coeff",
     "chatterjee_xi",
@@ -23,20 +23,20 @@ _RHO_MIN, _RHO_MAX = -0.99, 0.99
 _TAU_MIN, _TAU_MAX = -0.999, 0.999
 
 
-def kendall_tau_b(x: torch.Tensor, y: torch.Tensor) -> float:
-    """https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html"""
-    return max(
-        min(
-            kendalltau(
-                x=x.cpu(),
-                y=y.cpu(),
-                nan_policy="omit",
-                method="asymptotic",
-                variant="b",
-            )[0],
-            _TAU_MAX,
-        ),
-        _TAU_MIN,
+def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> float:
+    """https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94"""
+    n = x.shape[0]
+
+    def sub_pairs(x):
+        return x.expand(n, n).T.sub(x).sign_()
+
+    return (
+        sub_pairs(x)
+        .mul_(sub_pairs(y))
+        .sum()
+        .div_(n * (n - 1))
+        .clamp_(min=_TAU_MIN, max=_TAU_MAX)
+        .item()
     )
 
 
@@ -195,7 +195,7 @@ class ENUM_FUNC_BIDEP(Enum):
 
     chatterjee_xi = partial(chatterjee_xi)
     ferreira_tail_dep_coeff = partial(ferreira_tail_dep_coeff)
-    kendall_tau = partial(kendall_tau_b)
+    kendall_tau = partial(kendall_tau)
     mutual_info = partial(mutual_info)
     wasserstein_dist_ind = partial(wasserstein_dist_ind)
 

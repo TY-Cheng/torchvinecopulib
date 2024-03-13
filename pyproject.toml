@@ -4,18 +4,16 @@ license = "GNU GPLv3"
 name = "torchvinecopulib"
 version = "2024.3.2"
 description = "yet another vine copula library for PyTorch."
-authors = [
-    "Tuoyuan Cheng <cty120120@gmail.com>",
-    "Xiaosheng You <e1204754@u.nus.edu>",
-]
-maintainers = []
+authors = ["Tuoyuan Cheng <cty120120@gmail.com>"]
+maintainers = ["Xiaosheng You <e1204754@u.nus.edu>"]
 readme = "README.md"
 # homepage = ""
-# repository = ""
+repository = "https://github.com/TY-Cheng/torchvinecopulib"
 # documentation = ""
 keywords = ["vine copula", "copula", "torch"]
 classifiers = [
     "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.1",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
@@ -24,9 +22,9 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-numpy = "^1.21"
+numpy = "*"
 python = "^3.10"
-scipy = "^1.7"
+scipy = "*"
 torch = "^2"
 
 
@@ -51,8 +49,8 @@ scikit-learn = '*'
 sphinx = "*"
 
 
-# [tool.poetry.urls]
-# "Bug Tracker" = ""
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/TY-Cheng/torchvinecopulib/issues/new"
 
 
 [build-system]

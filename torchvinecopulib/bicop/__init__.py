@@ -8,8 +8,4 @@ from ._independent import Independent
 from ._joe import Joe
 from ._studentt import StudentT
 
-
-__all__ = [
-    "DataBiCop",
-    "bcp_from_obs",
-]
+__all__ = ["DataBiCop", "bcp_from_obs", "ENUM_FAM_BICOP"]
