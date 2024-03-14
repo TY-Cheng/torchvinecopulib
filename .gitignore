@@ -3,6 +3,7 @@
 poetry.lock
 # pyproject.toml
 # README.md
+/docs/*.pdf
 /docs/*.rst
 /docs/*.py
 /docs/*.bat

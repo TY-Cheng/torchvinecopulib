@@ -344,8 +344,8 @@ def qt(vec: torch.Tensor, nu: float) -> torch.Tensor:
         inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0
     ).sqrt()
     res[vec == 0.5] = 0
-    res *= math.sqrt(nu)
-    return res.nan_to_num()
+    res.mul_(math.sqrt(nu))
+    return res.nan_to_num_()
 
 
 def pt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
@@ -376,9 +376,14 @@ def dt(obs: torch.Tensor, nu: float) -> torch.Tensor:
     """
     nu2 = nu / 2.0
     return (
-        math.exp(math.lgamma(nu2 + 0.5) - math.lgamma(nu2))
-        / math.sqrt(nu * 3.141592653589793)
-        * (1.0 + obs.square() / nu).pow(-nu2 - 0.5)
+        obs.square()
+        .div_(nu)
+        .add_(1.0)
+        .pow_(-nu2 - 0.5)
+        .mul_(
+            math.exp(math.lgamma(nu2 + 0.5) - math.lgamma(nu2))
+            / math.sqrt(nu * 3.141592653589793)
+        )
     )
 
 
@@ -394,11 +399,16 @@ def l_dt(obs: torch.Tensor, nu: float) -> torch.Tensor:
     """
     nu2 = nu / 2.0
     return (
-        math.lgamma(nu2 + 0.5)
-        - math.lgamma(nu2)
-        - 0.5723649429247001
-        - 0.5 * math.log(nu)
-        - (nu2 + 0.5) * (obs.square() / nu).log1p()
+        obs.square()
+        .div_(nu)
+        .log1p_()
+        .mul_(-nu2 - 0.5)
+        .add_(
+            math.lgamma(nu2 + 0.5)
+            - math.lgamma(nu2)
+            - 0.5723649429247001
+            - 0.5 * math.log(nu)
+        )
     )
 
 
@@ -499,17 +509,6 @@ pnorm = torch.special.ndtr
 qnorm = torch.special.ndtri
 
 
-def dnorm(obs: torch.Tensor) -> torch.Tensor:
-    """prob density func of (standard) Gaussian distribution
-
-    :param obs: Gaussian observations
-    :type obs: torch.Tensor
-    :return: density, given the observations
-    :rtype: torch.Tensor
-    """
-    return (-obs.square() / 2).negative().exp() * 0.3989422804014327
-
-
 def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
     """CDF of (standard) bivariate Gaussian distribution
     modified from http://www.math.wsu.edu/faculty/genz/software/matlab/bvnl.m
@@ -599,19 +598,16 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
     #
     h, k = obs[:, [0]], obs[:, [1]]
     asr = math.asin(rho) / 2.0
-    sn = (x * asr).sin()
+    sn = x.mul(asr).sin_()
     return (
         (
-            (
-                (
-                    (sn * h * k - (h.square() + k.square()) / 2.0) / (1.0 - sn.square())
-                ).exp()
-                @ w
-                * asr
-                / 6.283185307179586
-            )
-            + (pnorm(h) * pnorm(k))
+            (h.square() + k.square()).div_(-2.0)
+            # ! broadcast: x,sn are rows; w,h,k are columns
+            .add(sn * h * k).div_(sn.square().negative_().add_(1.0)).exp_()
+            @ w
         )
+        .mul_(asr / 6.283185307179586)
+        .add_(pnorm(h).mul_(pnorm(k)))
         .nan_to_num_()
         .clamp_(min=_CDF_MIN, max=_CDF_MAX)
     )

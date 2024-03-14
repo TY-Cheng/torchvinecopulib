@@ -33,9 +33,13 @@ class StudentT(BiCopElliptical):
         else:
             nu_high = ceil(nu)
             weight = (nu - nu_low) / (nu_high - nu_low)
-            return pbvt(obs=qt(vec=obs, nu=nu_low), rho=rho, nu=nu_low) * (
-                1.0 - weight
-            ) + pbvt(obs=qt(vec=obs, nu=nu_high), rho=rho, nu=nu_high) * (weight)
+            return (
+                pbvt(obs=qt(vec=obs, nu=nu_low), rho=rho, nu=nu_low)
+                .mul_(1.0 - weight)
+                .add_(
+                    pbvt(obs=qt(vec=obs, nu=nu_high), rho=rho, nu=nu_high), alpha=weight
+                )
+            )
 
     @staticmethod
     def hfunc1_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
@@ -43,8 +47,9 @@ class StudentT(BiCopElliptical):
         rho, nu = par
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu)
         return pt(
-            vec=(y - rho * x)
-            / ((1.0 - rho**2) * (nu + x.square()) / (nu + 1.0)).sqrt(),
+            vec=(y.sub_(x, alpha=rho)).div_(
+                x.square().add_(nu).div_(nu + 1.0).mul_(1.0 - rho**2).sqrt_()
+            ),
             nu=nu + 1.0,
         )
 
@@ -54,9 +59,9 @@ class StudentT(BiCopElliptical):
         rho, nu = par
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu + 1.0)
         return pt(
-            vec=(
-                x * rho + y * ((nu + x.square()) * (1.0 - rho**2) / (nu + 1.0)).sqrt()
-            ),
+            vec=y.mul_(
+                x.square().add_(nu).div_(nu + 1.0).mul_(1.0 - rho**2).sqrt_()
+            ).add_(x, alpha=rho),
             nu=nu,
         )
 
@@ -68,17 +73,21 @@ class StudentT(BiCopElliptical):
         nu2 = nu / 2.0
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu)
         return (
-            -0.5 * log1p(-(rho**2))
-            - log(nu)
-            - 1.1447298858494002
-            + lgamma(nu2 + 1)
-            - lgamma(nu2)
-            - (nu2 + 1)
-            * (
-                (x.square() + y.square() - 2.0 * rho * x * y) / nu / (1 - rho**2)
-            ).log1p()
-            - l_dt(x, nu=nu)
-            - l_dt(y, nu=nu)
+            x.square()
+            .add_(y.square())
+            .sub_(x * y, alpha=2.0 * rho)
+            .div_(nu * (1 - rho**2))
+            .log1p_()
+            .mul_(-nu2 - 1.0)
+            .sub_(l_dt(x, nu=nu))
+            .sub_(l_dt(y, nu=nu))
+            .add_(
+                -0.5 * log1p(-(rho**2))
+                - log(nu)
+                - 1.1447298858494002
+                + lgamma(nu2 + 1)
+                - lgamma(nu2)
+            )
         )
 
     @classmethod

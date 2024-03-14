@@ -7,7 +7,7 @@ from ._archimedean import BiCopArchimedean
 
 
 def _g(vec: torch.Tensor, delta: float) -> torch.Tensor:
-    return (-vec * delta).expm1()
+    return (-vec * delta).expm1_()
 
 
 class Frank(BiCopArchimedean):

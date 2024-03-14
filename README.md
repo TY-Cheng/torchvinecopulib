@@ -93,9 +93,11 @@ We welcome contributions from everyone, whether it's a bug report, feature sugge
 
 ### TODO
 
-1. more `bicop` class in `torch`
+1. `bicop._student` acceleration (`pt`,`qt` inside `util`)
 2. `torch` function acceleration by **in-place** operations
-3. bivariate dependence funcs in `util.ENUM_FUNC_BIDEP`, implementation in `torch`
+3. more `bicop` class in `torch`
+4. potentially deprecating `'mle'` from `mtd_fit`
+5. bivariate dependence funcs in `util.ENUM_FUNC_BIDEP`, resolve non-`torch` pkg dependencies
 
 ## License
 
