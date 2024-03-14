@@ -159,6 +159,7 @@ class TestBiCop(unittest.TestCase):
         for fam, rot in SET_FAMnROT:
             bcp_pvc, bcp_tvc = DCT_FAM[fam]
             obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)
+            obs_bcp_clone = obs_bcp.clone()
             mtd_fit = LST_MTD_FIT[1]
             logging.info(
                 msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
@@ -183,6 +184,7 @@ class TestBiCop(unittest.TestCase):
                     obs_bcp=obs_bcp,
                     func_name=func_name,
                 )
+                assert (obs_bcp == obs_bcp_clone).all()
                 if err := compare_chart_vec(
                     vec_pvc=vec_pvc,
                     vec_tvc=vec_tvc,
@@ -199,6 +201,7 @@ class TestBiCop(unittest.TestCase):
                 continue
             bcp_pvc, bcp_tvc = DCT_FAM[fam]
             obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)
+            obs_bcp_clone = obs_bcp.clone()
             mtd_fit = LST_MTD_FIT[1]
             logging.info(
                 msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
@@ -214,6 +217,7 @@ class TestBiCop(unittest.TestCase):
                     func_name=func_name,
                     rot=rot,
                 )
+                assert (obs_bcp == obs_bcp_clone).all()
                 if err := compare_chart_vec(
                     vec_pvc=vec_pvc,
                     vec_tvc=vec_tvc,
