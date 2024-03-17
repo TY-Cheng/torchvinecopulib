@@ -17,11 +17,14 @@ scipy = "*"
 torch = "^2"
 ```
 
-For [PyTorch](https://pytorch.org/get-started/locally/) with cuda support on Windows:
+For [PyTorch](https://pytorch.org/get-started/locally/) with `cuda` support on Windows:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
 ```
+
+> [!TIP] MacOS users
+> Suggest using `device='cpu'` at this stage, for using `device='mps'` won't support `dtype=torch.float64`.
 
 ## Installation
 
@@ -71,7 +74,7 @@ python -m pytest ./tests
 
 ## Contributing
 
-We welcome contributions from everyone, whether it's a bug report, feature suggestion, code contribution, or documentation improvement.
+We welcome contributions, whether it's a bug report, feature suggestion, code contribution, or documentation improvement.
 
 - If you encounter any issues with the project or have ideas for new features, please [open an issue](https://github.com/TY-Cheng/torchvinecopulib/issues/new) on GitHub or [privately email us](mailto:cty120120@gmail.com). Make sure to include detailed information about the problem or feature request, including steps to reproduce for bugs.
 
@@ -100,7 +103,7 @@ We welcome contributions from everyone, whether it's a bug report, feature sugge
 
 ## License
 
-> Copyright (C) 2024 Tuoyuan Cheng, Xiaosheng You
+> Copyright (C) 2024 Tuoyuan Cheng, Xiaosheng You, Kan Chen
 >
 > This file is part of torchvinecopulib.
 > torchvinecopulib is free software: you can redistribute it and/or modify

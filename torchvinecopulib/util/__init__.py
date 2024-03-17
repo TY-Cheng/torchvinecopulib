@@ -466,14 +466,14 @@ def qt(vec: torch.Tensor, nu: float) -> torch.Tensor:
 
 
 def pt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    if vec.device == "cpu":
+    if vec.device.type == "cpu":
         return torch.from_numpy(t.cdf(x=vec, df=nu))
     else:
         return torch.from_numpy(t.cdf(x=vec.cpu(), df=nu)).cuda()
 
 
 def qt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    if vec.device == "cpu":
+    if vec.device.type == "cpu":
         return torch.from_numpy(t.ppf(q=vec, df=nu))
     else:
         return torch.from_numpy(t.ppf(q=vec.cpu(), df=nu)).cuda()
