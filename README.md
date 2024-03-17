@@ -3,9 +3,9 @@
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
 - Vectorized tensor computation with GPU (`device='cuda'`) support
-- Even shorter runtimes for higher dimension simulations
+- Shorter runtimes for higher dimension simulations
 - Decoupled dataclasses and factory methods
-- Pure `Python` library, tested against [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/)
+- Pure `Python` library, tested against [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
 - IO and visualization support
 
 ## Dependencies
@@ -24,6 +24,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-rei
 ```
 
 > [!TIP] MacOS users
+>
 > Suggest using `device='cpu'` at this stage, for using `device='mps'` won't support `dtype=torch.float64`.
 
 ## Installation
@@ -45,9 +46,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.3.2-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.3.3rc0-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.3.2.tar.gz
+pip install ./dist/torchvinecopulib-2024.3.3rc0.tar.gz
 ```
 
 ## Examples

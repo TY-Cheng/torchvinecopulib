@@ -2,7 +2,7 @@
 package-mode = true
 license = "GNU GPLv3"
 name = "torchvinecopulib"
-version = "2024.3.2"
+version = "2024.3.3rc0"
 description = "yet another vine copula library for PyTorch."
 authors = ["Tuoyuan Cheng <cty120120@gmail.com>"]
 maintainers = ["Xiaosheng You <e1204754@u.nus.edu>"]
