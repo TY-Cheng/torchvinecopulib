@@ -22,7 +22,6 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-numpy = "*"
 python = "^3.10"
 scipy = "*"
 torch = "^2"
@@ -30,7 +29,6 @@ torch = "^2"
 
 [tool.poetry.group.all.dependencies]
 matplotlib = "*"
-networkx = "*"
 pot = "*"
 scikit-learn = "*"
 
@@ -40,7 +38,6 @@ black = "*"
 furo = "*"
 ipykernel = "*"
 matplotlib = '*'
-networkx = '*'
 pandas = '*'
 pot = '*'
 pytest = "*"

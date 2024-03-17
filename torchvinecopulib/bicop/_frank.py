@@ -7,7 +7,7 @@ from ._archimedean import BiCopArchimedean
 
 
 def _g(vec: torch.Tensor, delta: float) -> torch.Tensor:
-    return (-vec * delta).expm1_()
+    return (-vec * delta).expm1()
 
 
 class Frank(BiCopArchimedean):
@@ -16,7 +16,7 @@ class Frank(BiCopArchimedean):
     _PAR_MIN, _PAR_MAX = (-35.0,), (35.0,)
 
     @staticmethod
-    def cdf_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         delta = par[0]
         return (
             -(
@@ -28,26 +28,25 @@ class Frank(BiCopArchimedean):
         )
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def hfunc1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         delta = par[0]
-        x, y = obs[:, [0]], obs[:, [1]]
-        g_y = _g(vec=y, delta=delta)
-        g_x_g_y = _g(vec=x, delta=delta) * g_y
+        g_y = _g(vec=obs[:, [1]], delta=delta)
+        g_x_g_y = _g(vec=obs[:, [0]], delta=delta) * g_y
         return (g_x_g_y + g_y) / (g_x_g_y + expm1(-delta))
 
     @staticmethod
-    def hinv1_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         delta = par[0]
         x = obs[:, [0]]
         return (
-            _g(vec=torch.tensor(1), delta=delta)
+            _g(vec=torch.tensor(1.0), delta=delta)
             / ((-delta * x).exp() / obs[:, [1]] - _g(vec=x, delta=delta))
         ).log1p() / (-delta)
 
     @classmethod
-    def l_pdf_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def l_pdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         return cls.pdf_0(obs=obs, par=par).log()
 
     @staticmethod
@@ -61,7 +60,10 @@ class Frank(BiCopArchimedean):
             return tau if (delta > 0) else -tau
 
     @staticmethod
-    def pdf_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def pdf_0(
+        obs: torch.Tensor,
+        par: tuple[float],
+    ) -> torch.Tensor:
         delta = max(min(par[0], Frank._PAR_MAX[0]), Frank._PAR_MIN[0])
         x, y = obs[:, [0]], obs[:, [1]]
         return (

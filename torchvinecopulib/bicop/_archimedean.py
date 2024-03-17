@@ -41,16 +41,15 @@ class BiCopArchimedean(BiCopAbstract):
         **kwargs,
     ) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
-        tmp = cls.generator_derivative(obs[:, [0]], **kwargs).div_(
-            cls.generator_derivative(
-                cls.generator_inv(
-                    cls.generator(obs[:, [0]], **kwargs).add_(
-                        cls.generator(obs[:, [1]], **kwargs)
-                    ),
-                    **kwargs,
-                ),
-                **kwargs,
-            )
+        tmp = cls.generator_inv(
+            cls.generator(obs[:, [0]], **kwargs) + cls.generator(obs[:, [1]], **kwargs),
+            **kwargs,
+        )
+        tmp = cls.generator_derivative(
+            obs[:, [0]], **kwargs
+        ) / cls.generator_derivative(
+            tmp,
+            **kwargs,
         )
         idx = tmp.isnan()
         tmp[idx] = obs[:, [1]][idx]

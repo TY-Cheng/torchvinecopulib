@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -61,10 +60,17 @@ def sim_vcp_from_bcp(
 ) -> torch.Tensor:
     return torch.hstack(
         [
-            sim_from_bcp(bcp_tvc, seed=_, num_sim=num_sim, device=device, dtype=dtype)
-            for _ in range(num_dim // 2)
+            sim_from_bcp(
+                bcp_tvc,
+                par=tuple((pm / (2 + np.log1p(_)) for pm in bcp_tvc._PAR_MAX)),
+                seed=_,
+                num_sim=num_sim,
+                device=device,
+                dtype=dtype,
+            )
+            for _ in range(num_dim // 2 + 1)
         ]
-    )
+    )[:, :num_dim]
 
 
 def compare_chart_vec(

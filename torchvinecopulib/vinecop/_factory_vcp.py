@@ -123,7 +123,7 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
     # * edge2tree, dvine (MST, restricted to dvine)
     # for dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
     # ! at lv0, s_and is known to be empty
-    import networkx as nx
+    from networkx import Graph
     from networkx.algorithms.approximation import threshold_accepting_tsp
 
     # revert bidep into cost per edge for TSP
@@ -131,7 +131,7 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
         (v_l, v_r): math.log1p(1 / max(abs(bidep), 1e-10))
         for (v_l, v_r, s_and), bidep in dct_edge_lv.items()
     }
-    G = nx.Graph()
+    G = Graph()
     G.add_weighted_edges_from([(*k, v) for k, v in dct_cost.items()])
     s_rest = set(G.nodes) - s_first
     # rest set: build tsp
@@ -250,7 +250,7 @@ def vcp_from_obs(
     cdrvine: str = "rvine",
     lst_first: list[int] = [],
     matrix: np.ndarray | None = None,
-    mtd_bidep: str = "kendall_tau",
+    mtd_bidep: str = "chatterjee_xi",
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
     mtd_sel: str = "aic",
@@ -276,7 +276,7 @@ def vcp_from_obs(
     :type lst_first: list[int], optional
     :param matrix: matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None
     :type matrix: np.ndarray | None, optional
-    :param mtd_bidep: method to calculate bivariate dependence, one of "kendall_tau", "mutual_info", "ferreira_tail_dep_coeff", "chatterjee_xi", "wasserstein_dist_ind", defaults to "kendall_tau"
+    :param mtd_bidep: method to calculate bivariate dependence, one of "kendall_tau", "mutual_info", "ferreira_tail_dep_coeff", "chatterjee_xi", "wasserstein_dist_ind", defaults to "chatterjee_xi"
     :type mtd_bidep: str, optional
     :param mtd_fit: method to fit bivariate copula, either 'itau' (inverse of tau) or 'mle' (maximum likelihood estimation); defaults to "itau"
     :type mtd_fit: str, optional
@@ -298,12 +298,37 @@ def vcp_from_obs(
     # * a list to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)
     deq_sim = deque()
     r_D1 = range(num_dim - 1)
-
     dct_obs = {_: {} for _ in r_D1}
-    dct_edge = {_: {} for _ in r_D1}
-    # * tree is either from Dissmann/MST or from matrix
-    dct_tree = {_: {} for _ in r_D1} if is_Dissmann else dct_edge
+    # * tree is either from Dissmann (MST on edges, needs to record edges) or from matrix
+    if is_Dissmann:
+        dct_edge = {_: {} for _ in r_D1}
+    dct_tree = {_: {} for _ in r_D1}
     dct_bcp = {_: {} for _ in r_D1}
+
+    def _update_obs(v: int, s_cond: frozenset) -> torch.Tensor:
+        """calc hfunc for pseudo obs and update dct_obs, only when necessary (lazy hfunc)"""
+        lv = len(s_cond)
+        lv_1 = lv - 1
+        for (v_l, v_r, s_and), bcp in dct_bcp[lv_1].items():
+            # ! notice hfunc1 or hfunc2
+            if (v == v_l) and (s_cond == frozenset({v_r} | s_and)):
+                dct_obs[lv][(v_l, s_cond)] = bcp.hfunc2(
+                    obs=torch.hstack(
+                        [
+                            dct_obs[lv_1][v_l, s_and],
+                            dct_obs[lv_1][v_r, s_and],
+                        ]
+                    )
+                )
+            elif (v == v_r) and (s_cond == frozenset({v_l} | s_and)):
+                dct_obs[lv][(v_r, s_cond)] = bcp.hfunc1(
+                    obs=torch.hstack(
+                        [
+                            dct_obs[lv_1][v_l, s_and],
+                            dct_obs[lv_1][v_r, s_and],
+                        ]
+                    )
+                )
 
     for lv in r_D1:
         # ! lv_0 obs, preprocess to append a cond frozenset (s_and)
@@ -317,12 +342,16 @@ def vcp_from_obs(
             for tpl_l, tpl_r in combinations(lst_key_obs, 2):
                 # ! only those obs with same 'cond set' (the frozen set) can have edges (proximity condition)
                 if tpl_l[1] == tpl_r[1]:
-                    # ! sorted!
-                    lst_xor = sorted((tpl_l[0], tpl_r[0]))
+                    # ! sorted !
+                    v_l, v_r = sorted((tpl_l[0], tpl_r[0]))
                     s_and = tpl_l[1]
-                    dct_edge[lv][(*lst_xor, s_and)] = f_bidep(
-                        x=dct_obs[lv][lst_xor[0], s_and],
-                        y=dct_obs[lv][lst_xor[1], s_and],
+                    if dct_obs[lv][v_l, s_and] is None:
+                        _update_obs(v_l, s_and)
+                    if dct_obs[lv][v_r, s_and] is None:
+                        _update_obs(v_r, s_and)
+                    dct_edge[lv][(v_l, v_r, s_and)] = f_bidep(
+                        x=dct_obs[lv][v_l, s_and],
+                        y=dct_obs[lv][v_r, s_and],
                     )
             if cdrvine == "dvine":
                 # * edge2tree, dvine
@@ -359,21 +388,23 @@ def vcp_from_obs(
         else:
             # * tree structure is inferred from matrix, if not Dissmann
             for idx in range(num_dim - lv - 1):
-                # ! sorted!
-                lst_xor = sorted((matrix[idx, idx], matrix[idx, num_dim - lv - 1]))
+                # ! sorted !
+                v_l, v_r = sorted((matrix[idx, idx], matrix[idx, num_dim - lv - 1]))
                 s_and = frozenset(matrix[idx, (num_dim - lv) :])
-                dct_tree[lv][(*lst_xor, s_and)] = f_bidep(
-                    x=dct_obs[lv][lst_xor[0], s_and],
-                    y=dct_obs[lv][lst_xor[1], s_and],
+                if dct_obs[lv][v_l, s_and] is None:
+                    _update_obs(v=v_l, s_cond=s_and)
+                if dct_obs[lv][v_r, s_and] is None:
+                    _update_obs(v=v_r, s_cond=s_and)
+                dct_tree[lv][(v_l, v_r, s_and)] = f_bidep(
+                    x=dct_obs[lv][v_l, s_and],
+                    y=dct_obs[lv][v_r, s_and],
                 )
-
-        # * tree2bicop, fit bicop & prepare pseudo obs (by hfunc) for next lv
+        # * tree2bicop, fit bicop & record key of potential pseudo obs for next lv (lazy hfunc later)
         for (v_l, v_r, s_and), bidep in dct_tree[lv].items():
-            V_bcp = torch.hstack(
-                [dct_obs[lv][v_l, s_and], dct_obs[lv][v_r, s_and]],
-            )
-            i_bcp = bcp_from_obs(
-                obs_bcp=V_bcp,
+            dct_bcp[lv][(v_l, v_r, s_and)] = bcp_from_obs(
+                obs_bcp=torch.hstack(
+                    [dct_obs[lv][v_l, s_and], dct_obs[lv][v_r, s_and]],
+                ),
                 tau=bidep if mtd_bidep == "kendall_tau" else None,
                 mtd_fit=mtd_fit,
                 mtd_mle=mtd_mle,
@@ -381,12 +412,15 @@ def vcp_from_obs(
                 tpl_fam=tpl_fam,
                 topk=topk,
             )
-            dct_bcp[lv][(v_l, v_r, s_and)] = i_bcp
             i_lv_next = lv + 1
             if i_lv_next < num_dim - 1:
-                # ! notice hfunc1 or hfunc2
-                dct_obs[i_lv_next][v_r, s_and | {v_l}] = i_bcp.hfunc1(V_bcp)
-                dct_obs[i_lv_next][v_l, s_and | {v_r}] = i_bcp.hfunc2(V_bcp)
+                dct_obs[i_lv_next][v_r, s_and | {v_l}] = None
+                dct_obs[i_lv_next][v_l, s_and | {v_r}] = None
+        # ! garbage collection
+        if is_Dissmann:
+            del dct_edge[lv]
+        if lv > 0:
+            del dct_obs[lv - 1]
     # * for cvine/dvine, deq_sim is known and s_first is empty now
     # * for rvine, deq_sim is empty and to be filled by diag of matrix
     if not deq_sim:

@@ -18,10 +18,10 @@ class DataVineCop(ABC):
     """bivariate copulas, stored as {level: {(vertex_left, vertex_right, frozenset_cond): DataBiCop}}"""
     dct_tree: dict
     """bivariate dependency measures of edges in trees, stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}"""
-    mtd_bidep: str
-    """method to calculate bivariate dependence"""
     lst_sim: list
     """the source vertices (pseudo-obs) of simulation paths, read from right to left; some vertices can be given as simulated at the beginning of each simulation workflow"""
+    mtd_bidep: str
+    """method to calculate bivariate dependence"""
 
     @property
     def aic(self) -> float:
@@ -174,11 +174,11 @@ class DataVineCop(ABC):
                 dct_ref_count[v_down, s_up] += 1
             return v_down, s_up
 
-        for v_source, s in lst_source:
+        for v, s in lst_source:
             if len(s) < 1:
                 continue
             else:
-                v_next, s_next = visit_hinv(v_down=v_source, s_down=s)
+                v_next, s_next = visit_hinv(v_down=v, s_down=s)
                 while len(s_next) > 0:
                     v_next, s_next = visit_hinv(v_down=v_next, s_down=s_next)
 
@@ -327,9 +327,9 @@ class DataVineCop(ABC):
         plt.draw_if_interactive()
         if f_path:
             fig.savefig(fname=f_path, bbox_inches="tight")
-            return fig, ax, f_path
+            return fig, ax, G, f_path
         else:
-            return fig, ax
+            return fig, ax, G
 
     def draw_dag(
         self,
@@ -467,9 +467,9 @@ class DataVineCop(ABC):
         plt.draw_if_interactive()
         if f_path:
             fig.savefig(fname=f_path, bbox_inches="tight")
-            return fig, ax, f_path
+            return fig, ax, G, f_path
         else:
-            return fig, ax
+            return fig, ax, G
 
     def vcp_to_json(self, f_path: Path = "./vcp.json") -> Path:
         """save to a json file
@@ -520,13 +520,13 @@ class DataVineCop(ABC):
             dtype=obs_mvcp.dtype,
         )
 
-        def update_obs(idx: int, s_cond: frozenset):
+        def update_obs(v: int, s_cond: frozenset):
             # * calc hfunc for pseudo obs when necessary
             lv = len(s_cond) - 1
             for (v_l, v_r, s_and), bcp in self.dct_bcp[lv].items():
                 # ! notice hfunc1 or hfunc2
-                if idx == v_l and s_cond == frozenset({v_r} | s_and):
-                    dct_obs[lv + 1][(idx, s_cond)] = bcp.hfunc2(
+                if v == v_l and s_cond == frozenset({v_r} | s_and):
+                    dct_obs[lv + 1][(v_l, s_cond)] = bcp.hfunc2(
                         obs=torch.hstack(
                             [
                                 dct_obs[lv][v_l, s_and],
@@ -534,8 +534,8 @@ class DataVineCop(ABC):
                             ]
                         )
                     )
-                elif idx == v_r and s_cond == frozenset({v_l} | s_and):
-                    dct_obs[lv + 1][(idx, s_cond)] = bcp.hfunc1(
+                elif v == v_r and s_cond == frozenset({v_l} | s_and):
+                    dct_obs[lv + 1][(v_r, s_cond)] = bcp.hfunc1(
                         obs=torch.hstack(
                             [
                                 dct_obs[lv][v_l, s_and],
@@ -551,7 +551,7 @@ class DataVineCop(ABC):
                 # * update the pseudo observations
                 for idx in (v_l, v_r):
                     if dct_obs[lv].get((idx, s_and)) is None:
-                        update_obs(idx=idx, s_cond=s_and)
+                        update_obs(v=idx, s_cond=s_and)
                 obs_l = dct_obs[lv][(v_l, s_and)]
                 obs_r = dct_obs[lv][(v_r, s_and)]
                 res += bcp.l_pdf(obs=torch.hstack([obs_l, obs_r]))
@@ -654,29 +654,28 @@ class DataVineCop(ABC):
 
         torch.manual_seed(seed=seed)
         num_dim = self.num_dim
-        # * initial sim of U_mvcp (independent uniform multivariate copula)
+        # * init sim of U_mvcp (multivariate independent copula)
         U_mvcp = torch.rand(
             size=(num_sim, num_dim - len(dct_first)), device=device, dtype=dtype
         )
         # * update dct_obs and dct_ref_count
         idx = 0
-        for v_s in lst_source:
-            if v_s[0] in dct_first:
-                dct_obs[v_s] = dct_first[v_s[0]]
+        for v, s in lst_source:
+            if v in dct_first:
+                dct_obs[v, s] = dct_first[v]
             else:
-                dct_obs[v_s] = U_mvcp[:, [idx]]
+                dct_obs[v, s] = U_mvcp[:, [idx]]
                 idx += 1
             # ! let the top level obs (target vertices) escape garbage collection
-            dct_ref_count[v_s[0], frozenset()] += 1
+            dct_ref_count[v, frozenset()] += 1
             # update ref count
-            _update_ref_count(v=v_s[0], s=v_s[1])
+            dct_ref_count[v, s] -= 1
         del seed, num_dim, U_mvcp, dct_first, idx
-
-        for v_source, s in lst_source:
+        for v, s in lst_source:
             # walk the path if cond set is not empty
             if len(s):
                 # call hinv and update vertex/cond-set iteratively to walk towards target vertex (top lv)
-                v_next, s_next = visit_hinv(v_down=v_source, s_down=s)
+                v_next, s_next = visit_hinv(v_down=v, s_down=s)
                 while len(s_next):
                     v_next, s_next = visit_hinv(v_down=v_next, s_down=s_next)
         # * sort pseudo obs by key
@@ -707,7 +706,7 @@ class DataVineCop(ABC):
             num_sim=num_sim, seed=seed, device=obs_mvcp.device, dtype=obs_mvcp.dtype
         )
         # * unsqueeze for broadcasting (num_sim, obs_mvcp.shape[0], num_dim) -> (obs_mvcp.shape[0], 1)
-        return (obs_sim.unsqueeze_(dim=1) <= obs_mvcp).all(
+        return (obs_sim.unsqueeze(dim=1) <= obs_mvcp).all(
             dim=2,
             keepdim=True,
         ).sum(

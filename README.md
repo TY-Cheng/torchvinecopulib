@@ -3,7 +3,7 @@
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
 - Vectorized tensor computation with GPU (`device='cuda'`) support
-- Even shorter runtimes and lower memory consumption, especially in higher dimension simulations
+- Even shorter runtimes for higher dimension simulations
 - Decoupled dataclasses and factory methods
 - Pure `Python` library, tested against [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/)
 - IO and visualization support
@@ -12,7 +12,6 @@ Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started
 
 ```toml
 # inside the `./pyproject.toml` file
-numpy = "*"
 python = "^3.10"
 scipy = "*"
 torch = "^2"
@@ -21,7 +20,7 @@ torch = "^2"
 For [PyTorch](https://pytorch.org/get-started/locally/) with cuda support on Windows:
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu121
+pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
 ```
 
 ## Installation
@@ -35,7 +34,7 @@ pip install torchvinecopulib
 with full drawing and bivariate dependency metric support:
 
 ```bash
-pip install torchvinecopulib matplotlib networkx pot scikit-learn
+pip install torchvinecopulib matplotlib pot scikit-learn
 ```
 
 By `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
@@ -90,14 +89,14 @@ We welcome contributions from everyone, whether it's a bug report, feature sugge
 - Include a clear and descriptive title and description for your pull request.
 - Make sure all tests pass before submitting the pull request.
 - If your pull request addresses an open issue, reference the issue number in the description using the syntax `#issue_number`.
+- [in-place ops can be slower](https://discuss.pytorch.org/t/are-inplace-operations-faster/61209/4)
+- [torch.jit.script can be slower](https://discuss.pytorch.org/t/why-is-torch-jit-script-slower/120131/6)
 
 ### TODO
 
-1. `bicop._student` acceleration (`pt`,`qt` inside `util`)
-2. `torch` function acceleration by **in-place** operations
-3. more `bicop` class in `torch`
-4. potentially deprecating `'mle'` from `mtd_fit`
-5. bivariate dependence funcs in `util.ENUM_FUNC_BIDEP`, resolve non-`torch` pkg dependencies
+1. more `bicop` class in `torch`
+2. potentially deprecating `'mle'` from `mtd_fit`
+3. bivariate dependence funcs in `util.ENUM_FUNC_BIDEP`, resolve non-`torch` pkg dependencies (`scikit-learn`, `pot`)
 
 ## License
 

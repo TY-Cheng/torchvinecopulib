@@ -31,7 +31,13 @@ def calc_fit_par(
         return None
     elif bcp_tvc.__name__ == "StudentT":
         vec_par = np.array(
-            tuple(zip(np.linspace(-0.83, 0.83, 13), np.linspace(2, 15, 13)))
+            tuple(
+                zip(
+                    np.linspace(-0.83, 0.83, 13),
+                    # * nu from both int and float
+                    np.concatenate([np.arange(2, 8), np.linspace(2.1, 10, 7)]),
+                )
+            )
         )
     else:
         vec_par = np.linspace(

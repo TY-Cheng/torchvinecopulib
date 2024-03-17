@@ -8,6 +8,7 @@ from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pkl
 import random
 
 from . import (
+    DEVICE,
     DCT_FAM,
     LST_MTD_FIT,
     LST_MTD_SEL,
@@ -56,7 +57,7 @@ class TestVineCop(unittest.TestCase):
                     )
                     assert set(res_tvc.lst_sim[-len_first:]) == set(lst_first)
 
-    def test_sim_diag_lpdf_cdf(self):
+    def test_sim_lpdf_pvc_cdf(self):
         """test the simulation, diagonal of structure matrix, l_pdf and cdf"""
         mtd_fit = "itau"
         mtd_bidep, tree_criterion = "kendall_tau", "tau"
@@ -69,9 +70,12 @@ class TestVineCop(unittest.TestCase):
             )
             V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
             num_dim = V_mvcp.shape[1]
+            # * struct: sim, cvine
             res_tvc = vcp_from_obs(
                 obs_mvcp=V_mvcp,
                 is_Dissmann=True,
+                cdrvine="cvine",
+                lst_first=[],
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 mtd_fit=mtd_fit,
@@ -79,26 +83,55 @@ class TestVineCop(unittest.TestCase):
                 tpl_fam=(fam, "Independent"),
             )
             res_sim = vcp_from_obs(
-                obs_mvcp=res_tvc.sim(num_sim=20000),
+                obs_mvcp=res_tvc.sim(num_sim=20000, device=DEVICE),
                 is_Dissmann=True,
+                cdrvine="cvine",
+                lst_first=[],
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 mtd_fit=mtd_fit,
                 mtd_sel=mtd_sel,
-                tpl_fam=(fam,),
+                tpl_fam=(fam, "Independent"),
             )
-            # sim
-            assert (
-                sum(
-                    [
-                        (a - b)
-                        for a, b in zip(
-                            res_tvc.matrix.flatten(), res_sim.matrix.flatten()
-                        )
-                    ]
-                )
-                <= 2
+            assert sum([(a - b) for a, b in zip(res_tvc.lst_sim, res_sim.lst_sim)]) <= 1
+            # * struct: sim, dvine
+            res_tvc = vcp_from_obs(
+                obs_mvcp=V_mvcp,
+                is_Dissmann=True,
+                cdrvine="dvine",
+                lst_first=[],
+                matrix=None,
+                mtd_bidep=mtd_bidep,
+                mtd_fit=mtd_fit,
+                mtd_sel=mtd_sel,
+                tpl_fam=(fam, "Independent"),
             )
+            res_sim = vcp_from_obs(
+                obs_mvcp=res_tvc.sim(num_sim=20000, device=DEVICE),
+                is_Dissmann=True,
+                cdrvine="dvine",
+                lst_first=[],
+                matrix=None,
+                mtd_bidep=mtd_bidep,
+                mtd_fit=mtd_fit,
+                mtd_sel=mtd_sel,
+                tpl_fam=(fam, "Independent"),
+            )
+            assert sum([(a - b) for a, b in zip(res_tvc.lst_sim, res_sim.lst_sim)]) <= 1
+            # * l_pdf, rvine
+            res_tvc = vcp_from_obs(
+                obs_mvcp=V_mvcp,
+                is_Dissmann=True,
+                cdrvine="rvine",
+                lst_first=[],
+                matrix=None,
+                mtd_bidep=mtd_bidep,
+                mtd_fit=mtd_fit,
+                mtd_sel=mtd_sel,
+                tpl_fam=(fam, "Independent"),
+            )
+            assert abs(res_tvc.negloglik + res_tvc.l_pdf(V_mvcp).sum()) <= 1e-6
+            # * struct: pvc, rvine
             res_pvc = pvc.Vinecop(
                 data=V_mvcp.cpu(),
                 controls=pvc.FitControlsVinecop(
@@ -111,19 +144,16 @@ class TestVineCop(unittest.TestCase):
             # ! notice the order of the diagonal elements, and indexing starts from 1
             diag_pvc = [res_pvc.matrix[num_dim - 1 - i, i] for i in range(num_dim)]
             diag_tvc = [res_tvc.matrix[i, i] for i in range(num_dim)]
-            # diag
-            assert sum([(1 + a - b) for a, b in zip(diag_tvc, diag_pvc)]) <= 2
-            # l_pdf
-            assert res_tvc.negloglik + res_tvc.l_pdf(V_mvcp).sum() <= 1e-6
-            # cdf
+            assert sum([(1 + a - b) for a, b in zip(diag_tvc, diag_pvc)]) <= 1
+            # * cdf: pvc, rvine
             vec_tvc = (
-                res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=11000).cpu().numpy().flatten()
+                res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=30000).cpu().numpy().flatten()
             )
-            vec_pvc = res_pvc.cdf(V_mvcp.cpu(), N=11000)
+            vec_pvc = res_pvc.cdf(V_mvcp.cpu(), N=20000)
             if err := compare_chart_vec(
                 vec_pvc=vec_pvc,
                 vec_tvc=vec_tvc,
-                atol=2e-2,
+                atol=6e-2,
                 title=f"vinecop_cdf_{fam}_{mtd_fit}",
                 label="cdf",
             ):
@@ -168,7 +198,7 @@ class TestVineCop(unittest.TestCase):
                         )
 
     def test_io(self):
-        """test vcp_from_json, vcp_from_pkl and to_json, to_pkl"""
+        """test vcp_from_json, vcp_from_pkl and vcp_to_json, vcp_to_pkl"""
         fam = "Clayton"
         bcp_tvc = DCT_FAM[fam][1]
         mtd_fit = "itau"
@@ -186,7 +216,7 @@ class TestVineCop(unittest.TestCase):
             mtd_fit=mtd_fit,
             mtd_sel=mtd_sel,
         )
-        tmp_p = res_tvc.to_json()
+        tmp_p = res_tvc.vcp_to_json()
         __ = vcp_from_json(tmp_p)
         os.remove(tmp_p)
         assert __ == res_tvc

@@ -55,12 +55,12 @@ class BiCopAbstract(ABC):
         elif rot == 90:
             res = obs[:, [1]] - col_p
         elif rot == 180:
-            res = -1.0 + obs.sum(dim=1, keepdim=True) + col_p
+            res = obs.sum(dim=1, keepdim=True) + col_p - 1.0
         elif rot == 270:
             res = obs[:, [0]] - col_p
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @staticmethod
     @abstractmethod
@@ -85,7 +85,7 @@ class BiCopAbstract(ABC):
             res = 1.0 - cls.hfunc2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @staticmethod
     @abstractmethod
@@ -110,7 +110,7 @@ class BiCopAbstract(ABC):
             res = cls.hfunc1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
     def hfunc2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
@@ -134,7 +134,7 @@ class BiCopAbstract(ABC):
             res = 1.0 - cls.hinv2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @staticmethod
     @abstractmethod
@@ -159,7 +159,7 @@ class BiCopAbstract(ABC):
             res = cls.hinv1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
     def hinv2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
@@ -173,7 +173,7 @@ class BiCopAbstract(ABC):
         rot: int,
     ) -> torch.Tensor:
         """bicop log-density values"""
-        return cls.l_pdf_0(obs=cls.rot_0(obs=obs, rot=rot), par=par).nan_to_num_(
+        return cls.l_pdf_0(obs=cls.rot_0(obs=obs, rot=rot), par=par).nan_to_num(
             posinf=0.0, neginf=0.0
         )
 
@@ -184,16 +184,16 @@ class BiCopAbstract(ABC):
 
     @classmethod
     def negloglik(
-        cls,
+        cls: "BiCopAbstract",
         obs: torch.Tensor,
         par: tuple,
         rot: int,
     ) -> float:
         return (
             cls.l_pdf(obs=obs, par=par, rot=rot)
-            .nan_to_num_(posinf=0.0, neginf=0.0)
+            .nan_to_num(posinf=0.0, neginf=0.0)
             .sum()
-            .negative_()
+            .neg()
             .item()
         )
 
@@ -229,8 +229,8 @@ class BiCopAbstract(ABC):
         """
         return (
             cls.pdf_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
-            .nan_to_num_(posinf=0.0, neginf=0.0)
-            .clamp_min_(min=_CDF_MIN)
+            .nan_to_num(posinf=0.0, neginf=0.0)
+            .clamp_min(min=_CDF_MIN)
         )
 
     @classmethod

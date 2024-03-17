@@ -23,26 +23,30 @@ _RHO_MIN, _RHO_MAX = -0.99, 0.99
 _TAU_MIN, _TAU_MAX = -0.999, 0.999
 
 
-def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> float:
-    """https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94"""
+def kendall_tau(
+    x: torch.Tensor,
+    y: torch.Tensor,
+    tau_min: float = _TAU_MIN,
+    tau_max: float = _TAU_MAX,
+) -> float:
+    """https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94
+    x,y are both of shape (n, 1)
+    """
     n = x.shape[0]
-
-    def sub_pairs(x):
-        return x.expand(n, n).T.sub(x).sign_()
-
     return (
-        sub_pairs(x)
-        .mul_(sub_pairs(y))
+        ((x.expand(n, n).T - x).sign() * (y.expand(n, n).T - y).sign())
         .sum()
-        .div_(n * (n - 1))
-        .clamp_(min=_TAU_MIN, max=_TAU_MAX)
+        .div(n * (n - 1))
+        .clamp(min=tau_min, max=tau_max)
         .item()
     )
 
 
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> float:
-    """https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html"""
-    # * remove sklearn dependency
+    """https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html
+    x,y are both of shape (n, 1)
+    """
+    # TODO: remove sklearn dependency
     from sklearn.feature_selection import mutual_info_regression
 
     return mutual_info_regression(
@@ -59,7 +63,7 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> float:
 def cdf_func_kernel(obs: torch.Tensor, is_scott: bool = True) -> callable:
     """kernel density estimation (KDE) function of the cumulative distribution function (CDF)
 
-    :param obs: observations
+    :param obs: observations, of shape (n,1)
     :type obs: torch.Tensor
     :param is_scott: whether to use Scott's rule for bandwidth, defaults to True
     :type is_scott: bool, optional
@@ -71,34 +75,35 @@ def cdf_func_kernel(obs: torch.Tensor, is_scott: bool = True) -> callable:
         band_width = (
             torch.nanquantile(input=obs, q=0.75) - torch.nanquantile(input=obs, q=0.25)
         ) / 1.349
-        band_width = 1.059 * min(obs.std(), band_width) * len(obs) ** (-0.2)
+        band_width = obs.std().clamp_max(band_width) * 1.059 * len(obs) ** (-0.2)
     else:
-        band_width = obs.std() * 0.6973425390765554 * len(obs) ** (-0.1111111111111111)
+        band_width = obs.std() * 0.6973425390765554 * len(obs) ** -0.1111111111111111
 
     def func_cdf(q: torch.Tensor) -> torch.Tensor:
-        return torch.nanmean(torch.special.ndtr((q - obs.T) / band_width), dim=1)
+        return torch.special.ndtr((q - obs.T) / band_width).nanmean(dim=1)
 
     return func_cdf
 
 
 def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> float:
     """pairwise tail dependence coefficient (λ) estimator, mean of upper and lower (to be symmetric)
-
     x and y are both of shape (n, 1)
-
     Ferreira, M.S., 2013. Nonparametric estimation of the tail-dependence coefficient;
     """
     idx = torch.isfinite(x) & torch.isfinite(y)
-    u_x = x[idx]
+    x = x[idx].reshape(-1, 1)
     u_x = cdf_func_kernel(obs=x)(x)
-    u_y = y[idx]
+    y = y[idx].reshape(-1, 1)
     u_y = cdf_func_kernel(obs=y)(y)
-    vec_u_max = torch.max(u_x, u_y)
-    res = 3 - 1 / (1 - vec_u_max.mean())
-    u_x, u_y = 1 - u_x, 1 - u_y
-    vec_u_max = torch.max(u_x, u_y)
-    res += 3 - 1 / (1 - vec_u_max.mean())
-    return res / 2
+    #
+    return (
+        3
+        - (
+            1.0 / (1.0 - torch.max(u_x, u_y).mean())
+            + 1.0 / (1.0 - torch.max(1 - u_x, 1 - u_y).mean())
+        )
+        / 2
+    ).item()
 
 
 def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> float:
@@ -134,11 +139,11 @@ def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> float:
             (torch.min(yrank[:-m], yrank[m:])).sum() + yrank[-m:].sum(),
         )
 
-    xy_sum = torch.tensor([xy_sum(m) for m in range(1, M + 1)]).sum(dim=0).max().item()
-
     # whole eq. 3 in Lin and Han (2023)
     n = x.shape[0]
-    return -2.0 + 24.0 * xy_sum / (M * (1.0 + n) * (1.0 + M + 4.0 * n))
+    return -2.0 + 24.0 * (
+        torch.as_tensor([xy_sum(m) for m in range(1, M + 1)]).sum(dim=0).max().item()
+    ) / (M * (1.0 + n) * (1.0 + M + 4.0 * n))
 
 
 def wasserstein_dist_ind(
@@ -200,316 +205,19 @@ class ENUM_FUNC_BIDEP(Enum):
     wasserstein_dist_ind = partial(wasserstein_dist_ind)
 
 
-# * Student's t distribution CDF (p), PPF (q), density (d)
-def inc_beta_reg(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
-    # * regularized incomplete beta integral, with a = 0.5, b = nu / 2, vec in [0,1]
-    # https://stats.stackexchange.com/questions/615961/students-t-cdf-ppf-or-hypergeometric-2f1-or-betainc-using-pytorch
-    # https://stats.stackexchange.com/questions/52341/formula-to-generate-critical-t-values-for-t-test-instead-of-using-a-look-up-arr
-    res = torch.empty_like(vec)
-    if (idx := vec > ((a + 1.0) / (2.0 + a + b))).any():
-        res[idx] = 1.0 - inc_beta_reg(vec=1.0 - vec[idx], a=b, b=a)
-    idx = ~idx
-    x = vec[idx]
-    qab = a + b
-    qap = a + 1.0
-    qam = a - 1.0
-    c = torch.ones_like(x)
-    d = 1 - qab * x / qap
-    d.reciprocal_()
-    f = d.clone()
-    front = (
-        -math.lgamma(a)
-        - math.lgamma(b)
-        + math.lgamma(a + b)
-        - math.log(a)
-        + x.log() * a
-        + x.negative().log1p() * b
-    ).exp()
-    for i in range(1, 200):
-        i2 = i * 2
-        ai2 = a + i2
-        nmrt = (i * (b - i) / ((qam + i2) * ai2)) * x
-        d *= nmrt
-        d += 1.0
-        d.reciprocal_()
-        c = nmrt / c
-        c += 1.0
-        f *= c * d
-        nmrt = (-(a + i) * (qab + i) / ((qap + i2) * ai2)) * x
-        d *= nmrt
-        d += 1.0
-        d.reciprocal_()
-        c = nmrt / c
-        c += 1.0
-        cd = c * d
-        f *= cd
-        if ((1 - cd).abs() < 1e-6).all():
-            break
-    res[idx] = front * f
-    return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
-
-
-def inc_beta_reg_inv(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
-    a1, b1 = a - 1.0, b - 1.0
-    if a > 1 and b > 1:
-        tmp = vec.clone()
-        idx = vec >= 0.5
-        tmp[idx] = 1.0 - tmp[idx]
-        t = (-2 * tmp.log()).sqrt()
-        x = (2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t
-        x[~idx] = -x[~idx]
-        al = (x.square() - 3.0) / 6.0
-        h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0))
-        w = (x * math.sqrt(al + h) / h) - (
-            1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)
-        ) * (al + 5.0 / 6.0 - 2.0 / (3.0 * h))
-        x = a / (a + b * (2.0 * w).exp())
-    else:
-        x = vec.clone()
-        lna, lnb = math.log(a / (a + b)), math.log(b / (a + b))
-        t = math.exp(a * lna) / a
-        u = math.exp(b * lnb) / b
-        w = t + u
-        idx = vec < t / w
-        x[idx] = (a * w * x[idx]).pow(1.0 / a)
-        idx = ~idx
-        x[idx] = 1.0 - (b * w * (1.0 - x[idx])).pow(1.0 / b)
-    afac = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
-    for _ in range(10):
-        t = (a1 * x.log() + b1 * x.negative().log1p() + afac).exp()
-        u = (inc_beta_reg(vec=x, a=a, b=b) - vec) / t
-        t = u / (1.0 - 0.5 * (u * (a1 / x - b1 / (1.0 - x))).clamp_max(max=1.0))
-        idx = (x > 0) & (x < 1)
-        x[idx] = x[idx] - t[idx]
-        idx = x < 0
-        x[idx] = (x[idx] + t[idx]) * 0.5
-        idx = x > 1
-        x[idx] = (x[idx] + t[idx] + 1.0) * 0.5
-        x = x.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
-    return x
-
-
-def pt(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    if nu == 1:
-        res = vec.atan() / 3.141592653589793 + 0.5
-    elif nu == 2:
-        res = (vec / (vec.square() + 2.0).sqrt() + 1.0) / 2.0
-    elif nu == 3:
-        res = (
-            (vec / 1.7320508075688772).atan() / math.pi
-            + 0.5
-            + 0.5513288954217921 * vec / (vec.square() + 3.0)
-        )
-    elif nu == 4:
-        res = (vec * (vec.square() + 6.0) / (vec.square() + 4.0).pow(1.5) + 1.0) / 2.0
-    elif nu == 5:
-        res = (
-            (vec / 2.23606797749979).atan() / math.pi
-            + (
-                (vec.square() * 3 + 25)
-                * 0.23725418113905902
-                * vec
-                / (vec.square() + 5.0).square()
-            )
-            + 0.5
-        )
-
-    elif nu == 6:
-        res = vec.square()
-        res = (
-            (res.square() * 2.0 + res * 30.0 + 135.0) * vec / (res + 6.0).pow(2.5)
-        ) / 4.0 + 0.5
-
-    else:
-        nu = max(min(_NU_MAX, nu), _NU_MIN)
-        res = inc_beta_reg(vec=nu / (vec.square() + nu), a=nu / 2.0, b=0.5)
-        idx = vec > 0.0
-        res[idx] = 2.0 - res[idx]
-        res *= 0.5
-    return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
-
-
-def qt(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    vec2 = vec * 2.0
-    nu2 = nu / 2.0
-    res = torch.empty_like(input=vec, device=vec.device)
-    idx = vec < 0.5
-    res[idx] = (
-        (inc_beta_reg_inv(vec=vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0)
-        .sqrt()
-        .negative()
-    )
-    idx = ~idx
-    res[idx] = (
-        inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0
-    ).sqrt()
-    res[vec == 0.5] = 0
-    res.mul_(math.sqrt(nu))
-    return res.nan_to_num_()
-
-
-def pt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    return torch.tensor(
-        data=t.cdf(x=vec.cpu(), df=nu), device=vec.device, dtype=vec.dtype
-    )
-
-
-def qt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    return torch.tensor(
-        data=t.ppf(q=vec.cpu(), df=nu), device=vec.device, dtype=vec.dtype
-    )
-
-
-pt = pt_scipy
-qt = qt_scipy
-
-
-def dt(obs: torch.Tensor, nu: float) -> torch.Tensor:
-    """density of Student's t distribution
-
-    :param obs: Student's t observations
-    :type obs: torch.Tensor
-    :param nu: degrees of freedom
-    :type nu: float
-    :return: density, given the observations
-    :rtype: torch.Tensor
-    """
-    nu2 = nu / 2.0
-    return (
-        obs.square()
-        .div_(nu)
-        .add_(1.0)
-        .pow_(-nu2 - 0.5)
-        .mul_(
-            math.exp(math.lgamma(nu2 + 0.5) - math.lgamma(nu2))
-            / math.sqrt(nu * 3.141592653589793)
-        )
-    )
-
-
-def l_dt(obs: torch.Tensor, nu: float) -> torch.Tensor:
-    """log density of Student's t distribution
-
-    :param obs: Student's t observations
-    :type obs: torch.Tensor
-    :param nu: degrees of freedom
-    :type nu: float
-    :return: log density, given the observations
-    :rtype: torch.Tensor
-    """
-    nu2 = nu / 2.0
-    return (
-        obs.square()
-        .div_(nu)
-        .log1p_()
-        .mul_(-nu2 - 0.5)
-        .add_(
-            math.lgamma(nu2 + 0.5)
-            - math.lgamma(nu2)
-            - 0.5723649429247001
-            - 0.5 * math.log(nu)
-        )
-    )
-
-
-def pbvt(obs: torch.Tensor, rho: float, nu: float) -> torch.Tensor:
-    """CDF of (standard) bivariate Student's t distribution
-    modified from http://www.math.wsu.edu/faculty/genz/software/matlab/bvtl.m
-
-    :param obs: bivariate Student's t observations, of shape (num_obs, 2)
-    :type obs: torch.Tensor
-    :param rho: the rho parameter
-    :type rho: float
-    :param nu: the nu parameter, degrees of freedom
-    :type nu: float
-    :return: cumulative distribution function (CDF) of shape (num_obs, 1), given the observations
-    :rtype: torch.Tensor
-    """
-
-    # M = M.clamp(min=-999.0, max=999.0)
-    h = obs[:, [0]]
-    k = obs[:, [1]]
-    rho = torch.tensor(rho, dtype=obs.dtype, device=obs.device).clamp_(
-        min=_RHO_MIN,
-        max=_RHO_MAX,
-    )
-    nu = torch.tensor(nu, dtype=obs.dtype, device=obs.device).clamp_(
-        min=_NU_MIN,
-        max=_NU_MAX,
-    )
-    #
-    if nu < 1:
-        bvt = pbvnorm(obs=obs, rho=rho)
-    else:
-        xnhk, xnkh = torch.zeros_like(h), torch.zeros_like(h)
-        #
-        ors = 1.0 - rho**2
-        snu = nu.sqrt()
-        hhh, kkk = h - rho * k, k - rho * h
-        hs, ks = hhh.sign(), kkk.sign()
-        idx = hhh.abs() + ors > 0
-        xnhk[idx] = hhh[idx].square() / (
-            hhh[idx].square() + ors * (nu + k[idx].square())
-        )
-        xnkh[idx] = kkk[idx].square() / (
-            kkk[idx].square() + ors * (nu + h[idx].square())
-        )
-        # gmph as hhh, gmpk as kkk
-        if nu.ceil() % 2 == 0:
-            bvt = torch.full_like(
-                input=h,
-                fill_value=torch.atan2(ors.sqrt(), -rho) / 6.283185307179586,
-            )
-            hhh = h / (16.0 * (h.square() + nu)).sqrt()
-            kkk = k / (16.0 * (k.square() + nu)).sqrt()
-            btnchk = 0.6366197723675814 * torch.atan2(xnhk.sqrt(), (1.0 - xnhk).sqrt())
-            btpdhk = 0.6366197723675814 * (xnhk * (1 - xnhk)).sqrt()
-            btnckh = 0.6366197723675814 * torch.atan2(xnkh.sqrt(), (1.0 - xnkh).sqrt())
-            btpdkh = 0.6366197723675814 * (xnkh * (1 - xnkh)).sqrt()
-            for j in torch.arange(start=1.0, end=nu / 2.0 + 1e-5, step=1):
-                bvt += hhh * (btnckh * ks + 1.0) + kkk * (btnchk * hs + 1)
-                hhh *= (j - 0.5) / (j * (1.0 + h.square() / nu))
-                kkk *= (j - 0.5) / (j * (1.0 + k.square() / nu))
-                btnchk += btpdhk
-                btpdhk *= j * 2.0 * (1.0 - xnhk) / (2.0 * j + 1.0)
-                btnckh += btpdkh
-                btpdkh *= j * 2.0 * (1.0 - xnkh) / (2.0 * j + 1.0)
-        else:
-            qhrk = (h.square() + k.square() - 2.0 * rho * h * k + nu * ors).sqrt()
-            hkrn = h * k + rho * nu
-            hkn = h * k - nu
-            bvt = (
-                torch.atan2(
-                    -snu * (hkn * qhrk + (h + k) * hkrn),
-                    hkn * hkrn - nu * (h + k) * qhrk,
-                )
-                / 6.283185307179586
-            )
-            idx = bvt < -1e-8
-            bvt[idx] += 1
-            hhh = h / (6.283185307179586 * snu * (1 + h.square() / nu))
-            kkk = k / (6.283185307179586 * snu * (1 + k.square() / nu))
-            btnchk, btnckh = xnhk.sqrt(), xnkh.sqrt()
-            btpdhk, btpdkh = btnchk * 1, btnckh * 1
-
-            if (nu - 1) / 2 >= 1:
-                for j in torch.arange(start=1, end=(nu - 1.0) / 2.0 + 1e-5, step=1):
-                    bvt += hhh * (1.0 + ks * btnckh) + kkk * (1.0 + hs * btnchk)
-                    hhh *= j / ((j + 0.5) * (1.0 + h.square() / nu))
-                    kkk *= j / ((j + 0.5) * (1.0 + k.square() / nu))
-                    btpdhk *= (j - 0.5) * (1.0 - xnhk) / j
-                    btnchk += btpdhk
-                    btpdkh *= (j - 0.5) * (1.0 - xnkh) / j
-                    btnckh += btpdkh
-    return bvt.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
-
-
 # * Gaussian distribution CDF (p), PPF (q), density (d)
 pnorm = torch.special.ndtr
 qnorm = torch.special.ndtri
 
 
-def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
+def pbvnorm(
+    obs: torch.Tensor,
+    rho: float,
+    rho_min: float = _RHO_MIN,
+    rho_max: float = _RHO_MAX,
+    cdf_min: float = _CDF_MIN,
+    cdf_max: float = _CDF_MAX,
+) -> torch.Tensor:
     """CDF of (standard) bivariate Gaussian distribution
     modified from http://www.math.wsu.edu/faculty/genz/software/matlab/bvnl.m
     https://keisan.casio.com/exec/system/1280624821
@@ -521,10 +229,10 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
     :return: cumulative distribution function (CDF) of shape (num_obs, 1), given the observation
     :rtype: torch.Tensor
     """
-    rho = min(max(rho, _RHO_MIN), _RHO_MAX)
+    rho = min(max(rho, rho_min), rho_max)
     # Gauss Legendre points and weights, n = 100
-    w = torch.tensor(
-        data=[
+    w = torch.as_tensor(
+        data=(
             0.007968192496166605,
             0.01846646831109096,
             0.02878470788332337,
@@ -555,12 +263,12 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
             0.09959342058679527,
             0.1017623897484055,
             0.10285265289355884,
-        ],
+        ),
         device=obs.device,
         dtype=obs.dtype,
     ).reshape(-1, 1)
-    x = torch.tensor(
-        data=[
+    x = torch.as_tensor(
+        data=(
             0.003106515925350495,
             0.016331876720252825,
             0.03997813503169245,
@@ -591,26 +299,305 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
             1.2546369261678898,
             1.1538699136085835,
             1.0514718425553178,
-        ],
+        ),
         device=obs.device,
         dtype=obs.dtype,
     ).reshape(1, -1)
     #
     h, k = obs[:, [0]], obs[:, [1]]
     asr = math.asin(rho) / 2.0
-    sn = x.mul(asr).sin_()
+    sn = (x * asr).sin()
     return (
         (
-            (h.square() + k.square()).div_(-2.0)
-            # ! broadcast: x,sn are rows; w,h,k are columns
-            .add(sn * h * k).div_(sn.square().negative_().add_(1.0)).exp_()
+            (
+                (
+                    (h.square() + k.square()) / -2.0
+                    # ! broadcast: x,sn are rows; w,h,k are columns
+                    + sn * h * k
+                )
+                / (1.0 - sn.square())
+            ).exp()
             @ w
+            * (asr / 6.283185307179586)
+            + (pnorm(h) * pnorm(k))
         )
-        .mul_(asr / 6.283185307179586)
-        .add_(pnorm(h).mul_(pnorm(k)))
-        .nan_to_num_()
-        .clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        .nan_to_num()
+        .clamp(min=cdf_min, max=cdf_max)
     )
+
+
+# * Student's t distribution CDF (p), PPF (q), density (d)
+def inc_beta_reg(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
+    # * regularized incomplete beta integral, with a = 0.5, b = nu / 2, vec in [0,1]
+    # https://stats.stackexchange.com/questions/615961/students-t-cdf-ppf-or-hypergeometric-2f1-or-betainc-using-pytorch
+    # https://stats.stackexchange.com/questions/52341/formula-to-generate-critical-t-values-for-t-test-instead-of-using-a-look-up-arr
+    res = torch.empty_like(vec)
+    if (idx := vec > ((a + 1.0) / (2.0 + a + b))).any():
+        res[idx] = 1.0 - inc_beta_reg(vec=1.0 - vec[idx], a=b, b=a)
+    idx = ~idx
+    x = vec[idx]
+    qab = a + b
+    qap = a + 1.0
+    qam = a - 1.0
+    c = torch.ones_like(x)
+    d = 1.0 / (1.0 - qab * x / qap)
+    f = d.clone()
+    front = (
+        -math.lgamma(a)
+        - math.lgamma(b)
+        + math.lgamma(a + b)
+        - math.log(a)
+        + x.log() * a
+        + x.neg().log1p() * b
+    ).exp()
+    for i in range(1, 200):
+        i2 = i * 2.0
+        ai2 = a + i2
+        nmrt = (i * (b - i) / ((qam + i2) * ai2)) * x
+        d = (d * nmrt + 1.0).reciprocal()
+        c = nmrt / c + 1.0
+        f *= c * d
+        nmrt = (-(a + i) * (qab + i) / ((qap + i2) * ai2)) * x
+        d = (d * nmrt + 1.0).reciprocal()
+        c = nmrt / c + 1.0
+        cd = c * d
+        f *= cd
+        if ((1.0 - cd).abs() < 1e-6).all():
+            break
+    res[idx] = front * f
+    return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
+
+
+def inc_beta_reg_inv(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
+    a1, b1 = a - 1.0, b - 1.0
+    if a > 1.0 and b > 1.0:
+        tmp = vec.clone()
+        idx = vec >= 0.5
+        tmp[idx] = 1.0 - tmp[idx]
+        t = (-2.0 * tmp.log()).sqrt()
+        x = (2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t
+        idx = ~idx
+        x[idx] = -x[idx]
+        al = (x.square() - 3.0) / 6.0
+        h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0))
+        w = (x * math.sqrt(al + h) / h) - (
+            1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)
+        ) * (al + 5.0 / 6.0 - 2.0 / (3.0 * h))
+        x = a / (a + b * (2.0 * w).exp())
+    else:
+        x = vec.clone()
+        t = math.exp(a * math.log(a / (a + b))) / a
+        w = t + math.exp(b * math.log(b / (a + b))) / b
+        idx = vec < t / w
+        x[idx] = (a * w * x[idx]).pow(1.0 / a)
+        idx = ~idx
+        x[idx] = 1.0 - (b * w * (1.0 - x[idx])).pow(1.0 / b)
+    afac = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
+    for _ in range(10):
+        t = (a1 * x.log() + b1 * x.neg().log1p() + afac).exp()
+        u = (inc_beta_reg(vec=x, a=a, b=b) - vec) / t
+        t = u / (1.0 - 0.5 * (u * (a1 / x - b1 / (1.0 - x))).clamp_max(max=1.0))
+        idx = (x > 0.0) & (x < 1.0)
+        x[idx] -= t[idx]
+        idx = x < 0.0
+        x[idx] = 0.5 * (x[idx] + t[idx])
+        idx = x > 1.0
+        x[idx] = 0.5 * (x[idx] + t[idx] + 1.0)
+        x = x.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
+    return x
+
+
+def pt(vec: torch.Tensor, nu: float) -> torch.Tensor:
+    if nu == 1:
+        res = vec.atan() / 3.141592653589793 + 0.5
+    elif nu == 2:
+        res = (vec / (vec.square() + 2.0).sqrt() + 1.0) / 2.0
+    elif nu == 3:
+        res = (
+            (vec / 1.7320508075688772).atan() / 3.141592653589793
+            + 0.5
+            + 0.5513288954217921 * vec / (vec.square() + 3.0)
+        )
+    elif nu == 4:
+        _ = vec.square()
+        res = (vec * (_ + 6.0) / (_ + 4.0).pow(1.5) + 1.0) / 2.0
+    elif nu == 5:
+        res = (
+            (vec / 2.23606797749979).atan() / 3.141592653589793
+            + (
+                (vec.square() * 3.0 + 25.0)
+                * 0.23725418113905902
+                * vec
+                / (vec.square() + 5.0).square()
+            )
+            + 0.5
+        )
+
+    elif nu == 6:
+        res = vec.square()
+        res = (
+            (res.square() * 2.0 + res * 30.0 + 135.0) * vec / (res + 6.0).pow(2.5)
+        ) / 4.0 + 0.5
+
+    else:
+        nu = max(min(_NU_MAX, nu), _NU_MIN)
+        res = inc_beta_reg(vec=nu / (vec.square() + nu), a=nu / 2.0, b=0.5)
+        idx = vec > 0.0
+        res[idx] = 2.0 - res[idx]
+        res *= 0.5
+    return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
+
+
+def qt(vec: torch.Tensor, nu: float) -> torch.Tensor:
+    vec2 = vec * 2.0
+    nu2 = nu / 2.0
+    res = torch.empty_like(input=vec, device=vec.device)
+    idx = vec < 0.5
+    res[idx] = (
+        (inc_beta_reg_inv(vec=vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt().neg()
+    )
+    idx = ~idx
+    res[idx] = (
+        inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0
+    ).sqrt()
+    res[vec == 0.5] = 0.0
+    res *= math.sqrt(nu)
+    return res.nan_to_num()
+
+
+def pt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
+    if vec.device == "cpu":
+        return torch.from_numpy(t.cdf(x=vec, df=nu))
+    else:
+        return torch.from_numpy(t.cdf(x=vec.cpu(), df=nu)).cuda()
+
+
+def qt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
+    if vec.device == "cpu":
+        return torch.from_numpy(t.ppf(q=vec, df=nu))
+    else:
+        return torch.from_numpy(t.ppf(q=vec.cpu(), df=nu)).cuda()
+
+
+pt = pt_scipy
+qt = qt_scipy
+
+
+def l_dt(obs: torch.Tensor, nu: float) -> torch.Tensor:
+    """log density of Student's t distribution
+
+    :param obs: Student's t observations
+    :type obs: torch.Tensor
+    :param nu: degrees of freedom
+    :type nu: float
+    :return: log density, given the observations
+    :rtype: torch.Tensor
+    """
+    nu2 = nu / 2.0
+    return ((obs.square() / nu).log1p() * (-nu2 - 0.5)) + (
+        math.lgamma(nu2 + 0.5)
+        - math.lgamma(nu2)
+        - 0.5723649429247001
+        - 0.5 * math.log(nu)
+    )
+
+
+def pbvt(
+    obs: torch.Tensor,
+    rho: float,
+    nu: float,
+    rho_min: float = _RHO_MIN,
+    rho_max: float = _RHO_MAX,
+    nu_min: float = _NU_MIN,
+    nu_max: float = _NU_MAX,
+    cdf_min: float = _CDF_MIN,
+    cdf_max: float = _CDF_MAX,
+) -> torch.Tensor:
+    """CDF of (standard) bivariate Student's t distribution
+    modified from http://www.math.wsu.edu/faculty/genz/software/matlab/bvtl.m
+
+    :param obs: bivariate Student's t observations, of shape (num_obs, 2)
+    :type obs: torch.Tensor
+    :param rho: the rho parameter
+    :type rho: float
+    :param nu: the nu parameter, degrees of freedom
+    :type nu: float
+    :return: cumulative distribution function (CDF) of shape (num_obs, 1), given the observations
+    :rtype: torch.Tensor
+    """
+    h = obs[:, [0]]
+    k = obs[:, [1]]
+    rho: torch.Tensor = torch.tensor(rho, dtype=obs.dtype, device=obs.device).clamp(
+        min=rho_min,
+        max=rho_max,
+    )
+    nu: torch.Tensor = torch.tensor(nu, dtype=obs.dtype, device=obs.device).clamp(
+        min=nu_min,
+        max=nu_max,
+    )
+    #
+    if nu < 1:
+        bvt = pbvnorm(obs=obs, rho=rho)
+    else:
+        xnhk, xnkh = torch.zeros_like(h), torch.zeros_like(h)
+        ors = 1.0 - rho**2
+        snu = nu.sqrt()
+        hhh, kkk = h - rho * k, k - rho * h
+        hs, ks = hhh.sign(), kkk.sign()
+        idx = hhh.abs() + ors > 0.0
+        xnhk[idx] = hhh[idx].square() / (
+            hhh[idx].square() + ors * (nu + k[idx].square())
+        )
+        xnkh[idx] = kkk[idx].square() / (
+            kkk[idx].square() + ors * (nu + h[idx].square())
+        )
+        # gmph as hhh, gmpk as kkk
+        if nu.ceil() % 2 == 0:
+            bvt = torch.full_like(
+                input=h,
+                fill_value=torch.atan2(ors.sqrt(), -rho) / 6.283185307179586,
+            )
+            hhh = h / (16.0 * (h.square() + nu)).sqrt()
+            kkk = k / (16.0 * (k.square() + nu)).sqrt()
+            btnchk = 0.6366197723675814 * torch.atan2(xnhk.sqrt(), (1.0 - xnhk).sqrt())
+            btpdhk = 0.6366197723675814 * (xnhk * (1.0 - xnhk)).sqrt()
+            btnckh = 0.6366197723675814 * torch.atan2(xnkh.sqrt(), (1.0 - xnkh).sqrt())
+            btpdkh = 0.6366197723675814 * (xnkh * (1.0 - xnkh)).sqrt()
+            for j in torch.arange(start=1.0, end=nu / 2.0 + 1e-5, step=1):
+                bvt += hhh * (btnckh * ks + 1.0) + kkk * (btnchk * hs + 1.0)
+                hhh *= (j - 0.5) / (j * (1.0 + h.square() / nu))
+                kkk *= (j - 0.5) / (j * (1.0 + k.square() / nu))
+                btnchk += btpdhk
+                btpdhk *= j * 2.0 * (1.0 - xnhk) / (2.0 * j + 1.0)
+                btnckh += btpdkh
+                btpdkh *= j * 2.0 * (1.0 - xnkh) / (2.0 * j + 1.0)
+        else:
+            qhrk = (h.square() + k.square() - 2.0 * rho * h * k + nu * ors).sqrt()
+            hkrn = h * k + rho * nu
+            hkn = h * k - nu
+            bvt = (
+                torch.atan2(
+                    -snu * (hkn * qhrk + (h + k) * hkrn),
+                    hkn * hkrn - nu * (h + k) * qhrk,
+                )
+                / 6.283185307179586
+            )
+            idx = bvt < -1e-8
+            bvt[idx] += 1.0
+            hhh = h / (6.283185307179586 * snu * (1.0 + h.square() / nu))
+            kkk = k / (6.283185307179586 * snu * (1.0 + k.square() / nu))
+            btnchk, btnckh = xnhk.sqrt(), xnkh.sqrt()
+            btpdhk, btpdkh = btnchk * 1.0, btnckh * 1.0
+            if (nu - 1.0) / 2.0 >= 1.0:
+                for j in torch.arange(start=1, end=(nu - 1.0) / 2.0 + 1e-5, step=1):
+                    bvt += hhh * (1.0 + ks * btnckh) + kkk * (1.0 + hs * btnchk)
+                    hhh *= j / ((j + 0.5) * (1.0 + h.square() / nu))
+                    kkk *= j / ((j + 0.5) * (1.0 + k.square() / nu))
+                    btpdhk *= (j - 0.5) * (1.0 - xnhk) / j
+                    btnchk += btpdhk
+                    btpdkh *= (j - 0.5) * (1.0 - xnkh) / j
+                    btnckh += btpdkh
+    return bvt.nan_to_num().clamp(min=cdf_min, max=cdf_max)
 
 
 def debye1(x: float) -> float:
