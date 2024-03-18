@@ -96,7 +96,7 @@ class StudentT(BiCopElliptical):
         **kwargs
     ) -> tuple:
         if tau is None:
-            tau = kendall_tau(x=obs[:, 0], y=obs[:, 1])
+            tau = kendall_tau(x=obs[:, [0]], y=obs[:, [1]])
 
         rho = cls.tau2rho_0(tau=tau)
 

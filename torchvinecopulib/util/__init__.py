@@ -33,10 +33,11 @@ def kendall_tau(
     x,y are both of shape (n, 1)
     """
     n = x.shape[0]
+    n *= n - 1
     return (
-        ((x.expand(n, n).T - x).sign() * (y.expand(n, n).T - y).sign())
+        ((x.T - x).sign() * (y.T - y).sign())
         .sum()
-        .div(n * (n - 1))
+        .div(n)
         .clamp(min=tau_min, max=tau_max)
         .item()
     )
@@ -60,49 +61,29 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> float:
     )[0]
 
 
-def cdf_func_kernel(obs: torch.Tensor, is_scott: bool = True) -> callable:
-    """kernel density estimation (KDE) function of the cumulative distribution function (CDF)
-
-    :param obs: observations, of shape (n,1)
-    :type obs: torch.Tensor
-    :param is_scott: whether to use Scott's rule for bandwidth, defaults to True
-    :type is_scott: bool, optional
-    :return: a CDF function by KDE
-    :rtype: callable
-    """
-    if is_scott:
-        # * bandwidth by Scott 1992
-        band_width = (
-            torch.nanquantile(input=obs, q=0.75) - torch.nanquantile(input=obs, q=0.25)
-        ) / 1.349
-        band_width = obs.std().clamp_max(band_width) * 1.059 * len(obs) ** (-0.2)
-    else:
-        band_width = obs.std() * 0.6973425390765554 * len(obs) ** -0.1111111111111111
-
-    def func_cdf(q: torch.Tensor) -> torch.Tensor:
-        return torch.special.ndtr((q - obs.T) / band_width).nanmean(dim=1)
-
-    return func_cdf
-
-
 def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> float:
-    """pairwise tail dependence coefficient (λ) estimator, mean of upper and lower (to be symmetric)
-    x and y are both of shape (n, 1)
+    """pairwise tail dependence coefficient (λ) estimator, max of rotation 0, 90, 180, 270
+    x and y are both of shape (n, 1) inside (0, 1)
+    symmetric for (x,y), (y,1-x), (1-x,1-y), (1-y,x), (y,x), (1-x,y), (1-y,1-x), (x,1-y)
     Ferreira, M.S., 2013. Nonparametric estimation of the tail-dependence coefficient;
     """
-    idx = torch.isfinite(x) & torch.isfinite(y)
-    x = x[idx].reshape(-1, 1)
-    u_x = cdf_func_kernel(obs=x)(x)
-    y = y[idx].reshape(-1, 1)
-    u_y = cdf_func_kernel(obs=y)(y)
-    #
+    x1 = 1 - x
+    y1 = 1 - y
     return (
         3
         - (
-            1.0 / (1.0 - torch.max(u_x, u_y).mean())
-            + 1.0 / (1.0 - torch.max(1 - u_x, 1 - u_y).mean())
-        )
-        / 2
+            1
+            - torch.as_tensor(
+                [
+                    torch.max(x, y).mean(),
+                    torch.max(y, x1).mean(),
+                    torch.max(x1, y1).mean(),
+                    torch.max(y1, x).mean(),
+                ]
+            )
+            .clamp(0.5, 0.6666666666666666)
+            .min()
+        ).reciprocal()
     ).item()
 
 
@@ -205,19 +186,37 @@ class ENUM_FUNC_BIDEP(Enum):
     wasserstein_dist_ind = partial(wasserstein_dist_ind)
 
 
+def cdf_func_kernel(obs: torch.Tensor, is_scott: bool = True) -> callable:
+    """kernel density estimation (KDE) function of the cumulative distribution function (CDF)
+
+    :param obs: observations, of shape (n,1)
+    :type obs: torch.Tensor
+    :param is_scott: whether to use Scott's rule for bandwidth, defaults to True
+    :type is_scott: bool, optional
+    :return: a CDF function by KDE
+    :rtype: callable
+    """
+    if is_scott:
+        # * bandwidth by Scott 1992
+        band_width = (
+            torch.nanquantile(input=obs, q=0.75) - torch.nanquantile(input=obs, q=0.25)
+        ) / 1.349
+        band_width = obs.std().clamp_max(band_width) * 1.059 * len(obs) ** (-0.2)
+    else:
+        band_width = obs.std() * 0.6973425390765554 * len(obs) ** -0.1111111111111111
+
+    def func_cdf(q: torch.Tensor) -> torch.Tensor:
+        return torch.special.ndtr((q - obs.T) / band_width).nanmean(dim=1)
+
+    return func_cdf
+
+
 # * Gaussian distribution CDF (p), PPF (q), density (d)
 pnorm = torch.special.ndtr
 qnorm = torch.special.ndtri
 
 
-def pbvnorm(
-    obs: torch.Tensor,
-    rho: float,
-    rho_min: float = _RHO_MIN,
-    rho_max: float = _RHO_MAX,
-    cdf_min: float = _CDF_MIN,
-    cdf_max: float = _CDF_MAX,
-) -> torch.Tensor:
+def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
     """CDF of (standard) bivariate Gaussian distribution
     modified from http://www.math.wsu.edu/faculty/genz/software/matlab/bvnl.m
     https://keisan.casio.com/exec/system/1280624821
@@ -229,7 +228,7 @@ def pbvnorm(
     :return: cumulative distribution function (CDF) of shape (num_obs, 1), given the observation
     :rtype: torch.Tensor
     """
-    rho = min(max(rho, rho_min), rho_max)
+    rho = min(max(rho, _RHO_MIN), _RHO_MAX)
     # Gauss Legendre points and weights, n = 100
     w = torch.as_tensor(
         data=(
@@ -322,7 +321,7 @@ def pbvnorm(
             + (pnorm(h) * pnorm(k))
         )
         .nan_to_num()
-        .clamp(min=cdf_min, max=cdf_max)
+        .clamp(min=_CDF_MIN, max=_CDF_MAX)
     )
 
 
@@ -506,12 +505,6 @@ def pbvt(
     obs: torch.Tensor,
     rho: float,
     nu: float,
-    rho_min: float = _RHO_MIN,
-    rho_max: float = _RHO_MAX,
-    nu_min: float = _NU_MIN,
-    nu_max: float = _NU_MAX,
-    cdf_min: float = _CDF_MIN,
-    cdf_max: float = _CDF_MAX,
 ) -> torch.Tensor:
     """CDF of (standard) bivariate Student's t distribution
     modified from http://www.math.wsu.edu/faculty/genz/software/matlab/bvtl.m
@@ -528,12 +521,12 @@ def pbvt(
     h = obs[:, [0]]
     k = obs[:, [1]]
     rho: torch.Tensor = torch.tensor(rho, dtype=obs.dtype, device=obs.device).clamp(
-        min=rho_min,
-        max=rho_max,
+        min=_RHO_MIN,
+        max=_RHO_MAX,
     )
     nu: torch.Tensor = torch.tensor(nu, dtype=obs.dtype, device=obs.device).clamp(
-        min=nu_min,
-        max=nu_max,
+        min=_NU_MIN,
+        max=_NU_MAX,
     )
     #
     if nu < 1:
@@ -597,7 +590,7 @@ def pbvt(
                     btnchk += btpdhk
                     btpdkh *= (j - 0.5) * (1.0 - xnkh) / j
                     btnckh += btpdkh
-    return bvt.nan_to_num().clamp(min=cdf_min, max=cdf_max)
+    return bvt
 
 
 def debye1(x: float) -> float:

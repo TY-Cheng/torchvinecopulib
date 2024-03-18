@@ -149,7 +149,7 @@ class TestVineCop(unittest.TestCase):
             vec_tvc = (
                 res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=30000).cpu().numpy().flatten()
             )
-            vec_pvc = res_pvc.cdf(V_mvcp.cpu(), N=20000)
+            vec_pvc = res_pvc.cdf(V_mvcp.cpu(), N=20000, num_threads=4)
             if err := compare_chart_vec(
                 vec_pvc=vec_pvc,
                 vec_tvc=vec_tvc,

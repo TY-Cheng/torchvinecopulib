@@ -46,7 +46,7 @@ def bcp_from_obs(
     num_obs = obs_bcp.shape[0]
     # * tau from data, for inv-tau/tau2par, whose par is taken as init value for mle
     if tau is None:
-        tau = kendall_tau(x=obs_bcp[:, 0], y=obs_bcp[:, 1])
+        tau = kendall_tau(x=obs_bcp[:, [0]], y=obs_bcp[:, [1]])
 
     def _fit_itau(i_fam: str, i_rot: int) -> DataBiCop:
         # fetch the class
