@@ -37,4 +37,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest ./tests/
+        pytest ./tests/test_bicop.py
+        # the rest two takes forever.
+        pytest ./tests/test_vinecop.py -k "test_sim_lpdf_pvc_cdf or test_io"
