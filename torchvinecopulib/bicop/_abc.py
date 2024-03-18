@@ -9,7 +9,7 @@ Abstract bivariate copula from abstract base class (ABC):
     override when doing it in reverse order.
 
 ! by default, we assume raw bicop observations (obs) is rotated COUNTER-CLOCKWISE, FROM an ideal un-rotated bicop obs:
-! to reuse the function written for un-rotated bicop with suffix `_0`, 
+! to reuse the function written for un-rotated bicop with suffix `_0`,
 ! as pretreatment, we do CLOCKWISE rotation FROM raw bicop obs to the ideal un-rotated bicop obs. (see rot_0 below)
 e.g.
 
@@ -17,14 +17,14 @@ RAW BICOP:
 A | B
   |
 --d---
-  | 
-C | D  
+  |
+C | D
 
 IDEAL UN-ROTATED BICOP:
 C'| A'
   |
 --d'--
-  | 
+  |
 D'| B'
 
 Suppose a raw bicop obs is rotated 90 counter-clockwise from an ideal un-rotated bicop obs;
