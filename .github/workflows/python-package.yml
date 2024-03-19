@@ -37,5 +37,5 @@ jobs:
       - name: Test with pytest
         run: |
           pytest ./tests/test_bicop.py
-          # the rest two takes forever.
-          pytest ./tests/test_vinecop.py -k "test_sim_lpdf_pvc_cdf or test_io"
+          # the rest takes forever without GPU.
+          pytest ./tests/test_vinecop.py -k "test_io"
