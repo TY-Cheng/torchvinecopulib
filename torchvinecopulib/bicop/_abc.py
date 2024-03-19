@@ -28,7 +28,7 @@ C'| A'
 D'| B'
 
 Suppose a raw bicop obs is rotated 90 counter-clockwise from an ideal un-rotated bicop obs;
-the `cdf` of raw bicop obs is the area (C), as segmented by the obs point (d) in the raw bicop; 
+the `cdf` of raw bicop obs is the area (C), as segmented by the obs point (d) in the raw bicop;
 which corresponds to the area (C') as segmented by the obs point (d') in the ideal un-rotated bicop;
 suppose d=(v0,v1), then d'=(v1, 1-v0)
 thus cdf(d)=C'+D'-D'=v1-cdf(d')

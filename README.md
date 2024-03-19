@@ -23,9 +23,8 @@ For [PyTorch](https://pytorch.org/get-started/locally/) with `cuda` support on W
 pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
 ```
 
-> [!TIP] MacOS users
->
-> Suggest using `device='cpu'` at this stage, for using `device='mps'` won't support `dtype=torch.float64`.
+> [!TIP]
+> macOS users should set `device='cpu'` at this stage, for using `device='mps'` won't support `dtype=torch.float64`.
 
 ## Installation
 
@@ -57,9 +56,11 @@ Visit the `./examples/` folder for `.ipynb` Jupyter notebooks.
 
 ## Documentation
 
-Visit the `./docs/_build/html` subfolder for `html` made with `Sphinx`.
+- Visit [GitHub Pages website](https://ty-cheng.github.io/torchvinecopulib/)
 
-Or build by yourself (need `Sphinx` and theme `furo` by `pip install sphinx furo`)
+- Or visit the `./docs/_build/html` subfolder for static `html` made with `Sphinx`
+
+- Or build by yourself (need [`Sphinx`](https://github.com/sphinx-doc/sphinx), theme [`furo`](https://github.com/pradyunsg/furo) and [the GNU `make`](https://www.gnu.org/software/make/))
 
 ```bash
 # inside project root folder
@@ -67,6 +68,9 @@ sphinx-apidoc -o ./docs ./torchvinecopulib && cd ./docs && make html && cd ..
 ```
 
 ## Tests
+
+> [!TIP]
+> the `./tests/test_vinecop.py` may take longer without `'cuda'`
 
 ```python
 # inside project root folder
