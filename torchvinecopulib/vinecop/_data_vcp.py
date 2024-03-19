@@ -80,13 +80,7 @@ class DataVineCop(ABC):
         :return: negative log likelihood
         :rtype: float
         """
-        return sum(
-            [
-                bcp.negloglik
-                for dct_lv in self.dct_bcp.values()
-                for bcp in dct_lv.values()
-            ]
-        )
+        return sum([bcp.negloglik for dct_lv in self.dct_bcp.values() for bcp in dct_lv.values()])
 
     @property
     def num_dim(self) -> int:
@@ -101,9 +95,7 @@ class DataVineCop(ABC):
     @property
     def num_par(self) -> int:
         """number of parameters"""
-        return sum(
-            [bcp.num_par for dct_lv in self.dct_bcp.values() for bcp in dct_lv.values()]
-        )
+        return sum([bcp.num_par for dct_lv in self.dct_bcp.values() for bcp in dct_lv.values()])
 
     def _loc_bcp(self, v_down: int, s_down: frozenset) -> tuple:
         """locate the bicop on upper level that generates this pseudo obs
@@ -131,11 +123,7 @@ class DataVineCop(ABC):
         # * v for vertex, s for condition (frozen)set, read from right to left
         lst_source = self.lst_sim
         lst_source = [
-            (
-                (v, frozenset())
-                if v in lst_first
-                else (v, frozenset(lst_source[(idx + 1) :]))
-            )
+            ((v, frozenset()) if v in lst_first else (v, frozenset(lst_source[(idx + 1) :])))
             for idx, v in enumerate(lst_source)
         ][::-1]
 
@@ -301,18 +289,13 @@ class DataVineCop(ABC):
             linewidths=0.5,
             edgecolors="gray",
         )
-        nx.draw_networkx_labels(
-            G=G, pos=pos, ax=ax, font_size=font_size_vertex, alpha=0.9
-        )
+        nx.draw_networkx_labels(G=G, pos=pos, ax=ax, font_size=font_size_vertex, alpha=0.9)
         nx.draw_networkx_edges(
             G=G,
             pos=pos,
             ax=ax,
             edgelist=G.edges(),
-            width=[
-                math.log1p(0.5 + 100 * abs(tpl[2]["weight"]))
-                for tpl in G.edges(data=True)
-            ],
+            width=[math.log1p(0.5 + 100 * abs(tpl[2]["weight"])) for tpl in G.edges(data=True)],
             style="--",
             alpha=0.9,
         )
@@ -402,9 +385,7 @@ class DataVineCop(ABC):
                 pos_bcp[lst_node_bcp[_]] = loc_x[_], -lv + 0.5
             for _ in lst_node_bcp:
                 __ = "\n" * min(lv, 1)
-                dct_label[_] = (
-                    f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
-                )
+                dct_label[_] = f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
             G.add_edges_from(lst_edge)
         # highlight source nodes, given lst_first
         lst_source = self._ref_count(lst_first=lst_first)[1]
@@ -655,9 +636,7 @@ class DataVineCop(ABC):
         torch.manual_seed(seed=seed)
         num_dim = self.num_dim
         # * init sim of U_mvcp (multivariate independent copula)
-        U_mvcp = torch.rand(
-            size=(num_sim, num_dim - len(dct_first)), device=device, dtype=dtype
-        )
+        U_mvcp = torch.rand(size=(num_sim, num_dim - len(dct_first)), device=device, dtype=dtype)
         # * update dct_obs and dct_ref_count
         idx = 0
         for v, s in lst_source:
@@ -679,9 +658,7 @@ class DataVineCop(ABC):
                 while len(s_next):
                     v_next, s_next = visit_hinv(v_down=v_next, s_down=s_next)
         # * sort pseudo obs by key
-        return torch.hstack(
-            [val for _, val in sorted(dct_obs.items(), key=itemgetter(0))]
-        )
+        return torch.hstack([val for _, val in sorted(dct_obs.items(), key=itemgetter(0))])
 
     def cdf(
         self,

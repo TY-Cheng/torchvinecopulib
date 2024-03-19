@@ -20,9 +20,7 @@ class Frank(BiCopArchimedean):
         delta = par[0]
         return (
             -(
-                _g(vec=obs[:, [0]], delta=delta)
-                * _g(vec=obs[:, [1]], delta=delta)
-                / expm1(-delta)
+                _g(vec=obs[:, [0]], delta=delta) * _g(vec=obs[:, [1]], delta=delta) / expm1(-delta)
             ).log1p()
             / delta
         )

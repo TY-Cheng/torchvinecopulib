@@ -1,15 +1,16 @@
 import logging
 import os
+import random
 import unittest
 
+import networkx as nx
 import pyvinecopulib as pvc
 
 from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pkl
-import random
 
 from . import (
-    DEVICE,
     DCT_FAM,
+    DEVICE,
     LST_MTD_FIT,
     LST_MTD_SEL,
     compare_chart_vec,
@@ -26,36 +27,36 @@ class TestVineCop(unittest.TestCase):
         mtd_fit = "itau"
         mtd_sel = "aic"
         num_dim = 10
-        len_first = 3
-        for fam, (_, bcp_tvc) in DCT_FAM.items():
-            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000, num_dim=num_dim)
-            for mtd_bidep in [
-                "kendall_tau",
-                "ferreira_tail_dep_coeff",
-                "chatterjee_xi",
-                "wasserstein_dist_ind",
-            ]:
-                for mtd_cdrvine in ("cvine", "dvine"):
-                    lst_first = list(
-                        {random.randint(0, num_dim - 1) for _ in range(len_first)}
-                    )
-                    len_first = len(lst_first)
-                    if fam in ("StudentT", "Independent") or mtd_bidep == "mutual_info":
-                        continue
-                    logging.info(
-                        msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
-                    )
-                    res_tvc = vcp_from_obs(
-                        obs_mvcp=V_mvcp,
-                        is_Dissmann=True,
-                        cdrvine=mtd_cdrvine,
-                        lst_first=lst_first,
-                        mtd_bidep=mtd_bidep,
-                        mtd_fit=mtd_fit,
-                        mtd_sel=mtd_sel,
-                        tpl_fam=(fam, "Independent"),
-                    )
-                    assert set(res_tvc.lst_sim[-len_first:]) == set(lst_first)
+        for len_first in (1, 3):
+            for fam, (_, bcp_tvc) in DCT_FAM.items():
+                V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000, num_dim=num_dim)
+                for mtd_bidep in [
+                    "kendall_tau",
+                    "ferreira_tail_dep_coeff",
+                    "chatterjee_xi",
+                    "wasserstein_dist_ind",
+                ]:
+                    for mtd_cdrvine in ("cvine", "dvine"):
+                        lst_first = list(
+                            {random.randint(0, num_dim - 1) for _ in range(len_first)}
+                        )
+                        len_first = len(lst_first)
+                        if fam in ("StudentT", "Independent") or mtd_bidep == "mutual_info":
+                            continue
+                        logging.info(
+                            msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
+                        )
+                        res_tvc = vcp_from_obs(
+                            obs_mvcp=V_mvcp,
+                            is_Dissmann=True,
+                            cdrvine=mtd_cdrvine,
+                            lst_first=lst_first,
+                            mtd_bidep=mtd_bidep,
+                            mtd_fit=mtd_fit,
+                            mtd_sel=mtd_sel,
+                            tpl_fam=(fam, "Independent"),
+                        )
+                        assert set(res_tvc.lst_sim[-len_first:]) == set(lst_first)
 
     def test_sim_lpdf_pvc_cdf(self):
         """test the simulation, diagonal of structure matrix, l_pdf and cdf"""
@@ -65,9 +66,7 @@ class TestVineCop(unittest.TestCase):
         for fam, (bcp_pvc, bcp_tvc) in DCT_FAM.items():
             if fam in ("StudentT", "Independent"):
                 continue
-            logging.info(
-                msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
-            )
+            logging.info(msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}")
             V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
             num_dim = V_mvcp.shape[1]
             # * struct: sim, cvine
@@ -146,9 +145,7 @@ class TestVineCop(unittest.TestCase):
             diag_tvc = [res_tvc.matrix[i, i] for i in range(num_dim)]
             assert sum([(1 + a - b) for a, b in zip(diag_tvc, diag_pvc)]) <= 1
             # * cdf: pvc, rvine
-            vec_tvc = (
-                res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=30000).cpu().numpy().flatten()
-            )
+            vec_tvc = res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=30000).cpu().numpy().flatten()
             vec_pvc = res_pvc.cdf(V_mvcp.cpu(), N=20000, num_threads=4)
             if err := compare_chart_vec(
                 vec_pvc=vec_pvc,
@@ -203,28 +200,53 @@ class TestVineCop(unittest.TestCase):
         bcp_tvc = DCT_FAM[fam][1]
         mtd_fit = "itau"
         mtd_sel = "aic"
+        num_dim = 6
+        num_obs = 1000
         mtd_bidep = "kendall_tau"
-        logging.info(
-            msg=f"\nTesting:\t\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
-        )
-        V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc)
-        res_tvc = vcp_from_obs(
-            obs_mvcp=V_mvcp,
-            is_Dissmann=True,
-            matrix=None,
-            mtd_bidep=mtd_bidep,
-            mtd_fit=mtd_fit,
-            mtd_sel=mtd_sel,
-        )
-        tmp_p = res_tvc.vcp_to_json()
-        __ = vcp_from_json(tmp_p)
+        lst_first = [3, 5]
+        len_first = len(lst_first)
+        for cdrvine in ("cvine", "dvine", "rvine"):
+            logging.info(
+                msg=f"\nTesting:\t\nComparing:\t{bcp_tvc}, {cdrvine} {mtd_fit} {mtd_sel} {mtd_bidep}"
+            )
+            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_dim=num_dim, num_sim=num_obs)
+            res_tvc = vcp_from_obs(
+                obs_mvcp=V_mvcp,
+                is_Dissmann=True,
+                cdrvine=cdrvine,
+                lst_first=lst_first,
+                matrix=None,
+                mtd_bidep=mtd_bidep,
+                mtd_fit=mtd_fit,
+                mtd_sel=mtd_sel,
+            )
+            # __str__
+            dct_str = eval(str(res_tvc))
+            assert dct_str["mtd_bidep"] == mtd_bidep
+            assert dct_str["num_dim"] == num_dim
+            assert dct_str["num_obs"] == num_obs
+            if cdrvine in ("cvine", "dvine"):
+                assert set(dct_str["lst_sim"][-len_first:]) == set(lst_first)
+        # draw
+        path = "./vcp.png"
+        fig, ax, G, tmp_p = res_tvc.draw_lv(f_path=path)
+        assert isinstance(G, nx.Graph)
         os.remove(tmp_p)
-        assert __ == res_tvc
-
-        tmp_p = res_tvc.vcp_to_pkl()
-        __ = vcp_from_pkl(tmp_p)
+        fig, ax, G, path = res_tvc.draw_dag(f_path=path)
+        assert isinstance(G, nx.DiGraph)
+        os.remove(path)
+        # json
+        path = "./vcp.json"
+        tmp_p = res_tvc.vcp_to_json(f_path=path)
+        tmp_f = vcp_from_json(tmp_p)
+        assert tmp_f == res_tvc
         os.remove(tmp_p)
-        assert __ == res_tvc
+        # pkl
+        path = "./vcp.pkl"
+        tmp_p = res_tvc.vcp_to_pkl(f_path=path)
+        tmp_f = vcp_from_pkl(tmp_p)
+        assert tmp_f == res_tvc
+        os.remove(tmp_p)
 
 
 if __name__ == "__main__":

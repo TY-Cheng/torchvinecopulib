@@ -158,12 +158,8 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
         # * drop: pick the edge to drop (from the hamiltonian circle), either fwd or bwd that has higher cost
         # rest set: record forward/backward links
         num_dim = len(s_rest)
-        dct_rest_fwd = {
-            v: tsp_rest[idx + 1] for idx, v in enumerate(tsp_rest) if idx < num_dim
-        }
-        dct_rest_bwd = {
-            v: tsp_rest[idx - 1] for idx, v in enumerate(tsp_rest) if idx > 0
-        }
+        dct_rest_fwd = {v: tsp_rest[idx + 1] for idx, v in enumerate(tsp_rest) if idx < num_dim}
+        dct_rest_bwd = {v: tsp_rest[idx - 1] for idx, v in enumerate(tsp_rest) if idx > 0}
         # ! when s_first has only one element, nothing to drop.
         first_drop, first_drop_cost = (None, None), 0
         if len_first > 1:
@@ -173,13 +169,9 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
                 init_cycle="greedy",
             )
             dct_first_fwd = {
-                v: tsp_first[idx + 1]
-                for idx, v in enumerate(tsp_first)
-                if idx < len_first
+                v: tsp_first[idx + 1] for idx, v in enumerate(tsp_first) if idx < len_first
             }
-            dct_first_bwd = {
-                v: tsp_first[idx - 1] for idx, v in enumerate(tsp_first) if idx > 0
-            }
+            dct_first_bwd = {v: tsp_first[idx - 1] for idx, v in enumerate(tsp_first) if idx > 0}
         cost_diff = math.inf
         for v_first, v_rest in product(s_first, s_rest):
             if len_first > 2:
@@ -205,16 +197,10 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
                 drop_drop_add = (first_drop, rest_drop, edge)
                 cost_diff = tmp_cost_diff
         # mst: add, drop, drop
-        mst_lv0 = (
-            []
-            if len_first < 2
-            else [(*sorted((k, v)),) for k, v in dct_first_fwd.items()]
-        )
+        mst_lv0 = [] if len_first < 2 else [(*sorted((k, v)),) for k, v in dct_first_fwd.items()]
         mst_lv0 += [(*sorted((k, v)),) for k, v in dct_rest_fwd.items()]
         mst_lv0 += [drop_drop_add[2]]
-        mst_lv0 = list(
-            {(*_, frozenset()) for _ in mst_lv0 if _ not in drop_drop_add[:-1]}
-        )
+        mst_lv0 = list({(*_, frozenset()) for _ in mst_lv0 if _ not in drop_drop_add[:-1]})
     # ! for dvine, deq_sim is known and s_first is empty now
     s_edge = {(v_l, v_r) for v_l, v_r, s_and in mst_lv0}
     deq_sim = deque()
@@ -333,9 +319,7 @@ def vcp_from_obs(
     for lv in r_D1:
         # ! lv_0 obs, preprocess to append a cond frozenset (s_and)
         if lv == 0:
-            dct_obs[0] = {
-                (idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)
-            }
+            dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
         if is_Dissmann:
             # * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep
             lst_key_obs = dct_obs[lv].keys()
@@ -362,9 +346,7 @@ def vcp_from_obs(
                         dct_edge_lv=dct_edge[lv],
                         s_first=s_first,
                     )
-                    dct_tree[lv] = {
-                        key_edge: dct_edge[lv][key_edge] for key_edge in mst
-                    }
+                    dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
                 else:
                     dct_tree[lv] = dct_edge[lv]
             elif cdrvine == "cvine":
@@ -379,9 +361,7 @@ def vcp_from_obs(
                 dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
             elif cdrvine == "rvine":
                 # * edge2tree, rvine
-                mst = _mst_from_edge_rvine(
-                    lst_key_obs=lst_key_obs, dct_edge_lv=dct_edge[lv]
-                )
+                mst = _mst_from_edge_rvine(lst_key_obs=lst_key_obs, dct_edge_lv=dct_edge[lv])
                 dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
             else:
                 raise ValueError("cdrvine must be one of 'cvine', 'dvine', 'rvine'")
@@ -428,11 +408,7 @@ def vcp_from_obs(
             v_diag = None
             for i_lv in range(lv, -1, -1):
                 for v_l, v_r, s_and in dct_tree[i_lv]:
-                    if (
-                        (v_diag is None)
-                        and (v_l not in deq_sim)
-                        and (v_r not in deq_sim)
-                    ):
+                    if (v_diag is None) and (v_l not in deq_sim) and (v_r not in deq_sim):
                         # ! pick the node with smaller index (v_l < v_r), then mat <-> structure is bijection
                         v_diag = v_l
                         deq_sim.append(v_diag)

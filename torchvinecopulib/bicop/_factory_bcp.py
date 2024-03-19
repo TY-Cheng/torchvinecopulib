@@ -65,9 +65,7 @@ def bcp_from_obs(
     fam_rot = (tpl for tpl in SET_FAMnROT if tpl[0] in tpl_fam)
     vec_bcp_data = np.fromiter((_fit_itau(*tpl) for tpl in fam_rot), dtype=DataBiCop)
     # ! take note `k` best to accelerate MLE
-    idx_sel = np.argsort(a=tuple(_.__getattribute__(mtd_sel) for _ in vec_bcp_data))[
-        :topk
-    ]
+    idx_sel = np.argsort(a=tuple(_.__getattribute__(mtd_sel) for _ in vec_bcp_data))[:topk]
     # ! take studentt in (as its `itau` nll usually not good)
     idx = [idx for idx, _ in enumerate(vec_bcp_data) if _.fam == "StudentT"]
     if idx:

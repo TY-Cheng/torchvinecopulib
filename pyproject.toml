@@ -9,7 +9,7 @@ maintainers = ["Xiaosheng You <e1204754@u.nus.edu>"]
 readme = "README.md"
 # homepage = ""
 repository = "https://github.com/TY-Cheng/torchvinecopulib"
-# documentation = ""
+documentation = "https://ty-cheng.github.io/torchvinecopulib/"
 keywords = ["vine copula", "copula", "torch"]
 classifiers = [
     "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.1",
@@ -36,14 +36,16 @@ scikit-learn = "*"
 
 [tool.poetry.group.dev.dependencies]
 black = "*"
+coverage = "*"
+flake8 = "*"
 furo = "*"
 ipykernel = "*"
-matplotlib = '*'
-pandas = '*'
-pot = '*'
+matplotlib = "*"
+pandas = "*"
+pot = "*"
 pytest = "*"
-pyvinecopulib = "*"
-scikit-learn = '*'
+pyvinecopulib = "0.6.4"
+scikit-learn = "*"
 sphinx = "*"
 
 

@@ -46,9 +46,7 @@ def sim_from_bcp(
     """Simulates bivariate copula data."""
     if par is None:
         par = tuple((_ / 10 for _ in bcp_tvc._PAR_MAX))
-    return bcp_tvc.sim(
-        rot=rot, num_sim=num_sim, seed=seed, device=device, dtype=dtype, par=par
-    )
+    return bcp_tvc.sim(rot=rot, num_sim=num_sim, seed=seed, device=device, dtype=dtype, par=par)
 
 
 def sim_vcp_from_bcp(

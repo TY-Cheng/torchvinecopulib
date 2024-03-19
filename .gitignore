@@ -5,9 +5,10 @@ poetry.lock
 # README.md
 /docs/*.pdf
 /docs/*.rst
+!/docs/index.rst
 /docs/*.py
 /docs/*.bat
-/docs/makefile
+# /docs/makefile
 /docs/_build/doctrees
 !docs/_build/html/*
 

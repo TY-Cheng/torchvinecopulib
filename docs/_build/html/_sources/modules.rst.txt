@@ -1,10 +1,7 @@
 torchvinecopulib
-============
+================
 
 .. toctree::
    :maxdepth: 4
-   :includehidden:
 
-   torchvinecopulib.vinecop
-   torchvinecopulib.bicop
-   torchvinecopulib.util
+   torchvinecopulib

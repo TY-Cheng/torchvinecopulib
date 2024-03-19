@@ -45,9 +45,7 @@ class BiCopArchimedean(BiCopAbstract):
             cls.generator(obs[:, [0]], **kwargs) + cls.generator(obs[:, [1]], **kwargs),
             **kwargs,
         )
-        tmp = cls.generator_derivative(
-            obs[:, [0]], **kwargs
-        ) / cls.generator_derivative(
+        tmp = cls.generator_derivative(obs[:, [0]], **kwargs) / cls.generator_derivative(
             tmp,
             **kwargs,
         )

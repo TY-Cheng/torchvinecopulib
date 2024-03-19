@@ -35,11 +35,7 @@ def kendall_tau(
     n = x.shape[0]
     n *= n - 1
     return (
-        ((x.T - x).sign() * (y.T - y).sign())
-        .sum()
-        .div(n)
-        .clamp(min=tau_min, max=tau_max)
-        .item()
+        ((x.T - x).sign() * (y.T - y).sign()).sum().div(n).clamp(min=tau_min, max=tau_max).item()
     )
 
 
@@ -167,9 +163,7 @@ def wasserstein_dist_ind(
         ).item()
     else:
         return empirical_sinkhorn2(
-            X_s=torch.hstack([x, y])[
-                torch.randperm(n=num_row, device=x.device)[:1000], :
-            ],
+            X_s=torch.hstack([x, y])[torch.randperm(n=num_row, device=x.device)[:1000], :],
             X_t=torch.rand(size=(1000, 2), device=x.device, dtype=x.dtype),
             reg=reg,
             metric=metric,
@@ -379,9 +373,9 @@ def inc_beta_reg_inv(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
         x[idx] = -x[idx]
         al = (x.square() - 3.0) / 6.0
         h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0))
-        w = (x * math.sqrt(al + h) / h) - (
-            1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)
-        ) * (al + 5.0 / 6.0 - 2.0 / (3.0 * h))
+        w = (x * math.sqrt(al + h) / h) - (1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)) * (
+            al + 5.0 / 6.0 - 2.0 / (3.0 * h)
+        )
         x = a / (a + b * (2.0 * w).exp())
     else:
         x = vec.clone()
@@ -434,9 +428,7 @@ def pt(vec: torch.Tensor, nu: float) -> torch.Tensor:
 
     elif nu == 6:
         res = vec.square()
-        res = (
-            (res.square() * 2.0 + res * 30.0 + 135.0) * vec / (res + 6.0).pow(2.5)
-        ) / 4.0 + 0.5
+        res = ((res.square() * 2.0 + res * 30.0 + 135.0) * vec / (res + 6.0).pow(2.5)) / 4.0 + 0.5
 
     else:
         nu = max(min(_NU_MAX, nu), _NU_MIN)
@@ -452,13 +444,9 @@ def qt(vec: torch.Tensor, nu: float) -> torch.Tensor:
     nu2 = nu / 2.0
     res = torch.empty_like(input=vec, device=vec.device)
     idx = vec < 0.5
-    res[idx] = (
-        (inc_beta_reg_inv(vec=vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt().neg()
-    )
+    res[idx] = (inc_beta_reg_inv(vec=vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt().neg()
     idx = ~idx
-    res[idx] = (
-        inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0
-    ).sqrt()
+    res[idx] = (inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt()
     res[vec == 0.5] = 0.0
     res *= math.sqrt(nu)
     return res.nan_to_num()
@@ -494,10 +482,7 @@ def l_dt(obs: torch.Tensor, nu: float) -> torch.Tensor:
     """
     nu2 = nu / 2.0
     return ((obs.square() / nu).log1p() * (-nu2 - 0.5)) + (
-        math.lgamma(nu2 + 0.5)
-        - math.lgamma(nu2)
-        - 0.5723649429247001
-        - 0.5 * math.log(nu)
+        math.lgamma(nu2 + 0.5) - math.lgamma(nu2) - 0.5723649429247001 - 0.5 * math.log(nu)
     )
 
 
@@ -538,12 +523,8 @@ def pbvt(
         hhh, kkk = h - rho * k, k - rho * h
         hs, ks = hhh.sign(), kkk.sign()
         idx = hhh.abs() + ors > 0.0
-        xnhk[idx] = hhh[idx].square() / (
-            hhh[idx].square() + ors * (nu + k[idx].square())
-        )
-        xnkh[idx] = kkk[idx].square() / (
-            kkk[idx].square() + ors * (nu + h[idx].square())
-        )
+        xnhk[idx] = hhh[idx].square() / (hhh[idx].square() + ors * (nu + k[idx].square()))
+        xnkh[idx] = kkk[idx].square() / (kkk[idx].square() + ors * (nu + h[idx].square()))
         # gmph as hhh, gmpk as kkk
         if nu.ceil() % 2 == 0:
             bvt = torch.full_like(

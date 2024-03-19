@@ -22,9 +22,7 @@ class Joe(BiCopArchimedean):
         """first h function, Prob(V1<=v1 | V0=v0)"""
         delta = par[0]
         y = (1.0 - obs[:, [1]]).pow(delta)
-        return (1.0 + y / (1.0 - obs[:, [0]]).pow(delta) - y).pow(
-            -1.0 + 1.0 / delta
-        ) * (1.0 - y)
+        return (1.0 + y / (1.0 - obs[:, [0]]).pow(delta) - y).pow(-1.0 + 1.0 / delta) * (1.0 - y)
 
     @staticmethod
     def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -36,19 +34,14 @@ class Joe(BiCopArchimedean):
         delta_1m = 1.0 - delta
         delta_frac = delta_1m / delta
         # initial y as from initial v
-        y = (1.0 + (-1.0 + (1.0 - p).pow(delta_frac)) * (x * delta_1m).exp()).pow(
-            1.0 / delta_frac
-        )
+        y = (1.0 + (-1.0 + (1.0 - p).pow(delta_frac)) * (x * delta_1m).exp()).pow(1.0 / delta_frac)
         x = (x * delta).exp()
         delta_frac = 1.0 / delta
         for _ in range(23):
             xy1 = x * (y - 1.0)
             x1y1delta = ((x.reciprocal() - 1.0) * y + 1.0).pow(delta_frac)
             y -= (
-                delta
-                * (xy1 - y)
-                * (x1y1delta.reciprocal())
-                * (p * (-xy1 + y) + xy1 * x1y1delta)
+                delta * (xy1 - y) * (x1y1delta.reciprocal()) * (p * (-xy1 + y) + xy1 * x1y1delta)
             ) / ((x - 1.0) * xy1 - delta * x)
             y.clamp_(min=_CDF_MIN, max=_CDF_MAX)
         return 1.0 - y.pow(delta_frac)
@@ -64,9 +57,7 @@ class Joe(BiCopArchimedean):
             # 1- PolyGamma[1, 2] = 2 - pi**2 / 6
             return 0.3550659331517736
         else:
-            return 1.0 + 2.0 / (2.0 - delta) * (
-                0.42278433509846713 - digamma(2.0 / delta + 1.0)
-            )
+            return 1.0 + 2.0 / (2.0 - delta) * (0.42278433509846713 - digamma(2.0 / delta + 1.0))
 
     @staticmethod
     def pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
