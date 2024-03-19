@@ -1,5 +1,14 @@
 # TorchVineCopuLib
 
+[![Python package](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
+![Static Badge](https://img.shields.io/badge/Python-%203.10%7C3.11%7C3.12-blue)
+[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/e8a7a7448b2043d9bbefafc5a3ec14f7)](https://app.codacy.com?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
+[![Deploy Docs](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib?style=flat)
+[![DOI](https://zenodo.org/badge/768037665.svg)](https://zenodo.org/doi/10.5281/zenodo.10836953)
+
+
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
 - Vectorized tensor computation with GPU (`device='cuda'`) support
@@ -45,9 +54,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.3.3rc2-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.3.3-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.3.3rc2.tar.gz
+pip install ./dist/torchvinecopulib-2024.3.3.tar.gz
 ```
 
 ## Examples
