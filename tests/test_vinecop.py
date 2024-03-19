@@ -205,11 +205,11 @@ class TestVineCop(unittest.TestCase):
         mtd_bidep = "kendall_tau"
         lst_first = [3, 5]
         len_first = len(lst_first)
+        V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_dim=num_dim, num_sim=num_obs)
         for cdrvine in ("cvine", "dvine", "rvine"):
             logging.info(
                 msg=f"\nTesting:\t\nComparing:\t{bcp_tvc}, {cdrvine} {mtd_fit} {mtd_sel} {mtd_bidep}"
             )
-            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_dim=num_dim, num_sim=num_obs)
             res_tvc = vcp_from_obs(
                 obs_mvcp=V_mvcp,
                 is_Dissmann=True,
