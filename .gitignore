@@ -1,15 +1,9 @@
 # manual
 # .gitignore
 poetry.lock
-# pyproject.toml
-# README.md
-/docs/*.pdf
-/docs/*.rst
+/docs/**/*
 !/docs/index.rst
-/docs/*.py
-/docs/*.bat
-# /docs/makefile
-/docs/_build/doctrees
+!/docs/*.py
 !docs/_build/html/*
 
 # Byte-compiled / optimized / DLL files
