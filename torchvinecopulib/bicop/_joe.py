@@ -1,7 +1,6 @@
 import torch
-from scipy.special import digamma
 
-from ..util import solve_ITP, _CDF_MAX, _CDF_MIN
+from ..util import _CDF_MAX, _CDF_MIN, solve_ITP
 from ._archimedean import BiCopArchimedean
 
 
@@ -57,7 +56,12 @@ class Joe(BiCopArchimedean):
             # 1- PolyGamma[1, 2] = 2 - pi**2 / 6
             return 0.3550659331517736
         else:
-            return 1.0 + 2.0 / (2.0 - delta) * (0.42278433509846713 - digamma(2.0 / delta + 1.0))
+            return (
+                1.0
+                + 2.0
+                / (2.0 - delta)
+                * (0.42278433509846713 - torch.special.digamma(torch.as_tensor(2.0 / delta + 1.0)))
+            ).item()
 
     @staticmethod
     def pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
