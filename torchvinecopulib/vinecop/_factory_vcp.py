@@ -56,7 +56,7 @@ def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict) -> list:
 
 
 def _mst_from_edge_cvine(
-    lst_key_obs: list, dct_edge_lv: dict, s_first: set, deq_sim: Deque
+    lst_key_obs: list, dct_edge_lv: dict, deq_sim: Deque, s_first: set
 ) -> tuple:
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to cvine
 
@@ -405,16 +405,13 @@ def vcp_from_obs(
     # * for rvine, deq_sim is empty and to be filled by diag of matrix
     if not deq_sim:
         for lv in sorted(dct_tree, reverse=True):
-            v_diag = None
-            for i_lv in range(lv, -1, -1):
-                for v_l, v_r, s_and in dct_tree[i_lv]:
-                    if (v_diag is None) and (v_l not in deq_sim) and (v_r not in deq_sim):
-                        # ! pick the node with smaller index (v_l < v_r), then mat <-> structure is bijection
-                        v_diag = v_l
-                        deq_sim.append(v_diag)
-                        if lv == 0:
-                            deq_sim.append(v_r)
-                        break
+            for v_l, v_r, s_and in dct_tree[lv]:
+                if (v_l not in deq_sim) and (v_r not in deq_sim):
+                    # ! pick the node with smaller index (v_l < v_r), then mat <-> structure is bijection
+                    deq_sim.append(v_l)
+                    if lv == 0:
+                        deq_sim.append(v_r)
+                    break
 
     return DataVineCop(
         dct_bcp=dct_bcp,
