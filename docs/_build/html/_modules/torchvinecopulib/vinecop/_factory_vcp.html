@@ -250,7 +250,7 @@
 
 
 <span class="k">def</span> <span class="nf">_mst_from_edge_cvine</span><span class="p">(</span>
-    <span class="n">lst_key_obs</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">:</span> <span class="n">Deque</span>
+    <span class="n">lst_key_obs</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">:</span> <span class="n">Deque</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to cvine</span>
 
@@ -601,16 +601,13 @@
     <span class="c1"># * for rvine, deq_sim is empty and to be filled by diag of matrix</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">deq_sim</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_tree</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-            <span class="n">v_diag</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">for</span> <span class="n">i_lv</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lv</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
-                <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">i_lv</span><span class="p">]:</span>
-                    <span class="k">if</span> <span class="p">(</span><span class="n">v_diag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">):</span>
-                        <span class="c1"># ! pick the node with smaller index (v_l &lt; v_r), then mat &lt;-&gt; structure is bijection</span>
-                        <span class="n">v_diag</span> <span class="o">=</span> <span class="n">v_l</span>
-                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_diag</span><span class="p">)</span>
-                        <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                            <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
-                        <span class="k">break</span>
+            <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">):</span>
+                    <span class="c1"># ! pick the node with smaller index (v_l &lt; v_r), then mat &lt;-&gt; structure is bijection</span>
+                    <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
+                    <span class="k">break</span>
 
     <span class="k">return</span> <span class="n">DataVineCop</span><span class="p">(</span>
         <span class="n">dct_bcp</span><span class="o">=</span><span class="n">dct_bcp</span><span class="p">,</span>

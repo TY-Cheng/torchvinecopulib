@@ -1,5 +1,6 @@
 # manual
-# .gitignore
+.gitignore
+scratch*.ipynb
 poetry.lock
 /docs/**/*
 !/docs/index.rst

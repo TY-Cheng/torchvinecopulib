@@ -45,7 +45,7 @@ class DataVineCop(ABC):
 
     @property
     def matrix(self) -> np.array:
-        """structure matrix: upper triangular, in row-major order (each row has a bicop as: vertex_left,...,vertex_right;set_and)
+        """structure matrix: upper triangular, in row-major order (each row has a bicop as: vertex_left,...,vertex_right;set_cond)
 
         :return: structure matrix
         :rtype: np.array
@@ -112,18 +112,25 @@ class DataVineCop(ABC):
             if ({v_l, v_r} | s_up) == ({v_down} | s_down):
                 return v_l, v_r, s_up, bcp
 
-    def _ref_count(self, lst_first: list[int] = []) -> tuple[dict, list[int]]:
-        """reference counting for each vertex during simulation workflow, for garbage collection (memory release)
+    def _ref_count(
+        self,
+        lst_first_vs: list[tuple[int, frozenset]] = [],
+        lst_sim: list[int] = [],
+    ) -> tuple[dict, list[int]]:
+        """reference counting for each vertex during simulation (quant-reg/cond-sim) workflow, for garbage collection (memory release)
 
-        :param lst_first: list of vertices that are taken as already simulated at the beginning of a simulation workflow, defaults to []
-        :type lst_first: list[int], optional
-        :return: reference counting for each vertex
+        :param lst_first_vs: list of vertices (explicitly arranged in conditioned - conditioning set) that are taken as known at the beginning of a simulation workflow, defaults to []
+        :type lst_first_vs: list[tuple[int, frozenset]], optional
+        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []
+        :type lst_sim: list[int], optional
+        :return: reference counting for each vertex; list of source vertices in this simulation workflow from shallow to deep
         :rtype: tuple[dict, list[int]]
         """
         # * v for vertex, s for condition (frozen)set, read from right to left
-        lst_source = self.lst_sim
+        dct_first_vs = {v[0]: v for v in lst_first_vs}
+        lst_source = lst_sim if lst_sim else self.lst_sim
         lst_source = [
-            ((v, frozenset()) if v in lst_first else (v, frozenset(lst_source[(idx + 1) :])))
+            (dct_first_vs[v] if v in dct_first_vs else (v, frozenset(lst_source[(idx + 1) :])))
             for idx, v in enumerate(lst_source)
         ][::-1]
 
@@ -316,22 +323,25 @@ class DataVineCop(ABC):
 
     def draw_dag(
         self,
-        lst_first: list[int] = [],
+        lst_first_vs: list = [],
+        lst_sim: list = [],
         font_size_vertex: int = 8,
         f_path: Path = None,
         fig_size: tuple = None,
     ) -> tuple:
         """draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes. The source nodes in simulation workflow are highlighted in yellow.
 
-        :param lst_first: list of vertices that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to []
-        :type lst_first: list[int], optional
+        :param lst_first_vs: list of vertices (explicitly arranged in conditioned - conditioning set) that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to []
+        :type lst_first_vs: list, optional
+        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []
+        :type lst_sim: list, optional
         :param font_size_vertex: font size for vertex labels, defaults to 8
         :type font_size_vertex: int, optional
         :param f_path: file path to save the figure, defaults to None for no saving
         :type f_path: Path, optional
         :param fig_size: figure size, defaults to None
         :type fig_size: tuple, optional
-        :return: fig, ax, (and file path if the figure is saved)
+        :return: _description_
         :rtype: tuple
         """
         import matplotlib.pyplot as plt
@@ -387,13 +397,14 @@ class DataVineCop(ABC):
                 __ = "\n" * min(lv, 1)
                 dct_label[_] = f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
             G.add_edges_from(lst_edge)
+        pos = pos_obs | pos_bcp
         # highlight source nodes, given lst_first
-        lst_source = self._ref_count(lst_first=lst_first)[1]
+        lst_source = self._ref_count(lst_first_vs=lst_first_vs, lst_sim=lst_sim)[1]
         # pseudo obs nodes
         lst_node = [_ for _ in G.nodes if len(_) == 2 and _ not in lst_source]
         nx.draw_networkx_nodes(
             G=G,
-            pos=pos_obs | pos_bcp,
+            pos=pos,
             ax=ax,
             nodelist=lst_node,
             node_color="white",
@@ -404,7 +415,7 @@ class DataVineCop(ABC):
         )
         nx.draw_networkx_nodes(
             G=G,
-            pos=pos_obs | pos_bcp,
+            pos=pos,
             ax=ax,
             nodelist=lst_source,
             node_color="yellow",
@@ -418,7 +429,7 @@ class DataVineCop(ABC):
         lst_node = [_ for _ in G.nodes if len(_) == 3]
         nx.draw_networkx_nodes(
             G=G,
-            pos=pos_obs | pos_bcp,
+            pos=pos,
             ax=ax,
             nodelist=lst_node,
             node_color="white",
@@ -429,7 +440,7 @@ class DataVineCop(ABC):
         )
         nx.draw_networkx_labels(
             G=G,
-            pos=pos_obs | pos_bcp,
+            pos=pos,
             ax=ax,
             labels=dct_label,
             font_size=font_size_vertex,
@@ -437,7 +448,7 @@ class DataVineCop(ABC):
         )
         nx.draw_networkx_edges(
             G=G,
-            pos=pos_obs | pos_bcp,
+            pos=pos,
             ax=ax,
             edge_color="gray",
             width=0.5,
@@ -545,17 +556,20 @@ class DataVineCop(ABC):
     def sim(
         self,
         num_sim: int,
-        dct_first: dict = {},
+        dct_first_vs: dict = {},
+        lst_sim: list = [],
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
-        """simulate from the vine copula, as scheduled task with reference counting for garbage collection. Sequentially (from right to left) for each beginning vertex in the lst_sim, move upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
+        """full simulation/ quantile-regression/ conditional simulation using the vine copula. Sequentially for each beginning vertex in the lst_sim (from right to left), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
 
         :param num_sim: number of simulations
         :type num_sim: int
-        :param dct_first: dict of {idx: torch.Tensor(size=(n,1))} in cond sim, where vertices are taken as already simulated at the beginning of a simulation workflow; intentionally asking for explicit user input, defaults to {}
-        :type dct_first: dict, optional
+        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))} in quantile regression/ conditional simulation, where vertices are taken as known already; defaults to {}
+        :type dct_first_vs: dict, optional
+        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []
+        :type lst_sim: list, optional
         :param seed: random seed for torch.manual_seed(), defaults to 0
         :type seed: int, optional
         :param device: device for torch.rand(), defaults to 'cpu'
@@ -565,9 +579,11 @@ class DataVineCop(ABC):
         :return: simulated observations of the vine copula, of shape (num_sim, num_dim)
         :rtype: torch.Tensor
         """
-        dct_obs = {}
+        dct_obs = dct_first_vs.copy()
         # * source vertices in each path; reference counting for whole DAG
-        dct_ref_count, lst_source = self._ref_count(lst_first=list(dct_first))
+        dct_ref_count, lst_source = self._ref_count(
+            lst_first_vs=list(dct_first_vs), lst_sim=lst_sim
+        )
 
         def _update_ref_count(v: int, s: frozenset) -> None:
             # * countdown and release memory if necessary
@@ -634,22 +650,22 @@ class DataVineCop(ABC):
             return v_down, s_up
 
         torch.manual_seed(seed=seed)
-        num_dim = self.num_dim
         # * init sim of U_mvcp (multivariate independent copula)
-        U_mvcp = torch.rand(size=(num_sim, num_dim - len(dct_first)), device=device, dtype=dtype)
+        dim_sim = self.num_dim - len(dct_first_vs)
+        if dim_sim > 0:
+            # ! skip for quant-reg
+            U_mvcp = torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
         # * update dct_obs and dct_ref_count
         idx = 0
         for v, s in lst_source:
-            if v in dct_first:
-                dct_obs[v, s] = dct_first[v]
-            else:
+            if (v, s) not in dct_obs:
                 dct_obs[v, s] = U_mvcp[:, [idx]]
                 idx += 1
             # ! let the top level obs (target vertices) escape garbage collection
             dct_ref_count[v, frozenset()] += 1
             # update ref count
             dct_ref_count[v, s] -= 1
-        del seed, num_dim, U_mvcp, dct_first, idx
+        del seed, U_mvcp, dct_first_vs, idx
         for v, s in lst_source:
             # walk the path if cond set is not empty
             if len(s):

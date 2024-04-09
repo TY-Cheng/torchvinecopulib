@@ -241,7 +241,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;structure matrix: upper triangular, in row-major order (each row has a bicop as: vertex_left,...,vertex_right;set_and)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;structure matrix: upper triangular, in row-major order (each row has a bicop as: vertex_left,...,vertex_right;set_cond)</span>
 
 <span class="sd">        :return: structure matrix</span>
 <span class="sd">        :rtype: np.array</span>
@@ -308,18 +308,25 @@
             <span class="k">if</span> <span class="p">({</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_up</span><span class="p">)</span> <span class="o">==</span> <span class="p">({</span><span class="n">v_down</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_down</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">,</span> <span class="n">bcp</span>
 
-    <span class="k">def</span> <span class="nf">_ref_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lst_first</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;reference counting for each vertex during simulation workflow, for garbage collection (memory release)</span>
+    <span class="k">def</span> <span class="nf">_ref_count</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">lst_first_vs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[],</span>
+        <span class="n">lst_sim</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;reference counting for each vertex during simulation (quant-reg/cond-sim) workflow, for garbage collection (memory release)</span>
 
-<span class="sd">        :param lst_first: list of vertices that are taken as already simulated at the beginning of a simulation workflow, defaults to []</span>
-<span class="sd">        :type lst_first: list[int], optional</span>
-<span class="sd">        :return: reference counting for each vertex</span>
+<span class="sd">        :param lst_first_vs: list of vertices (explicitly arranged in conditioned - conditioning set) that are taken as known at the beginning of a simulation workflow, defaults to []</span>
+<span class="sd">        :type lst_first_vs: list[tuple[int, frozenset]], optional</span>
+<span class="sd">        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []</span>
+<span class="sd">        :type lst_sim: list[int], optional</span>
+<span class="sd">        :return: reference counting for each vertex; list of source vertices in this simulation workflow from shallow to deep</span>
 <span class="sd">        :rtype: tuple[dict, list[int]]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># * v for vertex, s for condition (frozen)set, read from right to left</span>
-        <span class="n">lst_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lst_sim</span>
+        <span class="n">dct_first_vs</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">lst_first_vs</span><span class="p">}</span>
+        <span class="n">lst_source</span> <span class="o">=</span> <span class="n">lst_sim</span> <span class="k">if</span> <span class="n">lst_sim</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">lst_sim</span>
         <span class="n">lst_source</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">lst_first</span> <span class="k">else</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">lst_source</span><span class="p">[(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="p">:])))</span>
+            <span class="p">(</span><span class="n">dct_first_vs</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_first_vs</span> <span class="k">else</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">lst_source</span><span class="p">[(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="p">:])))</span>
             <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lst_source</span><span class="p">)</span>
         <span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
@@ -517,22 +524,25 @@
 <a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.draw_dag">[docs]</a>
     <span class="k">def</span> <span class="nf">draw_dag</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">lst_first</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
+        <span class="n">lst_first_vs</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[],</span>
+        <span class="n">lst_sim</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[],</span>
         <span class="n">font_size_vertex</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
         <span class="n">f_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fig_size</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes. The source nodes in simulation workflow are highlighted in yellow.</span>
 
-<span class="sd">        :param lst_first: list of vertices that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to []</span>
-<span class="sd">        :type lst_first: list[int], optional</span>
+<span class="sd">        :param lst_first_vs: list of vertices (explicitly arranged in conditioned - conditioning set) that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to []</span>
+<span class="sd">        :type lst_first_vs: list, optional</span>
+<span class="sd">        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []</span>
+<span class="sd">        :type lst_sim: list, optional</span>
 <span class="sd">        :param font_size_vertex: font size for vertex labels, defaults to 8</span>
 <span class="sd">        :type font_size_vertex: int, optional</span>
 <span class="sd">        :param f_path: file path to save the figure, defaults to None for no saving</span>
 <span class="sd">        :type f_path: Path, optional</span>
 <span class="sd">        :param fig_size: figure size, defaults to None</span>
 <span class="sd">        :type fig_size: tuple, optional</span>
-<span class="sd">        :return: fig, ax, (and file path if the figure is saved)</span>
+<span class="sd">        :return: _description_</span>
 <span class="sd">        :rtype: tuple</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
@@ -588,13 +598,14 @@
                 <span class="n">__</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">*</span> <span class="nb">min</span><span class="p">(</span><span class="n">lv</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
                 <span class="n">dct_label</span><span class="p">[</span><span class="n">_</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">;</span><span class="si">{</span><span class="n">__</span><span class="si">}{</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">__</span><span class="si">}</span><span class="s1">&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">__</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">sorted</span><span class="p">(</span><span class="n">_</span><span class="p">[</span><span class="mi">2</span><span class="p">])])</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="n">G</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">lst_edge</span><span class="p">)</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span>
         <span class="c1"># highlight source nodes, given lst_first</span>
-        <span class="n">lst_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_count</span><span class="p">(</span><span class="n">lst_first</span><span class="o">=</span><span class="n">lst_first</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">lst_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_count</span><span class="p">(</span><span class="n">lst_first_vs</span><span class="o">=</span><span class="n">lst_first_vs</span><span class="p">,</span> <span class="n">lst_sim</span><span class="o">=</span><span class="n">lst_sim</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="c1"># pseudo obs nodes</span>
         <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">]</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
             <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
-            <span class="n">pos</span><span class="o">=</span><span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span><span class="p">,</span>
+            <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">nodelist</span><span class="o">=</span><span class="n">lst_node</span><span class="p">,</span>
             <span class="n">node_color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
@@ -605,7 +616,7 @@
         <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
             <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
-            <span class="n">pos</span><span class="o">=</span><span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span><span class="p">,</span>
+            <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">nodelist</span><span class="o">=</span><span class="n">lst_source</span><span class="p">,</span>
             <span class="n">node_color</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
@@ -619,7 +630,7 @@
         <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">]</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
             <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
-            <span class="n">pos</span><span class="o">=</span><span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span><span class="p">,</span>
+            <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">nodelist</span><span class="o">=</span><span class="n">lst_node</span><span class="p">,</span>
             <span class="n">node_color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
@@ -630,7 +641,7 @@
         <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_labels</span><span class="p">(</span>
             <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
-            <span class="n">pos</span><span class="o">=</span><span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span><span class="p">,</span>
+            <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">labels</span><span class="o">=</span><span class="n">dct_label</span><span class="p">,</span>
             <span class="n">font_size</span><span class="o">=</span><span class="n">font_size_vertex</span><span class="p">,</span>
@@ -638,7 +649,7 @@
         <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_edges</span><span class="p">(</span>
             <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
-            <span class="n">pos</span><span class="o">=</span><span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span><span class="p">,</span>
+            <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">edge_color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
             <span class="n">width</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
@@ -758,17 +769,20 @@
     <span class="k">def</span> <span class="nf">sim</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">num_sim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">dct_first</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">dct_first_vs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">lst_sim</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[],</span>
         <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
         <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;simulate from the vine copula, as scheduled task with reference counting for garbage collection. Sequentially (from right to left) for each beginning vertex in the lst_sim, move upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;full simulation/ quantile-regression/ conditional simulation using the vine copula. Sequentially for each beginning vertex in the lst_sim (from right to left), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.</span>
 
 <span class="sd">        :param num_sim: number of simulations</span>
 <span class="sd">        :type num_sim: int</span>
-<span class="sd">        :param dct_first: dict of {idx: torch.Tensor(size=(n,1))} in cond sim, where vertices are taken as already simulated at the beginning of a simulation workflow; intentionally asking for explicit user input, defaults to {}</span>
-<span class="sd">        :type dct_first: dict, optional</span>
+<span class="sd">        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))} in quantile regression/ conditional simulation, where vertices are taken as known already; defaults to {}</span>
+<span class="sd">        :type dct_first_vs: dict, optional</span>
+<span class="sd">        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []</span>
+<span class="sd">        :type lst_sim: list, optional</span>
 <span class="sd">        :param seed: random seed for torch.manual_seed(), defaults to 0</span>
 <span class="sd">        :type seed: int, optional</span>
 <span class="sd">        :param device: device for torch.rand(), defaults to &#39;cpu&#39;</span>
@@ -778,9 +792,11 @@
 <span class="sd">        :return: simulated observations of the vine copula, of shape (num_sim, num_dim)</span>
 <span class="sd">        :rtype: torch.Tensor</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">dct_obs</span> <span class="o">=</span> <span class="n">dct_first_vs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="c1"># * source vertices in each path; reference counting for whole DAG</span>
-        <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">lst_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_count</span><span class="p">(</span><span class="n">lst_first</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">dct_first</span><span class="p">))</span>
+        <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">lst_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_count</span><span class="p">(</span>
+            <span class="n">lst_first_vs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">dct_first_vs</span><span class="p">),</span> <span class="n">lst_sim</span><span class="o">=</span><span class="n">lst_sim</span>
+        <span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">_update_ref_count</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># * countdown and release memory if necessary</span>
@@ -847,22 +863,22 @@
             <span class="k">return</span> <span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span>
 
         <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">num_dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_dim</span>
         <span class="c1"># * init sim of U_mvcp (multivariate independent copula)</span>
-        <span class="n">U_mvcp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">num_dim</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">dct_first</span><span class="p">)),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">dim_sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_dim</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">dct_first_vs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dim_sim</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># ! skip for quant-reg</span>
+            <span class="n">U_mvcp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">dim_sim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
         <span class="c1"># * update dct_obs and dct_ref_count</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_first</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">dct_first</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">:</span>
                 <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">U_mvcp</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
                 <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="c1"># ! let the top level obs (target vertices) escape garbage collection</span>
             <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()]</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="c1"># update ref count</span>
             <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
-        <span class="k">del</span> <span class="n">seed</span><span class="p">,</span> <span class="n">num_dim</span><span class="p">,</span> <span class="n">U_mvcp</span><span class="p">,</span> <span class="n">dct_first</span><span class="p">,</span> <span class="n">idx</span>
+        <span class="k">del</span> <span class="n">seed</span><span class="p">,</span> <span class="n">U_mvcp</span><span class="p">,</span> <span class="n">dct_first_vs</span><span class="p">,</span> <span class="n">idx</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">:</span>
             <span class="c1"># walk the path if cond set is not empty</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
