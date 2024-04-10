@@ -32,6 +32,7 @@ torch = "^2"
 matplotlib = "*"
 pot = "*"
 scikit-learn = "*"
+fastkde = "*"
 
 
 [tool.poetry.group.dev.dependencies]

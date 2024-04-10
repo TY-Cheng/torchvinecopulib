@@ -39,22 +39,39 @@ def kendall_tau(
     )
 
 
-def mutual_info(x: torch.Tensor, y: torch.Tensor) -> float:
+def mutual_info(x: torch.Tensor, y: torch.Tensor, is_sklearn: bool = True) -> float:
     """https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html
     x,y are both of shape (n, 1)
-    """
-    # TODO: remove sklearn dependency
-    from sklearn.feature_selection import mutual_info_regression
 
-    return mutual_info_regression(
-        X=x.cpu(),
-        # ! notice the shape of y
-        y=y.cpu().ravel(),
-        discrete_features=False,
-        n_neighbors=3,
-        copy=True,
-        random_state=None,
-    )[0]
+    Purkayastha, S., & Song, P. X. K. (2024).
+    fastMI: A fast and consistent copula-based nonparametric estimator of mutual information.
+    Journal of Multivariate Analysis, 201, 105270.
+    """
+    if is_sklearn:
+        from sklearn.feature_selection import mutual_info_regression
+
+        return mutual_info_regression(
+            X=x.cpu(),
+            # ! notice the shape of y
+            y=y.cpu().ravel(),
+            discrete_features=False,
+            n_neighbors=3,
+            copy=True,
+            random_state=None,
+        )[0]
+    else:
+        # Purkayastha, S., & Song, P. X. K. (2024).
+        from fastkde.fastKDE import pdf_at_points
+        from numpy import log
+
+        x_, y_ = x.ravel(), y.ravel()
+        joint = pdf_at_points(var1=x_, var2=y_)
+        joint = joint[joint > 0]
+        margin_x = pdf_at_points(var1=x_)
+        margin_x = margin_x[margin_x > 0]
+        margin_y = pdf_at_points(var1=y_)
+        margin_y = margin_y[margin_y > 0]
+        return (log(joint).mean() - log(margin_x).mean() - log(margin_y).mean()).item()
 
 
 def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> float:
