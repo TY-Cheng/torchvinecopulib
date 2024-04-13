@@ -1,4 +1,3 @@
-import math
 import pickle
 from collections import deque
 from itertools import combinations, product
@@ -15,6 +14,8 @@ from ._data_vcp import DataVineCop
 
 
 def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict) -> list:
+    # TODO suboptimal dynamic MST (cut property) with s_first as priority set
+    # build one MST (connecting bcp vertices) for s_first first, then add the rest (by )
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, using modified disjoint set/ union find.
 
     :param lst_key_obs: list of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
@@ -25,8 +26,9 @@ def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict) -> list:
     :rtype: _type_
     """
     # * edge2tree, rvine (Kruskal's MST, disjoint set/ union find)
-    # ! modify 'parent' to let pseudo obs linked to previous bicop edge
-    parent = {k_obs: frozenset((k_obs[0], *k_obs[1])) for k_obs in lst_key_obs}
+    # ! modify 'parent' to let a pseudo obs vertex linked to its previous bicop vertex
+    parent = {v_s_cond: frozenset((v_s_cond[0], *v_s_cond[1])) for v_s_cond in lst_key_obs}
+    # * and bicop vertices are linked to themselves
     parent = {**parent, **{v: v for _, v in parent.items()}}
     rank = {k_obs: 0 for k_obs in parent}
     mst = []
@@ -46,12 +48,12 @@ def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict) -> list:
                 rank[root_a] += 1
 
     # * notice we sort edges by ABS(bidep) in DESCENDING order
-    for (v_l, v_r, s_and), bidep_abs in sorted(
+    for (v_l, v_r, s_cond), bidep_abs in sorted(
         dct_edge_lv.items(), key=lambda x: abs(x[1]), reverse=True
     ):
-        if find((v_l, s_and)) != find((v_r, s_and)):
-            mst.append((v_l, v_r, s_and))
-            union((v_l, s_and), (v_r, s_and))
+        if find((v_l, s_cond)) != find((v_r, s_cond)):
+            mst.append((v_l, v_r, s_cond))
+            union((v_l, s_cond), (v_r, s_cond))
     return mst
 
 
@@ -74,28 +76,28 @@ def _mst_from_edge_cvine(
     # * edge2tree, cvine (MST, restricted to cvine)
     # init dict, the sum of abs bidep for each vertex
     if s_first:
-        # prioritize this set; only consider edges from/to vertices in this set
-        dct_bidep_abs_sum = {v_s: 0 for v_s in lst_key_obs if v_s[0] in s_first}
+        # * prioritize this set; only consider edges from/to vertices in this set
+        dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in lst_key_obs if v_s_cond[0] in s_first}
         dct_edge_lv = {
-            (v_l, v_r, s_and): bidep
-            for ((v_l, v_r, s_and), bidep) in dct_edge_lv.items()
+            (v_l, v_r, s_cond): bidep
+            for ((v_l, v_r, s_cond), bidep) in dct_edge_lv.items()
             if ((v_l in s_first) or (v_r in s_first))
         }
     else:
-        dct_bidep_abs_sum = {v_s: 0 for v_s in lst_key_obs}
-    for (v_l, v_r, s_and), bidep in dct_edge_lv.items():
+        dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in lst_key_obs}
+    for (v_l, v_r, s_cond), bidep in dct_edge_lv.items():
         # cum sum of abs bidep for each vertex
-        if (v_l, s_and) in dct_bidep_abs_sum:
-            dct_bidep_abs_sum[(v_l, s_and)] += abs(bidep)
-        if (v_r, s_and) in dct_bidep_abs_sum:
-            dct_bidep_abs_sum[(v_r, s_and)] += abs(bidep)
+        if (v_l, s_cond) in dct_bidep_abs_sum:
+            dct_bidep_abs_sum[(v_l, s_cond)] += abs(bidep)
+        if (v_r, s_cond) in dct_bidep_abs_sum:
+            dct_bidep_abs_sum[(v_r, s_cond)] += abs(bidep)
     # center vertex (and its cond set) for cvine at this level
-    v_c, s_c = sorted(dct_bidep_abs_sum.items(), key=itemgetter(1))[-1][0]
+    v_c, s_cond_c = sorted(dct_bidep_abs_sum.items(), key=itemgetter(1))[-1][0]
     # record edges from/to the center vertex
     mst = [
-        (v_l, v_r, s_and)
-        for (v_l, v_r, s_and) in dct_edge_lv
-        if ((s_and == s_c) and ((v_c == v_l) or (v_c == v_r)))
+        (v_l, v_r, s_cond)
+        for (v_l, v_r, s_cond) in dct_edge_lv
+        if ((s_cond == s_cond_c) and ((v_c == v_l) or (v_c == v_r)))
     ]
     # update the deq_sim, let those sim first be last in the deq_sim
     deq_sim.appendleft(v_c)
@@ -121,113 +123,139 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
     :rtype: tuple
     """
     # * edge2tree, dvine (MST, restricted to dvine)
-    # for dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
-    # ! at lv0, s_and is known to be empty
-    from networkx import Graph
-    from networkx.algorithms.approximation import threshold_accepting_tsp
-
-    # revert bidep into cost per edge for TSP
-    dct_cost = {
-        (v_l, v_r): math.log1p(1 / max(abs(bidep), 1e-10))
-        for (v_l, v_r, s_and), bidep in dct_edge_lv.items()
-    }
-    G = Graph()
-    G.add_weighted_edges_from([(*k, v) for k, v in dct_cost.items()])
-    s_rest = set(G.nodes) - s_first
-    # rest set: build tsp
-    tsp_rest = threshold_accepting_tsp(G.subgraph(nodes=s_rest), init_cycle="greedy")
-    len_first = len(s_first)
-    if len_first == 0:
-        # just drop the top cost edge in s_rest, when s_first is empty
-        rest_drop_cost = -math.inf
-        mst_lv0 = []
-        for idx, v_rest in enumerate(tsp_rest):
-            if idx < 1:
-                continue
-            edge = (*sorted((v_rest, tsp_rest[idx - 1])),)
-            mst_lv0.append(edge)
-            edge_cost = dct_cost[edge]
-            if edge_cost > rest_drop_cost:
-                rest_drop = edge
-                rest_drop_cost = edge_cost
-        mst_lv0 = [(*sorted(_), frozenset()) for _ in mst_lv0 if _ != edge]
-
+    # * for dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
+    # ! at lv0, s_cond is known to be empty
+    if len(lst_key_obs) < 3:
+        # ! only two vertices
+        v_head, v_tail = lst_key_obs
+        v_head, v_tail = v_head[0], v_tail[0]
+        mst = [(v_head, v_tail, frozenset())]
     else:
-        # ! drop one edge from tsp_first and one from tsp_rest, then add an edge connecting two sets
-        # ! iter all combinations, decide drop fwd/bwd, then calculate cost difference for each (drop,drop,add) modification
-        # * drop: pick the edge to drop (from the hamiltonian circle), either fwd or bwd that has higher cost
-        # rest set: record forward/backward links
-        num_dim = len(s_rest)
-        dct_rest_fwd = {v: tsp_rest[idx + 1] for idx, v in enumerate(tsp_rest) if idx < num_dim}
-        dct_rest_bwd = {v: tsp_rest[idx - 1] for idx, v in enumerate(tsp_rest) if idx > 0}
-        # ! when s_first has only one element, nothing to drop.
-        first_drop, first_drop_cost = (None, None), 0
-        if len_first > 1:
-            # cond set: build tsp, record forward/backward links
-            tsp_first = threshold_accepting_tsp(
-                G=G.subgraph(nodes=s_first),
-                init_cycle="greedy",
+        import math
+        from networkx import Graph
+        from networkx.algorithms.approximation import threshold_accepting_tsp
+
+        # ! more than two vertices
+        dct_cost = {
+            (v_l, v_r): math.log1p(1 / max(abs(bidep), 1e-10))
+            for (v_l, v_r, s_cond), bidep in dct_edge_lv.items()
+        }
+        G = Graph()
+        G.add_weighted_edges_from([(*k, v) for k, v in dct_cost.items()])
+        s_rest = set(G.nodes) - s_first
+        if (not s_first) or (not s_rest):
+            # ! global TSP when one set is empty
+            tsp = threshold_accepting_tsp(G, init_cycle="greedy")
+            # * fetch the edges in the TSP, drop the one with max cost
+            mst = [
+                tuple(sorted((v, tsp[idx - 1]))) for idx, v in enumerate(tsp, start=0) if idx > 0
+            ]
+            s_l_r_cost = sorted(
+                [(v_l, v_r, dct_cost[(v_l, v_r)]) for v_l, v_r in mst],
+                key=lambda x: x[-1],
+                reverse=True,
             )
-            dct_first_fwd = {
-                v: tsp_first[idx + 1] for idx, v in enumerate(tsp_first) if idx < len_first
-            }
-            dct_first_bwd = {v: tsp_first[idx - 1] for idx, v in enumerate(tsp_first) if idx > 0}
-        cost_diff = math.inf
-        for v_first, v_rest in product(s_first, s_rest):
-            if len_first > 2:
-                # ! drop an edge from cond set, only when s_first has more than 2 elements
-                first_drop = (*sorted((v_first, dct_first_fwd[v_first])),)
-                first_drop_cost = dct_cost[first_drop]
-                edge = (*sorted((v_first, dct_first_bwd[v_first])),)
-                edge_cost = dct_cost[edge]
-                if edge_cost > first_drop_cost:
-                    first_drop, first_drop_cost = edge, edge_cost
-            # drop an edge from rest set
-            rest_drop = (*sorted((v_rest, dct_rest_fwd[v_rest])),)
-            rest_drop_cost = dct_cost[rest_drop]
-            edge = (*sorted((v_rest, dct_rest_bwd[v_rest])),)
-            edge_cost = dct_cost[edge]
-            if edge_cost > rest_drop_cost:
-                rest_drop, rest_drop_cost = edge, edge_cost
-            # add an edge to connect two sets
-            edge = (*sorted((v_first, v_rest)),)
-            # record total cost diff (as forming a hamiltonian path from two hamiltonian circles)
-            tmp_cost_diff = dct_cost[edge] - first_drop_cost - rest_drop_cost
-            if tmp_cost_diff < cost_diff:
-                drop_drop_add = (first_drop, rest_drop, edge)
-                cost_diff = tmp_cost_diff
-        # mst: add, drop, drop
-        mst_lv0 = [] if len_first < 2 else [(*sorted((k, v)),) for k, v in dct_first_fwd.items()]
-        mst_lv0 += [(*sorted((k, v)),) for k, v in dct_rest_fwd.items()]
-        mst_lv0 += [drop_drop_add[2]]
-        mst_lv0 = list({(*_, frozenset()) for _ in mst_lv0 if _ not in drop_drop_add[:-1]})
-    # ! for dvine, deq_sim is known and s_first is empty now
-    s_edge = {(v_l, v_r) for v_l, v_r, s_and in mst_lv0}
-    deq_sim = deque()
-    num_dim = len(lst_key_obs)
-    while len(deq_sim) < num_dim:
-        for v_l, v_r in set(s_edge):
-            if len(deq_sim) < 1:
-                deq_sim.append(v_l)
+            mst = s_l_r_cost[1:]
+            mst = [(v_l, v_r, frozenset()) for (v_l, v_r, _) in mst]
+            v_head, v_tail, _ = s_l_r_cost[0]
+        elif len(s_first) in (1, len(lst_key_obs) - 1):
+            # ! one set is a singleton
+            tsp, v_head = (
+                (s_first, list(s_rest)[0]) if len(s_rest) == 1 else (s_rest, list(s_first)[0])
+            )
+            # * TSP on the subgraph without the singleton
+            tsp = threshold_accepting_tsp(G.subgraph(tsp), init_cycle="greedy")
+            # * loop over the TSP and pick the combination with min cost
+            # ! add head-neck, drop neck-tail
+            tsp.append(tsp[1])
+            cost = math.inf
+            for idx, v in enumerate(tsp[1:-1], start=1):
+                v_prev, v_next = tsp[idx - 1], tsp[idx + 1]
+                # to drop
+                if (cost_next := dct_cost[tuple(sorted((v, v_next)))]) > (
+                    cost_prev := dct_cost[tuple(sorted((v, v_prev)))]
+                ):
+                    v_nebr, cost_nebr = v_next, cost_next
+                else:
+                    v_nebr, cost_nebr = v_prev, cost_prev
+                # to add
+                if (i_cost := dct_cost[tuple(sorted((v_head, v)))] - cost_nebr) < cost:
+                    v_tail, v_neck, cost = v_nebr, v, i_cost
+            mst = [(*sorted((v_head, v_neck)), frozenset())]
+            for idx, v in enumerate(tsp[1:-1], start=1):
+                v_l, v_r = sorted((v, tsp[idx + 1]))
+                if {v_l, v_r} != {v_neck, v_tail}:
+                    mst.append((v_l, v_r, frozenset()))
+        else:
+            # ! both sets have more than one vertex
+            tsp_first = threshold_accepting_tsp(G.subgraph(s_first), init_cycle="greedy")
+            tsp_first.append(tsp_first[1])
+            tsp_rest = threshold_accepting_tsp(G.subgraph(s_rest), init_cycle="greedy")
+            tsp_rest.append(tsp_rest[1])
+            cost = math.inf
+            # * loop over two TSPs and pick the combination with min cost
+            for idx_neck, _v_neck in enumerate(tsp_first[1:-1], start=1):
+                # * for the first TSP, drop head-neck
+                v_prev, v_next = tsp_first[idx_neck - 1], tsp_first[idx_neck + 1]
+                if (cost_next := dct_cost[tuple(sorted((_v_neck, v_next)))]) > (
+                    cost_prev := dct_cost[tuple(sorted((_v_neck, v_prev)))]
+                ):
+                    v_nebr_neck, cost_nebr_neck = v_next, cost_next
+                else:
+                    v_nebr_neck, cost_nebr_neck = v_prev, cost_prev
+                for idx_body, _v_body in enumerate(tsp_rest[1:-1], start=1):
+                    # * for the second TSP, drop body-tail
+                    v_prev, v_next = tsp_rest[idx_body - 1], tsp_rest[idx_body + 1]
+                    if (cost_next := dct_cost[tuple(sorted((_v_body, v_next)))]) > (
+                        cost_prev := dct_cost[tuple(sorted((_v_body, v_prev)))]
+                    ):
+                        v_nebr_body, cost_nebr_body = v_next, cost_next
+                    else:
+                        v_nebr_body, cost_nebr_body = v_prev, cost_prev
+                    if (
+                        i_cost := dct_cost[tuple(sorted((_v_neck, _v_body)))]
+                        - cost_nebr_neck
+                        - cost_nebr_body
+                    ) < cost:
+                        # ! cost, drop head-neck, drop body-tail, add neck-body
+                        v_head, v_neck, v_body, v_tail, cost = (
+                            v_nebr_neck,
+                            _v_neck,
+                            _v_body,
+                            v_nebr_body,
+                            i_cost,
+                        )
+            mst = [(*sorted((v_neck, v_body)), frozenset())]
+            if len(tsp_first) == 4:
+                mst.append((v_head, v_neck, frozenset()))
+            else:
+                for idx, v in enumerate(tsp_first[1:-1], start=1):
+                    v_l, v_r = sorted((v, tsp_first[idx + 1]))
+                    if {v_l, v_r} != {v_head, v_neck}:
+                        mst.append((v_l, v_r, frozenset()))
+            if len(tsp_rest) == 4:
+                mst.append((v_body, v_tail, frozenset()))
+            else:
+                for idx, v in enumerate(tsp_rest[1:-1], start=1):
+                    v_l, v_r = sorted((v, tsp_rest[idx + 1]))
+                    if {v_l, v_r} != {v_body, v_tail}:
+                        mst.append((v_l, v_r, frozenset()))
+    # * for dvine, the whole struct (and deq_sim) is known after lv0
+    deq_sim = deque([v_head])
+    s_edge = set(mst)
+    while deq_sim[-1] != v_tail:
+        for v_l, v_r, s_cond in set(s_edge):
+            if v_l == deq_sim[-1]:
                 deq_sim.append(v_r)
-                s_edge.remove((v_l, v_r))
-            elif v_l == deq_sim[0]:
-                deq_sim.appendleft(v_r)
-                s_edge.remove((v_l, v_r))
-            elif v_l == deq_sim[-1]:
-                deq_sim.append(v_r)
-                s_edge.remove((v_l, v_r))
-            elif v_r == deq_sim[0]:
-                deq_sim.appendleft(v_l)
-                s_edge.remove((v_l, v_r))
+                s_edge.remove((v_l, v_r, s_cond))
             elif v_r == deq_sim[-1]:
                 deq_sim.append(v_l)
-                s_edge.remove((v_l, v_r))
-    # let those sim first be last in the lst_sim
-    if s_first and (deq_sim[0] in s_first):
+                s_edge.remove((v_l, v_r, s_cond))
+    # ! let those sim first (s_first) be last in the lst_sim
+    if deq_sim[0] in s_first:
         deq_sim.reverse()
     # * mst(dvine), deq_sim, s_first
-    return mst_lv0, deq_sim, {}
+    return mst, deq_sim, {}
 
 
 def vcp_from_obs(
@@ -280,8 +308,9 @@ def vcp_from_obs(
     """
     f_bidep = ENUM_FUNC_BIDEP[mtd_bidep]._value_
     num_dim = obs_mvcp.shape[1]
-    s_first = set(lst_first) if lst_first else set()
-    # * a list to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)
+    s_first = set(lst_first)
+    s_rest = set(range(num_dim)) - s_first
+    # * an object to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)
     deq_sim = deque()
     r_D1 = range(num_dim - 1)
     dct_obs = {_: {} for _ in r_D1}
@@ -293,49 +322,50 @@ def vcp_from_obs(
 
     def _update_obs(v: int, s_cond: frozenset) -> torch.Tensor:
         """calc hfunc for pseudo obs and update dct_obs, only when necessary (lazy hfunc)"""
+        # * v and s_cond are from the pseudo obs
         lv = len(s_cond)
+        # * lv_1 and s_cond_1 mark the prev lv and bcp cond set
         lv_1 = lv - 1
-        for (v_l, v_r, s_and), bcp in dct_bcp[lv_1].items():
+        for (v_l, v_r, s_cond_1), bcp in dct_bcp[lv_1].items():
             # ! notice hfunc1 or hfunc2
-            if (v == v_l) and (s_cond == frozenset({v_r} | s_and)):
+            if (v == v_l) and (s_cond == frozenset({v_r} | s_cond_1)):
                 dct_obs[lv][(v_l, s_cond)] = bcp.hfunc2(
                     obs=torch.hstack(
                         [
-                            dct_obs[lv_1][v_l, s_and],
-                            dct_obs[lv_1][v_r, s_and],
+                            dct_obs[lv_1][v_l, s_cond_1],
+                            dct_obs[lv_1][v_r, s_cond_1],
                         ]
                     )
                 )
-            elif (v == v_r) and (s_cond == frozenset({v_l} | s_and)):
+            elif (v == v_r) and (s_cond == frozenset({v_l} | s_cond_1)):
                 dct_obs[lv][(v_r, s_cond)] = bcp.hfunc1(
                     obs=torch.hstack(
                         [
-                            dct_obs[lv_1][v_l, s_and],
-                            dct_obs[lv_1][v_r, s_and],
+                            dct_obs[lv_1][v_l, s_cond_1],
+                            dct_obs[lv_1][v_r, s_cond_1],
                         ]
                     )
                 )
 
     for lv in r_D1:
-        # ! lv_0 obs, preprocess to append a cond frozenset (s_and)
+        # ! lv_0 obs, preprocess to append an empty frozenset (s_cond)
         if lv == 0:
             dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
         if is_Dissmann:
             # * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep
             lst_key_obs = dct_obs[lv].keys()
-            for tpl_l, tpl_r in combinations(lst_key_obs, 2):
-                # ! only those obs with same 'cond set' (the frozen set) can have edges (proximity condition)
-                if tpl_l[1] == tpl_r[1]:
+            for (v_l, s_cond_l), (v_r, s_cond_r) in combinations(lst_key_obs, 2):
+                # ! proximity condition: only those obs with same 'cond set' (the frozen set) can have edges
+                if s_cond_l == s_cond_r:
                     # ! sorted !
-                    v_l, v_r = sorted((tpl_l[0], tpl_r[0]))
-                    s_and = tpl_l[1]
-                    if dct_obs[lv][v_l, s_and] is None:
-                        _update_obs(v_l, s_and)
-                    if dct_obs[lv][v_r, s_and] is None:
-                        _update_obs(v_r, s_and)
-                    dct_edge[lv][(v_l, v_r, s_and)] = f_bidep(
-                        x=dct_obs[lv][v_l, s_and],
-                        y=dct_obs[lv][v_r, s_and],
+                    v_l, v_r = sorted((v_l, v_r))
+                    if dct_obs[lv][v_l, s_cond_l] is None:
+                        _update_obs(v_l, s_cond_l)
+                    if dct_obs[lv][v_r, s_cond_l] is None:
+                        _update_obs(v_r, s_cond_l)
+                    dct_edge[lv][(v_l, v_r, s_cond_l)] = f_bidep(
+                        x=dct_obs[lv][v_l, s_cond_l],
+                        y=dct_obs[lv][v_r, s_cond_l],
                     )
             if cdrvine == "dvine":
                 # * edge2tree, dvine
@@ -370,20 +400,20 @@ def vcp_from_obs(
             for idx in range(num_dim - lv - 1):
                 # ! sorted !
                 v_l, v_r = sorted((matrix[idx, idx], matrix[idx, num_dim - lv - 1]))
-                s_and = frozenset(matrix[idx, (num_dim - lv) :])
-                if dct_obs[lv][v_l, s_and] is None:
-                    _update_obs(v=v_l, s_cond=s_and)
-                if dct_obs[lv][v_r, s_and] is None:
-                    _update_obs(v=v_r, s_cond=s_and)
-                dct_tree[lv][(v_l, v_r, s_and)] = f_bidep(
-                    x=dct_obs[lv][v_l, s_and],
-                    y=dct_obs[lv][v_r, s_and],
+                s_cond = frozenset(matrix[idx, (num_dim - lv) :])
+                if dct_obs[lv][v_l, s_cond] is None:
+                    _update_obs(v=v_l, s_cond=s_cond)
+                if dct_obs[lv][v_r, s_cond] is None:
+                    _update_obs(v=v_r, s_cond=s_cond)
+                dct_tree[lv][(v_l, v_r, s_cond)] = f_bidep(
+                    x=dct_obs[lv][(v_l, s_cond)],
+                    y=dct_obs[lv][(v_r, s_cond)],
                 )
         # * tree2bicop, fit bicop & record key of potential pseudo obs for next lv (lazy hfunc later)
-        for (v_l, v_r, s_and), bidep in dct_tree[lv].items():
-            dct_bcp[lv][(v_l, v_r, s_and)] = bcp_from_obs(
+        for (v_l, v_r, s_cond), bidep in dct_tree[lv].items():
+            dct_bcp[lv][(v_l, v_r, s_cond)] = bcp_from_obs(
                 obs_bcp=torch.hstack(
-                    [dct_obs[lv][v_l, s_and], dct_obs[lv][v_r, s_and]],
+                    [dct_obs[lv][v_l, s_cond], dct_obs[lv][v_r, s_cond]],
                 ),
                 tau=bidep if mtd_bidep == "kendall_tau" else None,
                 mtd_fit=mtd_fit,
@@ -393,9 +423,10 @@ def vcp_from_obs(
                 topk=topk,
             )
             i_lv_next = lv + 1
+            # TODO: if s_rest is not empty, can filter out some pseudo-obs
             if i_lv_next < num_dim - 1:
-                dct_obs[i_lv_next][v_r, s_and | {v_l}] = None
-                dct_obs[i_lv_next][v_l, s_and | {v_r}] = None
+                dct_obs[i_lv_next][v_r, s_cond | {v_l}] = None
+                dct_obs[i_lv_next][v_l, s_cond | {v_r}] = None
         # ! garbage collection
         if is_Dissmann:
             del dct_edge[lv]
@@ -405,7 +436,7 @@ def vcp_from_obs(
     # * for rvine, deq_sim is empty and to be filled by diag of matrix
     if not deq_sim:
         for lv in sorted(dct_tree, reverse=True):
-            for v_l, v_r, s_and in dct_tree[lv]:
+            for v_l, v_r, s_cond in dct_tree[lv]:
                 if (v_l not in deq_sim) and (v_r not in deq_sim):
                     # ! pick the node with smaller index (v_l < v_r), then mat <-> structure is bijection
                     deq_sim.append(v_l)

@@ -59,7 +59,7 @@ class DataVineCop(ABC):
             v_diag = None
             lst_nebr = [-1 for _ in range(idx)]
             for i_lv in range(lv, -1, -1):
-                for v_l, v_r, s_and in self.dct_tree[i_lv]:
+                for v_l, v_r, s_cond in self.dct_tree[i_lv]:
                     if (v_l not in lst_diag) and (v_r not in lst_diag):
                         if v_diag is None:
                             # ! pick the node with smaller index (v_l < v_r), then mat <-> structure is bijection
@@ -135,7 +135,7 @@ class DataVineCop(ABC):
         ][::-1]
 
         # ! count in initial sim (pseudo obs that are given at the beginning of each sim path)
-        dct_ref_count = {v_s: 1 for v_s in lst_source}
+        dct_ref_count = {v_s_cond: 1 for v_s_cond in lst_source}
 
         def visit_hfunc(v_down: int, s_down: frozenset):
             v_l, v_r, s_up, _ = self._loc_bcp(v_down=v_down, s_down=s_down)
@@ -251,16 +251,16 @@ class DataVineCop(ABC):
         if lv == 0:
             tpl_uvw = tuple(
                 (u, v, round(w, ndigits=num_digit))
-                for (u, v, s_and), w in self.dct_tree[lv].items()
+                for (u, v, s_cond), w in self.dct_tree[lv].items()
             )
         elif is_bcp:
             tpl_uvw = tuple(
                 (
-                    self._loc_bcp(v_down=u, s_down=s_and),
-                    self._loc_bcp(v_down=v, s_down=s_and),
+                    self._loc_bcp(v_down=u, s_down=s_cond),
+                    self._loc_bcp(v_down=v, s_down=s_cond),
                     round(w, ndigits=num_digit),
                 )
-                for (u, v, s_and), w in self.dct_tree[lv].items()
+                for (u, v, s_cond), w in self.dct_tree[lv].items()
             )
             tpl_uvw = tuple(
                 (
@@ -277,11 +277,11 @@ class DataVineCop(ABC):
         else:
             tpl_uvw = tuple(
                 (
-                    f"{u}|{','.join([f'{_}' for _ in sorted(s_and)])}",
-                    f"{v}|{','.join([f'{_}' for _ in sorted(s_and)])}",
+                    f"{u}|{','.join([f'{_}' for _ in sorted(s_cond)])}",
+                    f"{v}|{','.join([f'{_}' for _ in sorted(s_cond)])}",
                     round(w, ndigits=num_digit),
                 )
-                for (u, v, s_and), w in self.dct_tree[lv].items()
+                for (u, v, s_cond), w in self.dct_tree[lv].items()
             )
         G = nx.Graph()
         G.add_weighted_edges_from(tpl_uvw)
@@ -370,17 +370,17 @@ class DataVineCop(ABC):
                 loc_x = np.linspace(-num_node / 2, num_node / 2, num=num_node)
                 for _ in range(num_node):
                     pos_obs[lst_node_up[_]] = loc_x[_], 1
-            for (v_l, v_r, s_and), _ in self.dct_tree[lv].items():
+            for (v_l, v_r, s_cond), _ in self.dct_tree[lv].items():
                 # node bcp
-                lst_node_bcp.append((v_l, v_r, s_and))
+                lst_node_bcp.append((v_l, v_r, s_cond))
                 # node down
-                lst_node_down.append((v_l, s_and | {v_r}))
-                lst_node_down.append((v_r, s_and | {v_l}))
+                lst_node_down.append((v_l, s_cond | {v_r}))
+                lst_node_down.append((v_r, s_cond | {v_l}))
                 # edge
-                lst_edge.append(((v_l, s_and), (v_l, v_r, s_and)))
-                lst_edge.append(((v_r, s_and), (v_l, v_r, s_and)))
-                lst_edge.append(((v_l, v_r, s_and), (v_l, s_and | {v_r})))
-                lst_edge.append(((v_l, v_r, s_and), (v_r, s_and | {v_l})))
+                lst_edge.append(((v_l, s_cond), (v_l, v_r, s_cond)))
+                lst_edge.append(((v_r, s_cond), (v_l, v_r, s_cond)))
+                lst_edge.append(((v_l, v_r, s_cond), (v_l, s_cond | {v_r})))
+                lst_edge.append(((v_l, v_r, s_cond), (v_r, s_cond | {v_l})))
             # locate lower nodes
             num_node = len(lst_node_down)
             loc_x = np.linspace(-num_node / 2, num_node / 2, num=num_node)
@@ -515,23 +515,23 @@ class DataVineCop(ABC):
         def update_obs(v: int, s_cond: frozenset):
             # * calc hfunc for pseudo obs when necessary
             lv = len(s_cond) - 1
-            for (v_l, v_r, s_and), bcp in self.dct_bcp[lv].items():
+            for (v_l, v_r, s_cond), bcp in self.dct_bcp[lv].items():
                 # ! notice hfunc1 or hfunc2
-                if v == v_l and s_cond == frozenset({v_r} | s_and):
+                if v == v_l and s_cond == frozenset({v_r} | s_cond):
                     dct_obs[lv + 1][(v_l, s_cond)] = bcp.hfunc2(
                         obs=torch.hstack(
                             [
-                                dct_obs[lv][v_l, s_and],
-                                dct_obs[lv][v_r, s_and],
+                                dct_obs[lv][v_l, s_cond],
+                                dct_obs[lv][v_r, s_cond],
                             ]
                         )
                     )
-                elif v == v_r and s_cond == frozenset({v_l} | s_and):
+                elif v == v_r and s_cond == frozenset({v_l} | s_cond):
                     dct_obs[lv + 1][(v_r, s_cond)] = bcp.hfunc1(
                         obs=torch.hstack(
                             [
-                                dct_obs[lv][v_l, s_and],
-                                dct_obs[lv][v_r, s_and],
+                                dct_obs[lv][v_l, s_cond],
+                                dct_obs[lv][v_r, s_cond],
                             ]
                         )
                     )
@@ -539,13 +539,13 @@ class DataVineCop(ABC):
                     pass
 
         for lv in self.dct_tree:
-            for (v_l, v_r, s_and), bcp in self.dct_bcp[lv].items():
+            for (v_l, v_r, s_cond), bcp in self.dct_bcp[lv].items():
                 # * update the pseudo observations
                 for idx in (v_l, v_r):
-                    if dct_obs[lv].get((idx, s_and)) is None:
-                        update_obs(v=idx, s_cond=s_and)
-                obs_l = dct_obs[lv][(v_l, s_and)]
-                obs_r = dct_obs[lv][(v_r, s_and)]
+                    if dct_obs[lv].get((idx, s_cond)) is None:
+                        update_obs(v=idx, s_cond=s_cond)
+                obs_l = dct_obs[lv][(v_l, s_cond)]
+                obs_r = dct_obs[lv][(v_r, s_cond)]
                 res += bcp.l_pdf(obs=torch.hstack([obs_l, obs_r]))
             if lv > 0:
                 # ! garbage collection
@@ -562,7 +562,7 @@ class DataVineCop(ABC):
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
-        """full simulation/ quantile-regression/ conditional simulation using the vine copula. Sequentially for each beginning vertex in the lst_sim (from right to left), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
+        """full simulation/ quantile-regression/ conditional-simulation using the vine copula. Sequentially for each beginning vertex in the lst_sim (from right to left), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
 
         :param num_sim: number of simulations
         :type num_sim: int
