@@ -514,24 +514,25 @@ class DataVineCop(ABC):
 
         def update_obs(v: int, s_cond: frozenset):
             # * calc hfunc for pseudo obs when necessary
+            # the lv of bcp
             lv = len(s_cond) - 1
-            for (v_l, v_r, s_cond), bcp in self.dct_bcp[lv].items():
+            for (v_l, v_r, s_cond_bcp), bcp in self.dct_bcp[lv].items():
                 # ! notice hfunc1 or hfunc2
-                if v == v_l and s_cond == frozenset({v_r} | s_cond):
-                    dct_obs[lv + 1][(v_l, s_cond)] = bcp.hfunc2(
+                if v == v_l and s_cond == frozenset({v_r} | s_cond_bcp):
+                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc2(
                         obs=torch.hstack(
                             [
-                                dct_obs[lv][v_l, s_cond],
-                                dct_obs[lv][v_r, s_cond],
+                                dct_obs[lv][v_l, s_cond_bcp],
+                                dct_obs[lv][v_r, s_cond_bcp],
                             ]
                         )
                     )
-                elif v == v_r and s_cond == frozenset({v_l} | s_cond):
-                    dct_obs[lv + 1][(v_r, s_cond)] = bcp.hfunc1(
+                elif v == v_r and s_cond == frozenset({v_l} | s_cond_bcp):
+                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc1(
                         obs=torch.hstack(
                             [
-                                dct_obs[lv][v_l, s_cond],
-                                dct_obs[lv][v_r, s_cond],
+                                dct_obs[lv][v_l, s_cond_bcp],
+                                dct_obs[lv][v_r, s_cond_bcp],
                             ]
                         )
                     )
@@ -544,9 +545,14 @@ class DataVineCop(ABC):
                 for idx in (v_l, v_r):
                     if dct_obs[lv].get((idx, s_cond)) is None:
                         update_obs(v=idx, s_cond=s_cond)
-                obs_l = dct_obs[lv][(v_l, s_cond)]
-                obs_r = dct_obs[lv][(v_r, s_cond)]
-                res += bcp.l_pdf(obs=torch.hstack([obs_l, obs_r]))
+                res += bcp.l_pdf(
+                    obs=torch.hstack(
+                        [
+                            dct_obs[lv][(v_l, s_cond)],
+                            dct_obs[lv][(v_r, s_cond)],
+                        ]
+                    )
+                )
             if lv > 0:
                 # ! garbage collection
                 del dct_obs[lv - 1]
@@ -555,20 +561,20 @@ class DataVineCop(ABC):
 
     def sim(
         self,
-        num_sim: int,
+        num_sim: int = 1,
         dct_first_vs: dict = {},
         lst_sim: list = [],
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
-        """full simulation/ quantile-regression/ conditional-simulation using the vine copula. Sequentially for each beginning vertex in the lst_sim (from right to left), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
+        """full simulation/ quantile-regression/ conditional-simulation using the vine copula. Sequentially for each beginning vertex in the lst_sim (from right to left, as from shallower lv to deeper lv in the DAG), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
 
-        :param num_sim: number of simulations
+        :param num_sim: number of simulations; ignored when dct_first_vs is not empty
         :type num_sim: int
-        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))} in quantile regression/ conditional simulation, where vertices are taken as known already; defaults to {}
+        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))} in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}
         :type dct_first_vs: dict, optional
-        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []
+        :param lst_sim: list of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to []
         :type lst_sim: list, optional
         :param seed: random seed for torch.manual_seed(), defaults to 0
         :type seed: int, optional
@@ -665,7 +671,9 @@ class DataVineCop(ABC):
             dct_ref_count[v, frozenset()] += 1
             # update ref count
             dct_ref_count[v, s] -= 1
-        del seed, U_mvcp, dct_first_vs, idx
+        del seed, dct_first_vs, idx
+        if dim_sim > 0:
+            del U_mvcp
         for v, s in lst_source:
             # walk the path if cond set is not empty
             if len(s):

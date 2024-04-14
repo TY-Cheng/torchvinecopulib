@@ -36,7 +36,7 @@ class TestVineCop(unittest.TestCase):
                     "chatterjee_xi",
                     "wasserstein_dist_ind",
                 ]:
-                    for mtd_cdrvine in ("cvine", "dvine"):
+                    for mtd_cdrvine in ("cvine", "dvine", "rvine"):
                         lst_first = list(
                             {random.randint(0, num_dim - 1) for _ in range(len_first)}
                         )

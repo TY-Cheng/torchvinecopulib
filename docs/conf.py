@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 project = "torchvinecopulib"
 copyright = "2024-, Tuoyuan Cheng, Kan Chen"
-release = "2024.3.3"
+release = "2024.4.0rc0"
 
 
 # -- General configuration ---------------------------------------------------
