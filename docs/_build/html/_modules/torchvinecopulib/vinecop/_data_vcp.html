@@ -770,6 +770,80 @@
         <span class="k">return</span> <span class="n">res</span></div>
 
 
+<div class="viewcode-block" id="DataVineCop.rosenblatt_transform">
+<a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.rosenblatt_transform">[docs]</a>
+    <span class="k">def</span> <span class="nf">rosenblatt_transform</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">obs_mvcp</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">lst_sim</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rosenblatt transformation, from the multivariate copula (with dependence) to the uniform multivariate copula (independent), using constructed vine copula</span>
+
+<span class="sd">        :param obs_mvcp: observation of the multivariate copula, of shape (num_obs, num_dim)</span>
+<span class="sd">        :type obs_mvcp: torch.Tensor</span>
+<span class="sd">        :param lst_sim: list of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to []</span>
+<span class="sd">        :type lst_sim: list, optional</span>
+<span class="sd">        :return: ideally independent uniform multivariate copula, of shape (num_obs, num_dim)</span>
+<span class="sd">        :rtype: torch.Tensor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_dim</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">lst_sim</span><span class="p">:</span>
+            <span class="n">lst_sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lst_sim</span>
+        <span class="n">lst_sim_v_s_cond</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">lst_sim</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]))</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lst_sim</span><span class="p">)]</span>
+        <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{</span><span class="n">_</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">)}</span>
+        <span class="n">dct_obs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">{(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()):</span> <span class="n">obs_mvcp</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">)}</span>
+
+        <span class="k">def</span> <span class="nf">update_obs</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">):</span>
+            <span class="c1"># * calc hfunc for pseudo obs when necessary</span>
+            <span class="c1"># the lv of bcp</span>
+            <span class="n">lv</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_cond</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">),</span> <span class="n">bcp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># ! notice hfunc1 or hfunc2</span>
+                <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="n">v_l</span> <span class="ow">and</span> <span class="n">s_cond</span> <span class="o">==</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">v_r</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_cond_bcp</span><span class="p">):</span>
+                    <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][(</span><span class="n">v</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hfunc2</span><span class="p">(</span>
+                        <span class="n">obs</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+                            <span class="p">[</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
+                            <span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">v</span> <span class="o">==</span> <span class="n">v_r</span> <span class="ow">and</span> <span class="n">s_cond</span> <span class="o">==</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">v_l</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_cond_bcp</span><span class="p">):</span>
+                    <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][(</span><span class="n">v</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hfunc1</span><span class="p">(</span>
+                        <span class="n">obs</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+                            <span class="p">[</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
+                            <span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+        <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">:</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bcp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># * update the pseudo observations</span>
+                <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">idx</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">})</span> <span class="ow">in</span> <span class="n">lst_sim_v_s_cond</span><span class="p">:</span>
+                    <span class="n">update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">})</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">})</span> <span class="ow">in</span> <span class="n">lst_sim_v_s_cond</span><span class="p">:</span>
+                    <span class="n">update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">})</span>
+            <span class="k">if</span> <span class="n">lv</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># ! garbage collection</span>
+                <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]):</span>
+                    <span class="k">if</span> <span class="n">v_s_cond</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_sim_v_s_cond</span><span class="p">:</span>
+                        <span class="k">del</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">v_s_cond</span><span class="p">]</span>
+        <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
+            <span class="k">for</span> <span class="n">dct_lv</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">k</span> <span class="ow">in</span> <span class="n">lst_sim_v_s_cond</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">dct_obs</span></div>
+
+
 <div class="viewcode-block" id="DataVineCop.sim">
 <a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.sim">[docs]</a>
     <span class="k">def</span> <span class="nf">sim</span><span class="p">(</span>

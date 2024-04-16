@@ -559,6 +559,77 @@ class DataVineCop(ABC):
 
         return res
 
+    def rosenblatt_transform(
+        self,
+        obs_mvcp: torch.Tensor,
+        lst_sim: list = [],
+    ) -> torch.Tensor:
+        """Rosenblatt transformation, from the multivariate copula (with dependence) to the uniform multivariate copula (independent), using constructed vine copula
+
+        :param obs_mvcp: observation of the multivariate copula, of shape (num_obs, num_dim)
+        :type obs_mvcp: torch.Tensor
+        :param lst_sim: list of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to []
+        :type lst_sim: list, optional
+        :return: ideally independent uniform multivariate copula, of shape (num_obs, num_dim)
+        :rtype: torch.Tensor
+        """
+        num_dim = self.num_dim
+        if not lst_sim:
+            lst_sim = self.lst_sim
+        lst_sim_v_s_cond = [(v, frozenset(lst_sim[idx + 1 :])) for idx, v in enumerate(lst_sim)]
+        dct_obs = {_: {} for _ in range(num_dim)}
+        dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
+
+        def update_obs(v: int, s_cond: frozenset):
+            # * calc hfunc for pseudo obs when necessary
+            # the lv of bcp
+            lv = len(s_cond) - 1
+            for (v_l, v_r, s_cond_bcp), bcp in self.dct_bcp[lv].items():
+                # ! notice hfunc1 or hfunc2
+                if v == v_l and s_cond == frozenset({v_r} | s_cond_bcp):
+                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc2(
+                        obs=torch.hstack(
+                            [
+                                dct_obs[lv][v_l, s_cond_bcp],
+                                dct_obs[lv][v_r, s_cond_bcp],
+                            ]
+                        )
+                    )
+                elif v == v_r and s_cond == frozenset({v_l} | s_cond_bcp):
+                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc1(
+                        obs=torch.hstack(
+                            [
+                                dct_obs[lv][v_l, s_cond_bcp],
+                                dct_obs[lv][v_r, s_cond_bcp],
+                            ]
+                        )
+                    )
+                else:
+                    pass
+
+        for lv in self.dct_tree:
+            for (v_l, v_r, s_cond), bcp in self.dct_bcp[lv].items():
+                # * update the pseudo observations
+                for idx in (v_l, v_r):
+                    if dct_obs[lv].get((idx, s_cond)) is None:
+                        update_obs(v=idx, s_cond=s_cond)
+                if (v_l, s_cond | {v_r}) in lst_sim_v_s_cond:
+                    update_obs(v=v_l, s_cond=s_cond | {v_r})
+                if (v_r, s_cond | {v_l}) in lst_sim_v_s_cond:
+                    update_obs(v=v_r, s_cond=s_cond | {v_l})
+            if lv > 0:
+                # ! garbage collection
+                for v_s_cond in dict(dct_obs[lv - 1]):
+                    if v_s_cond not in lst_sim_v_s_cond:
+                        del dct_obs[lv - 1][v_s_cond]
+        dct_obs = {
+            k: v
+            for dct_lv in dct_obs.values()
+            for k, v in dct_lv.items()
+            if (k in lst_sim_v_s_cond)
+        }
+        return dct_obs
+
     def sim(
         self,
         num_sim: int = 1,
