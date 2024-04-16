@@ -143,48 +143,49 @@ def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> float:
 def wasserstein_dist_ind(
     x: torch.Tensor,
     y: torch.Tensor,
-    reg: float = 1e-2,
-    metric: str = "sqeuclidean",
+    reg: float = 0.1,
+    p: int = 2,
     seed: int = 0,
+    num_sim: int = 2,
 ) -> float:
-    """Wasserstein distance from bicop obs to indep bicop simulations, by ot.bregman.empirical_sinkhorn2 (averaged for each observation).
-
-    if num_row <= 1000, use all obs; otherwise, use 1000 random obs
-
-    https://pythonot.github.io/gen_modules/ot.bregman.html#ot.bregman.empirical_sinkhorn2
+    """Wasserstein distance from bicop obs to indep bicop simulations, by ot.sinkhorn2 (averaged for each observation).
 
     :param x: copula obs of shape (n,1)
     :type x: torch.Tensor
     :param y: copula obs of shape (n,1)
     :type y: torch.Tensor
-    :param reg: regularization strength, defaults to 1e-2
+    :param reg: regularization strength, defaults to 0.1
     :type reg: float, optional
-    :param metric: ground metric for the Wasserstein problem, defaults to 'sqeuclidean'
-    :type metric: str, optional
+    :param p: p-norm distance to calculate between each vector pair, defaults to 2
+    :type p: int, optional
     :param seed: random seed for torch.manual_seed() in indep bicop simulations, defaults to 0
     :type seed: int, optional
     :return: Wasserstein distance from bicop obs to indep bicop simulations
     :rtype: float
     """
-    # * remove ot dependency
-    from ot.bregman import empirical_sinkhorn2
+    from ot import sinkhorn2
 
     torch.manual_seed(seed=seed)
-    num_row = x.shape[0]
-    if num_row <= 1000:
-        return empirical_sinkhorn2(
-            X_s=torch.hstack([x, y]),
-            X_t=torch.rand(size=(num_row, 2), device=x.device, dtype=x.dtype),
-            reg=reg,
-            metric=metric,
-        ).item()
-    else:
-        return empirical_sinkhorn2(
-            X_s=torch.hstack([x, y])[torch.randperm(n=num_row, device=x.device)[:1000], :],
-            X_t=torch.rand(size=(1000, 2), device=x.device, dtype=x.dtype),
-            reg=reg,
-            metric=metric,
-        ).item()
+    X_s = torch.hstack([x, y])
+    num_obs = x.shape[0]
+    a, b = (
+        torch.ones(size=(num_obs, 1), device=x.device, dtype=x.dtype) / num_obs,
+        torch.ones(size=(num_obs, 1), device=x.device, dtype=x.dtype) / num_obs,
+    )
+    return (
+        sum(
+            (
+                sinkhorn2(
+                    a=a,
+                    b=b,
+                    M=torch.cdist(X_s, torch.rand_like(X_s), p=p),
+                    reg=reg,
+                ).item()
+                for _ in range(num_sim)
+            )
+        )
+        / num_sim
+    )
 
 
 class ENUM_FUNC_BIDEP(Enum):
