@@ -94,11 +94,6 @@ def _mst_from_edge_cvine(
     if s_first:
         # ! filter for edges that touch first set vertices
         dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in lst_key_obs if v_s_cond[0] in s_first}
-        dct_edge_lv = {
-            (v_l, v_r, s_cond): bidep
-            for ((v_l, v_r, s_cond), bidep) in dct_edge_lv.items()
-            if ((v_l in s_first) or (v_r in s_first))
-        }
     else:
         dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in lst_key_obs}
     for (v_l, v_r, s_cond), bidep in dct_edge_lv.items():
@@ -108,7 +103,12 @@ def _mst_from_edge_cvine(
         if (v_r, s_cond) in dct_bidep_abs_sum:
             dct_bidep_abs_sum[(v_r, s_cond)] += abs(bidep)
     # center vertex (and its cond set) for cvine at this level
-    v_c, s_cond_c = sorted(dct_bidep_abs_sum.items(), key=itemgetter(1))[-1][0]
+    for (v_c, s_cond_c), bidep_abs_sum in sorted(
+        dct_bidep_abs_sum.items(), key=itemgetter(1), reverse=True
+    ):
+        # ! exclude those already in deq_sim
+        if v_c not in deq_sim:
+            break
     # record edges that touch the center vertex
     mst = [
         (v_l, v_r, s_cond)
