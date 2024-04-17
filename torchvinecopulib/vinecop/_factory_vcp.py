@@ -275,9 +275,9 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
 def vcp_from_obs(
     obs_mvcp: torch.Tensor,
     is_Dissmann: bool = True,
-    cdrvine: str = "rvine",
-    lst_first: list[int] = [],
     matrix: np.ndarray | None = None,
+    lst_first: list[int] = [],
+    mtd_vine: str = "rvine",
     mtd_bidep: str = "chatterjee_xi",
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
@@ -298,8 +298,8 @@ def vcp_from_obs(
     :type obs_mvcp: torch.Tensor
     :param is_Dissmann: whether to use Dissmann's method or follow a given matrix, defaults to True; Dissmann, J., Brechmann, E. C., Czado, C., & Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics & Data Analysis, 59, 52-69.
     :type is_Dissmann: bool, optional
-    :param cdrvine: one of 'cvine', 'dvine', 'rvine', defaults to "rvine"
-    :type cdrvine: str, optional
+    :param mtd_vine: one of 'cvine', 'dvine', 'rvine', defaults to "rvine"
+    :type mtd_vine: str, optional
     :param lst_first: list of vertices to be prioritized (kept shallower) in the cond sim workflow. if empty then no priority is set, defaults to []
     :type lst_first: list[int], optional
     :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None
@@ -316,7 +316,7 @@ def vcp_from_obs(
     :type tpl_fam: tuple[str, ...], optional
     :param topk: number of best "itau" fit taken into further "mle", used when mtd_fit is "mle"; defaults to 2
     :type topk: int, optional
-    :raises ValueError: when cdrvine is not one of 'cvine', 'dvine', 'rvine'
+    :raises ValueError: when mtd_vine is not one of 'cvine', 'dvine', 'rvine'
     :return: a constructed DataVineCop object
     :rtype: DataVineCop
     """
@@ -381,7 +381,7 @@ def vcp_from_obs(
                         x=dct_obs[lv][v_l, s_cond_l],
                         y=dct_obs[lv][v_r, s_cond_l],
                     )
-            if cdrvine == "dvine":
+            if mtd_vine == "dvine":
                 # * edge2tree, dvine
                 # ! for dvine, the whole struct (and deq_sim) is known after lv0
                 if lv == 0:
@@ -393,7 +393,7 @@ def vcp_from_obs(
                     dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
                 else:
                     dct_tree[lv] = dct_edge[lv]
-            elif cdrvine == "cvine":
+            elif mtd_vine == "cvine":
                 # * edge2tree, cvine
                 # ! for cvine, at each lv the center vertex is the one with the largest sum of abs bidep
                 mst, deq_sim, s_first = _mst_from_edge_cvine(
@@ -403,7 +403,7 @@ def vcp_from_obs(
                     deq_sim=deq_sim,
                 )
                 dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
-            elif cdrvine == "rvine":
+            elif mtd_vine == "rvine":
                 # * edge2tree, rvine
                 mst = _mst_from_edge_rvine(
                     lst_key_obs=lst_key_obs,
@@ -412,7 +412,7 @@ def vcp_from_obs(
                 )
                 dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
             else:
-                raise ValueError("cdrvine must be one of 'cvine', 'dvine', 'rvine'")
+                raise ValueError("mtd_vine must be one of 'cvine', 'dvine', 'rvine'")
         else:
             # * tree structure is inferred from matrix, if not Dissmann
             for idx in range(num_dim - lv - 1):

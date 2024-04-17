@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 7.2.6 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
         <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.4.0rc0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
@@ -288,11 +288,6 @@
     <span class="k">if</span> <span class="n">s_first</span><span class="p">:</span>
         <span class="c1"># ! filter for edges that touch first set vertices</span>
         <span class="n">dct_bidep_abs_sum</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s_cond</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="n">lst_key_obs</span> <span class="k">if</span> <span class="n">v_s_cond</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">}</span>
-        <span class="n">dct_edge_lv</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">):</span> <span class="n">bidep</span>
-            <span class="k">for</span> <span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-            <span class="k">if</span> <span class="p">((</span><span class="n">v_l</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">))</span>
-        <span class="p">}</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">dct_bidep_abs_sum</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s_cond</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="n">lst_key_obs</span><span class="p">}</span>
     <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -302,7 +297,12 @@
         <span class="k">if</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_bidep_abs_sum</span><span class="p">:</span>
             <span class="n">dct_bidep_abs_sum</span><span class="p">[(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">bidep</span><span class="p">)</span>
     <span class="c1"># center vertex (and its cond set) for cvine at this level</span>
-    <span class="n">v_c</span><span class="p">,</span> <span class="n">s_cond_c</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_bidep_abs_sum</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">v_c</span><span class="p">,</span> <span class="n">s_cond_c</span><span class="p">),</span> <span class="n">bidep_abs_sum</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="n">dct_bidep_abs_sum</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
+        <span class="c1"># ! exclude those already in deq_sim</span>
+        <span class="k">if</span> <span class="n">v_c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">:</span>
+            <span class="k">break</span>
     <span class="c1"># record edges that touch the center vertex</span>
     <span class="n">mst</span> <span class="o">=</span> <span class="p">[</span>
         <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)</span>
@@ -471,9 +471,9 @@
 <span class="k">def</span> <span class="nf">vcp_from_obs</span><span class="p">(</span>
     <span class="n">obs_mvcp</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">is_Dissmann</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">cdrvine</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rvine&quot;</span><span class="p">,</span>
-    <span class="n">lst_first</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
     <span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">lst_first</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
+    <span class="n">mtd_vine</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rvine&quot;</span><span class="p">,</span>
     <span class="n">mtd_bidep</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;chatterjee_xi&quot;</span><span class="p">,</span>
     <span class="n">mtd_fit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;itau&quot;</span><span class="p">,</span>
     <span class="n">mtd_mle</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;COBYLA&quot;</span><span class="p">,</span>
@@ -494,8 +494,8 @@
 <span class="sd">    :type obs_mvcp: torch.Tensor</span>
 <span class="sd">    :param is_Dissmann: whether to use Dissmann&#39;s method or follow a given matrix, defaults to True; Dissmann, J., Brechmann, E. C., Czado, C., &amp; Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics &amp; Data Analysis, 59, 52-69.</span>
 <span class="sd">    :type is_Dissmann: bool, optional</span>
-<span class="sd">    :param cdrvine: one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;, defaults to &quot;rvine&quot;</span>
-<span class="sd">    :type cdrvine: str, optional</span>
+<span class="sd">    :param mtd_vine: one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;, defaults to &quot;rvine&quot;</span>
+<span class="sd">    :type mtd_vine: str, optional</span>
 <span class="sd">    :param lst_first: list of vertices to be prioritized (kept shallower) in the cond sim workflow. if empty then no priority is set, defaults to []</span>
 <span class="sd">    :type lst_first: list[int], optional</span>
 <span class="sd">    :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None</span>
@@ -512,7 +512,7 @@
 <span class="sd">    :type tpl_fam: tuple[str, ...], optional</span>
 <span class="sd">    :param topk: number of best &quot;itau&quot; fit taken into further &quot;mle&quot;, used when mtd_fit is &quot;mle&quot;; defaults to 2</span>
 <span class="sd">    :type topk: int, optional</span>
-<span class="sd">    :raises ValueError: when cdrvine is not one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;</span>
+<span class="sd">    :raises ValueError: when mtd_vine is not one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;</span>
 <span class="sd">    :return: a constructed DataVineCop object</span>
 <span class="sd">    :rtype: DataVineCop</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -577,7 +577,7 @@
                         <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
                         <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
                     <span class="p">)</span>
-            <span class="k">if</span> <span class="n">cdrvine</span> <span class="o">==</span> <span class="s2">&quot;dvine&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;dvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, dvine</span>
                 <span class="c1"># ! for dvine, the whole struct (and deq_sim) is known after lv0</span>
                 <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -589,7 +589,7 @@
                     <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_edge</span><span class="p">:</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">key_edge</span><span class="p">]</span> <span class="k">for</span> <span class="n">key_edge</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">}</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span>
-            <span class="k">elif</span> <span class="n">cdrvine</span> <span class="o">==</span> <span class="s2">&quot;cvine&quot;</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;cvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, cvine</span>
                 <span class="c1"># ! for cvine, at each lv the center vertex is the one with the largest sum of abs bidep</span>
                 <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="n">s_first</span> <span class="o">=</span> <span class="n">_mst_from_edge_cvine</span><span class="p">(</span>
@@ -599,7 +599,7 @@
                     <span class="n">deq_sim</span><span class="o">=</span><span class="n">deq_sim</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_edge</span><span class="p">:</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">key_edge</span><span class="p">]</span> <span class="k">for</span> <span class="n">key_edge</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">}</span>
-            <span class="k">elif</span> <span class="n">cdrvine</span> <span class="o">==</span> <span class="s2">&quot;rvine&quot;</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;rvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, rvine</span>
                 <span class="n">mst</span> <span class="o">=</span> <span class="n">_mst_from_edge_rvine</span><span class="p">(</span>
                     <span class="n">lst_key_obs</span><span class="o">=</span><span class="n">lst_key_obs</span><span class="p">,</span>
@@ -608,7 +608,7 @@
                 <span class="p">)</span>
                 <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_edge</span><span class="p">:</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">key_edge</span><span class="p">]</span> <span class="k">for</span> <span class="n">key_edge</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">}</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cdrvine must be one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;mtd_vine must be one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># * tree structure is inferred from matrix, if not Dissmann</span>
             <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
@@ -747,7 +747,7 @@
     </aside>
   </div>
 </div><script src="../../../_static/documentation_options.js?v=63dfcd05"></script>
-    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
