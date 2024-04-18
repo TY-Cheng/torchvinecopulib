@@ -112,9 +112,10 @@ We welcome contributions, whether it's a bug report, feature suggestion, code co
 - [torch.jit.script can be slower](https://discuss.pytorch.org/t/why-is-torch-jit-script-slower/120131/6)
 
 ### TODO
-
-1. more (non-parametric) `bicop` class in `torch`
-2. potentially deprecating `'mle'` from `mtd_fit`
+1. truncation
+2. non-par bicop
+3. more (non-parametric) `bicop` class in `torch`
+4. potentially deprecating `'mle'` from `mtd_fit`
 
 ## License
 
