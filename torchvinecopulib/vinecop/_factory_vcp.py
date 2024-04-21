@@ -1,6 +1,6 @@
 import pickle
 from collections import deque
-from itertools import combinations, product
+from itertools import combinations
 from operator import itemgetter
 from pathlib import Path
 from typing import Deque
@@ -279,6 +279,7 @@ def vcp_from_obs(
     lst_first: list[int] = [],
     mtd_vine: str = "rvine",
     mtd_bidep: str = "chatterjee_xi",
+    thresh_trunc: float = 0.05,
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
     mtd_sel: str = "aic",
@@ -320,6 +321,7 @@ def vcp_from_obs(
     :return: a constructed DataVineCop object
     :rtype: DataVineCop
     """
+    is_kendall_tau = mtd_bidep == "kendall_tau"
     f_bidep = ENUM_FUNC_BIDEP[mtd_bidep]._value_
     num_dim = obs_mvcp.shape[1]
     s_first = set(lst_first)
@@ -377,10 +379,16 @@ def vcp_from_obs(
                         _update_obs(v_l, s_cond_l)
                     if dct_obs[lv][v_r, s_cond_l] is None:
                         _update_obs(v_r, s_cond_l)
-                    dct_edge[lv][(v_l, v_r, s_cond_l)] = f_bidep(
-                        x=dct_obs[lv][v_l, s_cond_l],
-                        y=dct_obs[lv][v_r, s_cond_l],
-                    )
+                    if is_kendall_tau:
+                        dct_edge[lv][(v_l, v_r, s_cond_l)] = f_bidep(
+                            x=dct_obs[lv][v_l, s_cond_l],
+                            y=dct_obs[lv][v_r, s_cond_l],
+                        )[0]
+                    else:
+                        dct_edge[lv][(v_l, v_r, s_cond_l)] = f_bidep(
+                            x=dct_obs[lv][v_l, s_cond_l],
+                            y=dct_obs[lv][v_r, s_cond_l],
+                        )
             if mtd_vine == "dvine":
                 # * edge2tree, dvine
                 # ! for dvine, the whole struct (and deq_sim) is known after lv0
@@ -423,10 +431,16 @@ def vcp_from_obs(
                     _update_obs(v=v_l, s_cond=s_cond)
                 if dct_obs[lv][v_r, s_cond] is None:
                     _update_obs(v=v_r, s_cond=s_cond)
-                dct_tree[lv][(v_l, v_r, s_cond)] = f_bidep(
-                    x=dct_obs[lv][(v_l, s_cond)],
-                    y=dct_obs[lv][(v_r, s_cond)],
-                )
+                if is_kendall_tau:
+                    dct_tree[lv][(v_l, v_r, s_cond)] = f_bidep(
+                        x=dct_obs[lv][(v_l, s_cond)],
+                        y=dct_obs[lv][(v_r, s_cond)],
+                    )[0]
+                else:
+                    dct_tree[lv][(v_l, v_r, s_cond)] = f_bidep(
+                        x=dct_obs[lv][(v_l, s_cond)],
+                        y=dct_obs[lv][(v_r, s_cond)],
+                    )
         # * tree2bicop, fit bicop & record key of potential pseudo obs for next lv (lazy hfunc later)
         for (v_l, v_r, s_cond), bidep in dct_tree[lv].items():
             dct_bcp[lv][(v_l, v_r, s_cond)] = bcp_from_obs(
@@ -434,6 +448,7 @@ def vcp_from_obs(
                     [dct_obs[lv][v_l, s_cond], dct_obs[lv][v_r, s_cond]],
                 ),
                 tau=bidep if mtd_bidep == "kendall_tau" else None,
+                thresh_trunc=thresh_trunc,
                 mtd_fit=mtd_fit,
                 mtd_mle=mtd_mle,
                 mtd_sel=mtd_sel,

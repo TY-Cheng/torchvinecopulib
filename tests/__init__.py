@@ -12,7 +12,7 @@ from torchvinecopulib.bicop import SET_FAMnROT, bcp_from_obs
 from torchvinecopulib.util import _TAU_MAX, _TAU_MIN
 
 DIR_OUT_TEST = Path(".") / "out"
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logging.info(f"cuda (GPU) avail? {torch.cuda.is_available()}\n")
 LST_MTD_FIT = ["itau", "mle"]
 LST_MTD_SEL = ["aic", "bic"]

@@ -3,7 +3,7 @@ from enum import Enum
 from functools import partial
 
 import torch
-from scipy.stats import t
+from scipy.stats import t, kendalltau
 
 __all__ = [
     "ENUM_FUNC_BIDEP",
@@ -37,6 +37,19 @@ def kendall_tau(
     return (
         ((x.T - x).sign() * (y.T - y).sign()).sum().div(n).clamp(min=tau_min, max=tau_max).item()
     )
+
+
+def kendall_tau(
+    x: torch.Tensor,
+    y: torch.Tensor,
+    tau_min: float = _TAU_MIN,
+    tau_max: float = _TAU_MAX,
+) -> float:
+    """https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94
+    x,y are both of shape (n, 1)
+    """
+    res = kendalltau(x.cpu().ravel(), y.cpu().ravel())
+    return (max(min(res[0], tau_max), tau_min), res[1])
 
 
 def mutual_info(x: torch.Tensor, y: torch.Tensor, is_sklearn: bool = True) -> float:
