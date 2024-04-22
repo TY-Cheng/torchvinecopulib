@@ -13,11 +13,11 @@ from ..util import ENUM_FUNC_BIDEP
 from ._data_vcp import DataVineCop
 
 
-def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict, s_rest: set) -> list:
+def _mst_from_edge_rvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_rest: set) -> list:
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to rvine, using modified disjoint set/ union find.
 
-    :param lst_key_obs: list of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
-    :type lst_key_obs: list
+    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
+    :type tpl_key_obs: tuple
     :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set) and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
     :param s_rest: vertices to be kept deeper in the simulation workflow (static, wont update at each level)
@@ -27,7 +27,7 @@ def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict, s_rest: set) -> l
     """
     # * edge2tree, rvine (Kruskal's MST, disjoint set/ union find)
     # ! modify 'parent' to let a pseudo obs vertex linked to its previous bicop vertex
-    parent = {v_s_cond: frozenset((v_s_cond[0], *v_s_cond[1])) for v_s_cond in lst_key_obs}
+    parent = {v_s_cond: frozenset((v_s_cond[0], *v_s_cond[1])) for v_s_cond in tpl_key_obs}
     # * and bicop vertices are linked to themselves
     parent = {**parent, **{v: v for _, v in parent.items()}}
     rank = {k_obs: 0 for k_obs in parent}
@@ -54,9 +54,7 @@ def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict, s_rest: set) -> l
         if ((v_l not in s_rest) and (v_r not in s_rest))
     }
     # * notice we sort edges by ABS(bidep) in DESCENDING order
-    for (v_l, v_r, s_cond), bidep_abs in sorted(
-        dct_edge.items(), key=lambda x: abs(x[1]), reverse=True
-    ):
+    for (v_l, v_r, s_cond), _ in sorted(dct_edge.items(), key=lambda x: abs(x[1]), reverse=True):
         if find((v_l, s_cond)) != find((v_r, s_cond)):
             mst.append((v_l, v_r, s_cond))
             union((v_l, s_cond), (v_r, s_cond))
@@ -64,7 +62,7 @@ def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict, s_rest: set) -> l
     dct_edge = set(dct_edge_lv) - set(dct_edge)
     if dct_edge:
         dct_edge = {k: v for k, v in dct_edge_lv.items() if k in dct_edge}
-        for (v_l, v_r, s_cond), bidep_abs in sorted(
+        for (v_l, v_r, s_cond), _ in sorted(
             dct_edge.items(), key=lambda x: abs(x[1]), reverse=True
         ):
             if find((v_l, s_cond)) != find((v_r, s_cond)):
@@ -74,12 +72,12 @@ def _mst_from_edge_rvine(lst_key_obs: list, dct_edge_lv: dict, s_rest: set) -> l
 
 
 def _mst_from_edge_cvine(
-    lst_key_obs: list, dct_edge_lv: dict, s_first: set, deq_sim: Deque
+    tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set, deq_sim: Deque
 ) -> tuple:
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to cvine
 
-    :param lst_key_obs: list of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
-    :type lst_key_obs: list
+    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
+    :type tpl_key_obs: tuple
     :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set) and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
     :param deq_sim: deque of vertices, as simulation workflow (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)
@@ -93,9 +91,9 @@ def _mst_from_edge_cvine(
     # init dict, the sum of abs bidep for each vertex
     if s_first:
         # ! filter for edges that touch first set vertices
-        dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in lst_key_obs if v_s_cond[0] in s_first}
+        dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in tpl_key_obs if v_s_cond[0] in s_first}
     else:
-        dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in lst_key_obs}
+        dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in tpl_key_obs}
     for (v_l, v_r, s_cond), bidep in dct_edge_lv.items():
         # cum sum of abs bidep for each vertex
         if (v_l, s_cond) in dct_bidep_abs_sum:
@@ -103,9 +101,7 @@ def _mst_from_edge_cvine(
         if (v_r, s_cond) in dct_bidep_abs_sum:
             dct_bidep_abs_sum[(v_r, s_cond)] += abs(bidep)
     # center vertex (and its cond set) for cvine at this level
-    for (v_c, s_cond_c), bidep_abs_sum in sorted(
-        dct_bidep_abs_sum.items(), key=itemgetter(1), reverse=True
-    ):
+    for (v_c, s_cond_c), _ in sorted(dct_bidep_abs_sum.items(), key=itemgetter(1), reverse=True):
         # ! exclude those already in deq_sim
         if v_c not in deq_sim:
             break
@@ -126,11 +122,11 @@ def _mst_from_edge_cvine(
     return mst, deq_sim, s_first
 
 
-def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> tuple:
+def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) -> tuple:
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine. For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
 
-    :param lst_key_obs: list of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
-    :type lst_key_obs: list
+    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
+    :type tpl_key_obs: tuple
     :param dct_edge_lv: dictionary of edges (vertex_l, vertex_r, cond set) and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
     :param s_first: set of vertices that are kept shallower in the simulation workflow
@@ -140,9 +136,9 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
     """
     # * edge2tree, dvine (MST, restricted to dvine)
     # * at lv0, s_cond is known to be empty
-    if len(lst_key_obs) < 3:
+    if len(tpl_key_obs) < 3:
         # ! only two vertices
-        v_head, v_tail = lst_key_obs
+        v_head, v_tail = tpl_key_obs
         v_head, v_tail = v_head[0], v_tail[0]
         mst = [(v_head, v_tail, frozenset())]
     else:
@@ -173,7 +169,7 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
             mst = s_l_r_cost[1:]
             mst = [(v_l, v_r, frozenset()) for (v_l, v_r, _) in mst]
             v_head, v_tail, _ = s_l_r_cost[0]
-        elif len(s_first) in (1, len(lst_key_obs) - 1):
+        elif len(s_first) in (1, len(tpl_key_obs) - 1):
             # ! one set is a singleton (head-neck-...-tail: add head-neck, drop neck-tail)
             tsp, v_head = (
                 (s_first, list(s_rest)[0]) if len(s_rest) == 1 else (s_rest, list(s_first)[0])
@@ -265,7 +261,7 @@ def _mst_from_edge_dvine(lst_key_obs: list, dct_edge_lv: dict, s_first: set) -> 
             elif v_r == deq_sim[-1]:
                 deq_sim.append(v_l)
                 s_edge.remove((v_l, v_r, s_cond))
-    # ! let those sim first (s_first) be last in the lst_sim
+    # ! let those sim first (s_first) be last in the tpl_sim
     if deq_sim[0] in s_first:
         deq_sim.reverse()
     # * mst(dvine), deq_sim, s_first
@@ -276,10 +272,10 @@ def vcp_from_obs(
     obs_mvcp: torch.Tensor,
     is_Dissmann: bool = True,
     matrix: np.ndarray | None = None,
-    lst_first: list[int] = [],
+    tpl_first: tuple[int] = tuple(),
     mtd_vine: str = "rvine",
     mtd_bidep: str = "chatterjee_xi",
-    thresh_trunc: float = 0.05,
+    thresh_trunc: float = 0.1,
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
     mtd_sel: str = "aic",
@@ -301,12 +297,14 @@ def vcp_from_obs(
     :type is_Dissmann: bool, optional
     :param mtd_vine: one of 'cvine', 'dvine', 'rvine', defaults to "rvine"
     :type mtd_vine: str, optional
-    :param lst_first: list of vertices to be prioritized (kept shallower) in the cond sim workflow. if empty then no priority is set, defaults to []
-    :type lst_first: list[int], optional
+    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow. if empty then no priority is set, defaults to tuple()
+    :type tpl_first: tuple[int], optional
     :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None
     :type matrix: np.ndarray | None, optional
     :param mtd_bidep: method to calculate bivariate dependence, one of "kendall_tau", "mutual_info", "ferreira_tail_dep_coeff", "chatterjee_xi", "wasserstein_dist_ind", defaults to "chatterjee_xi"
     :type mtd_bidep: str, optional
+    :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.1
+    :type thresh_trunc: float, optional
     :param mtd_fit: method to fit bivariate copula, either 'itau' (inverse of tau) or 'mle' (maximum likelihood estimation); defaults to "itau"
     :type mtd_fit: str, optional
     :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to "COBYLA"
@@ -324,7 +322,7 @@ def vcp_from_obs(
     is_kendall_tau = mtd_bidep == "kendall_tau"
     f_bidep = ENUM_FUNC_BIDEP[mtd_bidep]._value_
     num_dim = obs_mvcp.shape[1]
-    s_first = set(lst_first)
+    s_first = set(tpl_first)
     s_rest = set(range(num_dim)) - s_first
     # ! an object to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)
     deq_sim = deque()
@@ -369,8 +367,8 @@ def vcp_from_obs(
             dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
         if is_Dissmann:
             # * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep
-            lst_key_obs = dct_obs[lv].keys()
-            for (v_l, s_cond_l), (v_r, s_cond_r) in combinations(lst_key_obs, 2):
+            tpl_key_obs = dct_obs[lv].keys()
+            for (v_l, s_cond_l), (v_r, s_cond_r) in combinations(tpl_key_obs, 2):
                 # ! proximity condition: only those obs with same 'cond set' (the frozen set) can have edges
                 if s_cond_l == s_cond_r:
                     # ! sorted !
@@ -394,7 +392,7 @@ def vcp_from_obs(
                 # ! for dvine, the whole struct (and deq_sim) is known after lv0
                 if lv == 0:
                     mst, deq_sim, s_first = _mst_from_edge_dvine(
-                        lst_key_obs=lst_key_obs,
+                        tpl_key_obs=tpl_key_obs,
                         dct_edge_lv=dct_edge[lv],
                         s_first=s_first,
                     )
@@ -405,7 +403,7 @@ def vcp_from_obs(
                 # * edge2tree, cvine
                 # ! for cvine, at each lv the center vertex is the one with the largest sum of abs bidep
                 mst, deq_sim, s_first = _mst_from_edge_cvine(
-                    lst_key_obs=lst_key_obs,
+                    tpl_key_obs=tpl_key_obs,
                     dct_edge_lv=dct_edge[lv],
                     s_first=s_first,
                     deq_sim=deq_sim,
@@ -414,7 +412,7 @@ def vcp_from_obs(
             elif mtd_vine == "rvine":
                 # * edge2tree, rvine
                 mst = _mst_from_edge_rvine(
-                    lst_key_obs=lst_key_obs,
+                    tpl_key_obs=tpl_key_obs,
                     dct_edge_lv=dct_edge[lv],
                     s_rest=s_rest,
                 )
@@ -490,7 +488,7 @@ def vcp_from_obs(
     return DataVineCop(
         dct_bcp=dct_bcp,
         dct_tree=dct_tree,
-        lst_sim=list(deq_sim),
+        tpl_sim=tuple(deq_sim),
         mtd_bidep=mtd_bidep,
     )
 
@@ -510,7 +508,7 @@ def vcp_from_json(f_path: Path = Path("./vcp.json")) -> DataVineCop:
     return DataVineCop(
         dct_bcp=obj["dct_bcp"],
         dct_tree=obj["dct_tree"],
-        lst_sim=obj["lst_sim"],
+        tpl_sim=obj["tpl_sim"],
         mtd_bidep=obj["mtd_bidep"],
     )
 
