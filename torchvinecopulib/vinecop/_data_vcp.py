@@ -18,7 +18,7 @@ class DataVineCop(ABC):
     """bivariate copulas, stored as {level: {(vertex_left, vertex_right, frozenset_cond): DataBiCop}}"""
     dct_tree: dict
     """bivariate dependency measures of edges in trees, stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}"""
-    lst_sim: list
+    tpl_sim: tuple
     """the source vertices (pseudo-obs) of simulation paths, read from right to left; some vertices can be given as simulated at the beginning of each simulation workflow"""
     mtd_bidep: str
     """method to calculate bivariate dependence"""
@@ -59,7 +59,7 @@ class DataVineCop(ABC):
             v_diag = None
             lst_nebr = [-1 for _ in range(idx)]
             for i_lv in range(lv, -1, -1):
-                for v_l, v_r, s_cond in self.dct_tree[i_lv]:
+                for v_l, v_r, _ in self.dct_tree[i_lv]:
                     if (v_l not in lst_diag) and (v_r not in lst_diag):
                         if v_diag is None:
                             # ! pick the node with smaller index (v_l < v_r), then mat <-> structure is bijection
@@ -114,21 +114,21 @@ class DataVineCop(ABC):
 
     def _ref_count(
         self,
-        lst_first_vs: list[tuple[int, frozenset]] = [],
-        lst_sim: list[int] = [],
+        tpl_first_vs: tuple[tuple[int, frozenset]] = tuple(),
+        tpl_sim: tuple[int] = tuple(),
     ) -> tuple[dict, list[int]]:
         """reference counting for each vertex during simulation (quant-reg/cond-sim) workflow, for garbage collection (memory release)
 
-        :param lst_first_vs: list of vertices (explicitly arranged in conditioned - conditioning set) that are taken as known at the beginning of a simulation workflow, defaults to []
-        :type lst_first_vs: list[tuple[int, frozenset]], optional
-        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []
-        :type lst_sim: list[int], optional
+        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set) that are taken as known at the beginning of a simulation workflow, defaults to tuple()
+        :type tpl_first_vs: tuple[tuple[int, frozenset]], optional
+        :param tpl_sim: tuple of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :type tpl_sim: tuple[int], optional
         :return: reference counting for each vertex; list of source vertices in this simulation workflow from shallow to deep
         :rtype: tuple[dict, list[int]]
         """
         # * v for vertex, s for condition (frozen)set, read from right to left
-        dct_first_vs = {v[0]: v for v in lst_first_vs}
-        lst_source = lst_sim if lst_sim else self.lst_sim
+        dct_first_vs = {v[0]: v for v in tpl_first_vs}
+        lst_source = tpl_sim if tpl_sim else self.tpl_sim
         lst_source = [
             (dct_first_vs[v] if v in dct_first_vs else (v, frozenset(lst_source[(idx + 1) :])))
             for idx, v in enumerate(lst_source)
@@ -184,7 +184,7 @@ class DataVineCop(ABC):
             {
                 "dct_bcp": self.dct_bcp,
                 "dct_tree": self.dct_tree,
-                "lst_sim": self.lst_sim,
+                "tpl_sim": self.tpl_sim,
                 "mtd_bidep": self.mtd_bidep,
             },
             indent=2,
@@ -204,7 +204,7 @@ class DataVineCop(ABC):
                 "aic": round(self.aic, 4),
                 "bic": round(self.bic, 4),
                 "matrix": self.matrix.__str__(),
-                "lst_sim": self.lst_sim,
+                "tpl_sim": self.tpl_sim,
             },
             compact=True,
             sort_dicts=False,
@@ -250,8 +250,7 @@ class DataVineCop(ABC):
         )
         if lv == 0:
             tpl_uvw = tuple(
-                (u, v, round(w, ndigits=num_digit))
-                for (u, v, s_cond), w in self.dct_tree[lv].items()
+                (u, v, round(w, ndigits=num_digit)) for (u, v, _), w in self.dct_tree[lv].items()
             )
         elif is_bcp:
             tpl_uvw = tuple(
@@ -323,18 +322,18 @@ class DataVineCop(ABC):
 
     def draw_dag(
         self,
-        lst_first_vs: list = [],
-        lst_sim: list = [],
+        tpl_first_vs: tuple = tuple(),
+        tpl_sim: tuple = tuple(),
         font_size_vertex: int = 8,
         f_path: Path = None,
         fig_size: tuple = None,
     ) -> tuple:
         """draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes. The source nodes in simulation workflow are highlighted in yellow.
 
-        :param lst_first_vs: list of vertices (explicitly arranged in conditioned - conditioning set) that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to []
-        :type lst_first_vs: list, optional
-        :param lst_sim: list of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to []
-        :type lst_sim: list, optional
+        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set) that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to tuple()
+        :type tpl_first_vs: tuple, optional
+        :param tpl_sim: tuple of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :type tpl_sim: tuple, optional
         :param font_size_vertex: font size for vertex labels, defaults to 8
         :type font_size_vertex: int, optional
         :param f_path: file path to save the figure, defaults to None for no saving
@@ -349,7 +348,7 @@ class DataVineCop(ABC):
 
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=fig_size)
         ax.set_title(
-            label=f"Vine Copula, Obs and BiCop",
+            label="Vine Copula, Obs and BiCop",
             fontsize=font_size_vertex + 1,
         )
         G = nx.DiGraph()
@@ -398,8 +397,8 @@ class DataVineCop(ABC):
                 dct_label[_] = f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
             G.add_edges_from(lst_edge)
         pos = pos_obs | pos_bcp
-        # highlight source nodes, given lst_first
-        lst_source = self._ref_count(lst_first_vs=lst_first_vs, lst_sim=lst_sim)[1]
+        # highlight source nodes, given tpl_first
+        lst_source = self._ref_count(tpl_first_vs=tpl_first_vs, tpl_sim=tpl_sim)[1]
         # pseudo obs nodes
         lst_node = [_ for _ in G.nodes if len(_) == 2 and _ not in lst_source]
         nx.draw_networkx_nodes(
@@ -562,21 +561,23 @@ class DataVineCop(ABC):
     def rosenblatt_transform(
         self,
         obs_mvcp: torch.Tensor,
-        lst_sim: list = [],
+        tpl_sim: tuple = tuple(),
     ) -> torch.Tensor:
         """Rosenblatt transformation, from the multivariate copula (with dependence) to the uniform multivariate copula (independent), using constructed vine copula
 
         :param obs_mvcp: observation of the multivariate copula, of shape (num_obs, num_dim)
         :type obs_mvcp: torch.Tensor
-        :param lst_sim: list of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to []
-        :type lst_sim: list, optional
+        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :type tpl_sim: tuple, optional
         :return: ideally independent uniform multivariate copula, of shape (num_obs, num_dim)
         :rtype: torch.Tensor
         """
         num_dim = self.num_dim
-        if not lst_sim:
-            lst_sim = self.lst_sim
-        lst_sim_v_s_cond = [(v, frozenset(lst_sim[idx + 1 :])) for idx, v in enumerate(lst_sim)]
+        if not tpl_sim:
+            tpl_sim = self.tpl_sim
+        tpl_sim_v_s_cond = tuple(
+            (v, frozenset(tpl_sim[idx + 1 :])) for idx, v in enumerate(tpl_sim)
+        )
         dct_obs = {_: {} for _ in range(num_dim)}
         dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
 
@@ -608,25 +609,25 @@ class DataVineCop(ABC):
                     pass
 
         for lv in self.dct_tree:
-            for (v_l, v_r, s_cond), bcp in self.dct_bcp[lv].items():
+            for (v_l, v_r, s_cond), _ in self.dct_bcp[lv].items():
                 # * update the pseudo observations
                 for idx in (v_l, v_r):
                     if dct_obs[lv].get((idx, s_cond)) is None:
                         update_obs(v=idx, s_cond=s_cond)
-                if (v_l, s_cond | {v_r}) in lst_sim_v_s_cond:
+                if (v_l, s_cond | {v_r}) in tpl_sim_v_s_cond:
                     update_obs(v=v_l, s_cond=s_cond | {v_r})
-                if (v_r, s_cond | {v_l}) in lst_sim_v_s_cond:
+                if (v_r, s_cond | {v_l}) in tpl_sim_v_s_cond:
                     update_obs(v=v_r, s_cond=s_cond | {v_l})
             if lv > 0:
                 # ! garbage collection
                 for v_s_cond in dict(dct_obs[lv - 1]):
-                    if v_s_cond not in lst_sim_v_s_cond:
+                    if v_s_cond not in tpl_sim_v_s_cond:
                         del dct_obs[lv - 1][v_s_cond]
         dct_obs = {
             k: v
             for dct_lv in dct_obs.values()
             for k, v in dct_lv.items()
-            if (k in lst_sim_v_s_cond)
+            if (k in tpl_sim_v_s_cond)
         }
         return dct_obs
 
@@ -634,19 +635,19 @@ class DataVineCop(ABC):
         self,
         num_sim: int = 1,
         dct_first_vs: dict = {},
-        lst_sim: list = [],
+        tpl_sim: tuple = tuple(),
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
-        """full simulation/ quantile-regression/ conditional-simulation using the vine copula. Sequentially for each beginning vertex in the lst_sim (from right to left, as from shallower lv to deeper lv in the DAG), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
+        """full simulation/ quantile-regression/ conditional-simulation using the vine copula. Sequentially for each beginning vertex in the tpl_sim (from right to left, as from shallower lv to deeper lv in the DAG), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
 
         :param num_sim: number of simulations; ignored when dct_first_vs is not empty
         :type num_sim: int
         :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))} in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}
         :type dct_first_vs: dict, optional
-        :param lst_sim: list of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to []
-        :type lst_sim: list, optional
+        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :type tpl_sim: tuple, optional
         :param seed: random seed for torch.manual_seed(), defaults to 0
         :type seed: int, optional
         :param device: device for torch.rand(), defaults to 'cpu'
@@ -659,7 +660,7 @@ class DataVineCop(ABC):
         dct_obs = dct_first_vs.copy()
         # * source vertices in each path; reference counting for whole DAG
         dct_ref_count, lst_source = self._ref_count(
-            lst_first_vs=list(dct_first_vs), lst_sim=lst_sim
+            tpl_first_vs=tuple(dct_first_vs), tpl_sim=tpl_sim
         )
 
         def _update_ref_count(v: int, s: frozenset) -> None:

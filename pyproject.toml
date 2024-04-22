@@ -48,6 +48,7 @@ pytest = "*"
 pyvinecopulib = "0.6.4"
 scikit-learn = "*"
 sphinx = "*"
+tokenize-rt = "*"
 
 
 [tool.poetry.urls]

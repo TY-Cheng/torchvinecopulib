@@ -23,7 +23,7 @@ class TestVineCop(unittest.TestCase):
         pass
 
     def test_first(self):
-        """test vcp_from_obs given lst_first when fitting cvine/dvine, check if they are prioritized"""
+        """test vcp_from_obs given tpl_first when fitting cvine/dvine, check if they are prioritized"""
         mtd_fit = "itau"
         mtd_sel = "aic"
         num_dim = 10
@@ -37,10 +37,10 @@ class TestVineCop(unittest.TestCase):
                     "wasserstein_dist_ind",
                 ]:
                     for mtd_vine in ("cvine", "dvine", "rvine"):
-                        lst_first = list(
+                        tpl_first = tuple(
                             {random.randint(0, num_dim - 1) for _ in range(len_first)}
                         )
-                        len_first = len(lst_first)
+                        len_first = len(tpl_first)
                         if fam in ("StudentT", "Independent") or mtd_bidep == "mutual_info":
                             continue
                         logging.info(
@@ -50,14 +50,14 @@ class TestVineCop(unittest.TestCase):
                             obs_mvcp=V_mvcp,
                             is_Dissmann=True,
                             mtd_vine=mtd_vine,
-                            lst_first=lst_first,
+                            tpl_first=tpl_first,
                             mtd_bidep=mtd_bidep,
                             thresh_trunc=1,
                             mtd_fit=mtd_fit,
                             mtd_sel=mtd_sel,
                             tpl_fam=(fam, "Independent"),
                         )
-                        assert set(res_tvc.lst_sim[-len_first:]) == set(lst_first)
+                        assert set(res_tvc.tpl_sim[-len_first:]) == set(tpl_first)
 
     def test_sim_lpdf_pvc_cdf(self):
         """test the simulation, diagonal of structure matrix, l_pdf and cdf"""
@@ -75,7 +75,7 @@ class TestVineCop(unittest.TestCase):
                 obs_mvcp=V_mvcp,
                 is_Dissmann=True,
                 mtd_vine="cvine",
-                lst_first=[],
+                tpl_first=[],
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 thresh_trunc=1,
@@ -87,7 +87,7 @@ class TestVineCop(unittest.TestCase):
                 obs_mvcp=res_tvc.sim(num_sim=20000, device=DEVICE),
                 is_Dissmann=True,
                 mtd_vine="cvine",
-                lst_first=[],
+                tpl_first=[],
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 thresh_trunc=1,
@@ -95,13 +95,13 @@ class TestVineCop(unittest.TestCase):
                 mtd_sel=mtd_sel,
                 tpl_fam=(fam, "Independent"),
             )
-            assert sum([(a - b) for a, b in zip(res_tvc.lst_sim, res_sim.lst_sim)]) <= 1
+            assert sum([(a - b) for a, b in zip(res_tvc.tpl_sim, res_sim.tpl_sim)]) <= 1
             # * struct: sim, dvine
             res_tvc = vcp_from_obs(
                 obs_mvcp=V_mvcp,
                 is_Dissmann=True,
                 mtd_vine="dvine",
-                lst_first=[],
+                tpl_first=[],
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 thresh_trunc=1,
@@ -113,7 +113,7 @@ class TestVineCop(unittest.TestCase):
                 obs_mvcp=res_tvc.sim(num_sim=20000, device=DEVICE),
                 is_Dissmann=True,
                 mtd_vine="dvine",
-                lst_first=[],
+                tpl_first=[],
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 thresh_trunc=1,
@@ -121,13 +121,13 @@ class TestVineCop(unittest.TestCase):
                 mtd_sel=mtd_sel,
                 tpl_fam=(fam, "Independent"),
             )
-            assert sum([(a - b) for a, b in zip(res_tvc.lst_sim, res_sim.lst_sim)]) <= 1
+            assert sum([(a - b) for a, b in zip(res_tvc.tpl_sim, res_sim.tpl_sim)]) <= 1
             # * l_pdf, rvine
             res_tvc = vcp_from_obs(
                 obs_mvcp=V_mvcp,
                 is_Dissmann=True,
                 mtd_vine="rvine",
-                lst_first=[],
+                tpl_first=[],
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 thresh_trunc=1,
@@ -211,8 +211,8 @@ class TestVineCop(unittest.TestCase):
         num_dim = 6
         num_obs = 1000
         mtd_bidep = "kendall_tau"
-        lst_first = [3, 5]
-        len_first = len(lst_first)
+        tpl_first = (3, 5)
+        len_first = len(tpl_first)
         V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_dim=num_dim, num_sim=num_obs)
         for mtd_vine in ("cvine", "dvine", "rvine"):
             logging.info(
@@ -222,7 +222,7 @@ class TestVineCop(unittest.TestCase):
                 obs_mvcp=V_mvcp,
                 is_Dissmann=True,
                 mtd_vine=mtd_vine,
-                lst_first=lst_first,
+                tpl_first=tpl_first,
                 matrix=None,
                 mtd_bidep=mtd_bidep,
                 thresh_trunc=1,
@@ -235,7 +235,7 @@ class TestVineCop(unittest.TestCase):
             assert dct_str["num_dim"] == num_dim
             assert dct_str["num_obs"] == num_obs
             if mtd_vine in ("cvine", "dvine"):
-                assert set(dct_str["lst_sim"][-len_first:]) == set(lst_first)
+                assert set(dct_str["tpl_sim"][-len_first:]) == set(tpl_first)
         # draw
         path = "./vcp.png"
         fig, ax, G, tmp_p = res_tvc.draw_lv(f_path=path)

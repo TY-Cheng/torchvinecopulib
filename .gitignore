@@ -3,8 +3,8 @@
 scratch*.ipynb
 poetry.lock
 /docs/**/*
+/docs/*.py
 !/docs/index.rst
-!/docs/*.py
 !docs/_build/html/*
 
 # Byte-compiled / optimized / DLL files
