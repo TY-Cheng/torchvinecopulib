@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.4.0rc0 documentation</title>
+        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.4.0rc1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -122,7 +122,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.0rc0 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.0rc1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -145,7 +145,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.0rc0 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.0rc1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -194,7 +194,7 @@
           <h1>Source code for torchvinecopulib.vinecop._factory_vcp</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">pickle</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
-<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span><span class="p">,</span> <span class="n">product</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span>
 <span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">itemgetter</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Deque</span>
@@ -475,6 +475,7 @@
     <span class="n">lst_first</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
     <span class="n">mtd_vine</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rvine&quot;</span><span class="p">,</span>
     <span class="n">mtd_bidep</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;chatterjee_xi&quot;</span><span class="p">,</span>
+    <span class="n">thresh_trunc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
     <span class="n">mtd_fit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;itau&quot;</span><span class="p">,</span>
     <span class="n">mtd_mle</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;COBYLA&quot;</span><span class="p">,</span>
     <span class="n">mtd_sel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;aic&quot;</span><span class="p">,</span>
@@ -502,6 +503,8 @@
 <span class="sd">    :type matrix: np.ndarray | None, optional</span>
 <span class="sd">    :param mtd_bidep: method to calculate bivariate dependence, one of &quot;kendall_tau&quot;, &quot;mutual_info&quot;, &quot;ferreira_tail_dep_coeff&quot;, &quot;chatterjee_xi&quot;, &quot;wasserstein_dist_ind&quot;, defaults to &quot;chatterjee_xi&quot;</span>
 <span class="sd">    :type mtd_bidep: str, optional</span>
+<span class="sd">    :param thresh_trunc: threshold of Kendall&#39;s tau independence test, below which we reject independent bicop, defaults to 0.1</span>
+<span class="sd">    :type thresh_trunc: float, optional</span>
 <span class="sd">    :param mtd_fit: method to fit bivariate copula, either &#39;itau&#39; (inverse of tau) or &#39;mle&#39; (maximum likelihood estimation); defaults to &quot;itau&quot;</span>
 <span class="sd">    :type mtd_fit: str, optional</span>
 <span class="sd">    :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to &quot;COBYLA&quot;</span>
@@ -516,6 +519,7 @@
 <span class="sd">    :return: a constructed DataVineCop object</span>
 <span class="sd">    :rtype: DataVineCop</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_kendall_tau</span> <span class="o">=</span> <span class="n">mtd_bidep</span> <span class="o">==</span> <span class="s2">&quot;kendall_tau&quot;</span>
     <span class="n">f_bidep</span> <span class="o">=</span> <span class="n">ENUM_FUNC_BIDEP</span><span class="p">[</span><span class="n">mtd_bidep</span><span class="p">]</span><span class="o">.</span><span class="n">_value_</span>
     <span class="n">num_dim</span> <span class="o">=</span> <span class="n">obs_mvcp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">s_first</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">lst_first</span><span class="p">)</span>
@@ -573,10 +577,16 @@
                         <span class="n">_update_obs</span><span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="n">_update_obs</span><span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)</span>
-                    <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
-                        <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
-                        <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
-                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">is_kendall_tau</span><span class="p">:</span>
+                        <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                            <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                            <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                        <span class="p">)</span>
             <span class="k">if</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;dvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, dvine</span>
                 <span class="c1"># ! for dvine, the whole struct (and deq_sim) is known after lv0</span>
@@ -619,10 +629,16 @@
                     <span class="n">_update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">_update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
-                <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
-                    <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
-                    <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
-                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">is_kendall_tau</span><span class="p">:</span>
+                    <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                    <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                    <span class="p">)</span>
         <span class="c1"># * tree2bicop, fit bicop &amp; record key of potential pseudo obs for next lv (lazy hfunc later)</span>
         <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bcp_from_obs</span><span class="p">(</span>
@@ -630,6 +646,7 @@
                     <span class="p">[</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">],</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">]],</span>
                 <span class="p">),</span>
                 <span class="n">tau</span><span class="o">=</span><span class="n">bidep</span> <span class="k">if</span> <span class="n">mtd_bidep</span> <span class="o">==</span> <span class="s2">&quot;kendall_tau&quot;</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">thresh_trunc</span><span class="o">=</span><span class="n">thresh_trunc</span><span class="p">,</span>
                 <span class="n">mtd_fit</span><span class="o">=</span><span class="n">mtd_fit</span><span class="p">,</span>
                 <span class="n">mtd_mle</span><span class="o">=</span><span class="n">mtd_mle</span><span class="p">,</span>
                 <span class="n">mtd_sel</span><span class="o">=</span><span class="n">mtd_sel</span><span class="p">,</span>
@@ -746,7 +763,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=63dfcd05"></script>
+</div><script src="../../../_static/documentation_options.js?v=c7a7491c"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=32e29ea5"></script>

@@ -279,7 +279,7 @@ def vcp_from_obs(
     lst_first: list[int] = [],
     mtd_vine: str = "rvine",
     mtd_bidep: str = "chatterjee_xi",
-    thresh_trunc: float = 0.05,
+    thresh_trunc: float = 0.1,
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
     mtd_sel: str = "aic",
@@ -307,6 +307,8 @@ def vcp_from_obs(
     :type matrix: np.ndarray | None, optional
     :param mtd_bidep: method to calculate bivariate dependence, one of "kendall_tau", "mutual_info", "ferreira_tail_dep_coeff", "chatterjee_xi", "wasserstein_dist_ind", defaults to "chatterjee_xi"
     :type mtd_bidep: str, optional
+    :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.1
+    :type thresh_trunc: float, optional
     :param mtd_fit: method to fit bivariate copula, either 'itau' (inverse of tau) or 'mle' (maximum likelihood estimation); defaults to "itau"
     :type mtd_fit: str, optional
     :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to "COBYLA"

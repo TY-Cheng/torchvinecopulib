@@ -23,20 +23,20 @@ _RHO_MIN, _RHO_MAX = -0.99, 0.99
 _TAU_MIN, _TAU_MAX = -0.999, 0.999
 
 
-def kendall_tau(
-    x: torch.Tensor,
-    y: torch.Tensor,
-    tau_min: float = _TAU_MIN,
-    tau_max: float = _TAU_MAX,
-) -> float:
-    """https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94
-    x,y are both of shape (n, 1)
-    """
-    n = x.shape[0]
-    n *= n - 1
-    return (
-        ((x.T - x).sign() * (y.T - y).sign()).sum().div(n).clamp(min=tau_min, max=tau_max).item()
-    )
+# def kendall_tau(
+#     x: torch.Tensor,
+#     y: torch.Tensor,
+#     tau_min: float = _TAU_MIN,
+#     tau_max: float = _TAU_MAX,
+# ) -> float:
+#     """https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94
+#     x,y are both of shape (n, 1)
+#     """
+#     n = x.shape[0]
+#     n *= n - 1
+#     return (
+#         ((x.T - x).sign() * (y.T - y).sign()).sum().div(n).clamp(min=tau_min, max=tau_max).item()
+#     )
 
 
 def kendall_tau(
@@ -350,137 +350,137 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
     )
 
 
-# * Student's t distribution CDF (p), PPF (q), density (d)
-def inc_beta_reg(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
-    # * regularized incomplete beta integral, with a = 0.5, b = nu / 2, vec in [0,1]
-    # https://stats.stackexchange.com/questions/615961/students-t-cdf-ppf-or-hypergeometric-2f1-or-betainc-using-pytorch
-    # https://stats.stackexchange.com/questions/52341/formula-to-generate-critical-t-values-for-t-test-instead-of-using-a-look-up-arr
-    res = torch.empty_like(vec)
-    if (idx := vec > ((a + 1.0) / (2.0 + a + b))).any():
-        res[idx] = 1.0 - inc_beta_reg(vec=1.0 - vec[idx], a=b, b=a)
-    idx = ~idx
-    x = vec[idx]
-    qab = a + b
-    qap = a + 1.0
-    qam = a - 1.0
-    c = torch.ones_like(x)
-    d = 1.0 / (1.0 - qab * x / qap)
-    f = d.clone()
-    front = (
-        -math.lgamma(a)
-        - math.lgamma(b)
-        + math.lgamma(a + b)
-        - math.log(a)
-        + x.log() * a
-        + x.neg().log1p() * b
-    ).exp()
-    for i in range(1, 200):
-        i2 = i * 2.0
-        ai2 = a + i2
-        nmrt = (i * (b - i) / ((qam + i2) * ai2)) * x
-        d = (d * nmrt + 1.0).reciprocal()
-        c = nmrt / c + 1.0
-        f *= c * d
-        nmrt = (-(a + i) * (qab + i) / ((qap + i2) * ai2)) * x
-        d = (d * nmrt + 1.0).reciprocal()
-        c = nmrt / c + 1.0
-        cd = c * d
-        f *= cd
-        if ((1.0 - cd).abs() < 1e-6).all():
-            break
-    res[idx] = front * f
-    return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
+# # * Student's t distribution CDF (p), PPF (q), density (d)
+# def inc_beta_reg(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
+#     # * regularized incomplete beta integral, with a = 0.5, b = nu / 2, vec in [0,1]
+#     # https://stats.stackexchange.com/questions/615961/students-t-cdf-ppf-or-hypergeometric-2f1-or-betainc-using-pytorch
+#     # https://stats.stackexchange.com/questions/52341/formula-to-generate-critical-t-values-for-t-test-instead-of-using-a-look-up-arr
+#     res = torch.empty_like(vec)
+#     if (idx := vec > ((a + 1.0) / (2.0 + a + b))).any():
+#         res[idx] = 1.0 - inc_beta_reg(vec=1.0 - vec[idx], a=b, b=a)
+#     idx = ~idx
+#     x = vec[idx]
+#     qab = a + b
+#     qap = a + 1.0
+#     qam = a - 1.0
+#     c = torch.ones_like(x)
+#     d = 1.0 / (1.0 - qab * x / qap)
+#     f = d.clone()
+#     front = (
+#         -math.lgamma(a)
+#         - math.lgamma(b)
+#         + math.lgamma(a + b)
+#         - math.log(a)
+#         + x.log() * a
+#         + x.neg().log1p() * b
+#     ).exp()
+#     for i in range(1, 200):
+#         i2 = i * 2.0
+#         ai2 = a + i2
+#         nmrt = (i * (b - i) / ((qam + i2) * ai2)) * x
+#         d = (d * nmrt + 1.0).reciprocal()
+#         c = nmrt / c + 1.0
+#         f *= c * d
+#         nmrt = (-(a + i) * (qab + i) / ((qap + i2) * ai2)) * x
+#         d = (d * nmrt + 1.0).reciprocal()
+#         c = nmrt / c + 1.0
+#         cd = c * d
+#         f *= cd
+#         if ((1.0 - cd).abs() < 1e-6).all():
+#             break
+#     res[idx] = front * f
+#     return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
 
-def inc_beta_reg_inv(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
-    a1, b1 = a - 1.0, b - 1.0
-    if a > 1.0 and b > 1.0:
-        tmp = vec.clone()
-        idx = vec >= 0.5
-        tmp[idx] = 1.0 - tmp[idx]
-        t = (-2.0 * tmp.log()).sqrt()
-        x = (2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t
-        idx = ~idx
-        x[idx] = -x[idx]
-        al = (x.square() - 3.0) / 6.0
-        h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0))
-        w = (x * math.sqrt(al + h) / h) - (1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)) * (
-            al + 5.0 / 6.0 - 2.0 / (3.0 * h)
-        )
-        x = a / (a + b * (2.0 * w).exp())
-    else:
-        x = vec.clone()
-        t = math.exp(a * math.log(a / (a + b))) / a
-        w = t + math.exp(b * math.log(b / (a + b))) / b
-        idx = vec < t / w
-        x[idx] = (a * w * x[idx]).pow(1.0 / a)
-        idx = ~idx
-        x[idx] = 1.0 - (b * w * (1.0 - x[idx])).pow(1.0 / b)
-    afac = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
-    for _ in range(10):
-        t = (a1 * x.log() + b1 * x.neg().log1p() + afac).exp()
-        u = (inc_beta_reg(vec=x, a=a, b=b) - vec) / t
-        t = u / (1.0 - 0.5 * (u * (a1 / x - b1 / (1.0 - x))).clamp_max(max=1.0))
-        idx = (x > 0.0) & (x < 1.0)
-        x[idx] -= t[idx]
-        idx = x < 0.0
-        x[idx] = 0.5 * (x[idx] + t[idx])
-        idx = x > 1.0
-        x[idx] = 0.5 * (x[idx] + t[idx] + 1.0)
-        x = x.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
-    return x
+# def inc_beta_reg_inv(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
+#     a1, b1 = a - 1.0, b - 1.0
+#     if a > 1.0 and b > 1.0:
+#         tmp = vec.clone()
+#         idx = vec >= 0.5
+#         tmp[idx] = 1.0 - tmp[idx]
+#         t = (-2.0 * tmp.log()).sqrt()
+#         x = (2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t
+#         idx = ~idx
+#         x[idx] = -x[idx]
+#         al = (x.square() - 3.0) / 6.0
+#         h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0))
+#         w = (x * math.sqrt(al + h) / h) - (1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)) * (
+#             al + 5.0 / 6.0 - 2.0 / (3.0 * h)
+#         )
+#         x = a / (a + b * (2.0 * w).exp())
+#     else:
+#         x = vec.clone()
+#         t = math.exp(a * math.log(a / (a + b))) / a
+#         w = t + math.exp(b * math.log(b / (a + b))) / b
+#         idx = vec < t / w
+#         x[idx] = (a * w * x[idx]).pow(1.0 / a)
+#         idx = ~idx
+#         x[idx] = 1.0 - (b * w * (1.0 - x[idx])).pow(1.0 / b)
+#     afac = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
+#     for _ in range(10):
+#         t = (a1 * x.log() + b1 * x.neg().log1p() + afac).exp()
+#         u = (inc_beta_reg(vec=x, a=a, b=b) - vec) / t
+#         t = u / (1.0 - 0.5 * (u * (a1 / x - b1 / (1.0 - x))).clamp_max(max=1.0))
+#         idx = (x > 0.0) & (x < 1.0)
+#         x[idx] -= t[idx]
+#         idx = x < 0.0
+#         x[idx] = 0.5 * (x[idx] + t[idx])
+#         idx = x > 1.0
+#         x[idx] = 0.5 * (x[idx] + t[idx] + 1.0)
+#         x = x.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
+#     return x
 
 
-def pt(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    if nu == 1:
-        res = vec.atan() / 3.141592653589793 + 0.5
-    elif nu == 2:
-        res = (vec / (vec.square() + 2.0).sqrt() + 1.0) / 2.0
-    elif nu == 3:
-        res = (
-            (vec / 1.7320508075688772).atan() / 3.141592653589793
-            + 0.5
-            + 0.5513288954217921 * vec / (vec.square() + 3.0)
-        )
-    elif nu == 4:
-        _ = vec.square()
-        res = (vec * (_ + 6.0) / (_ + 4.0).pow(1.5) + 1.0) / 2.0
-    elif nu == 5:
-        res = (
-            (vec / 2.23606797749979).atan() / 3.141592653589793
-            + (
-                (vec.square() * 3.0 + 25.0)
-                * 0.23725418113905902
-                * vec
-                / (vec.square() + 5.0).square()
-            )
-            + 0.5
-        )
+# def pt(vec: torch.Tensor, nu: float) -> torch.Tensor:
+#     if nu == 1:
+#         res = vec.atan() / 3.141592653589793 + 0.5
+#     elif nu == 2:
+#         res = (vec / (vec.square() + 2.0).sqrt() + 1.0) / 2.0
+#     elif nu == 3:
+#         res = (
+#             (vec / 1.7320508075688772).atan() / 3.141592653589793
+#             + 0.5
+#             + 0.5513288954217921 * vec / (vec.square() + 3.0)
+#         )
+#     elif nu == 4:
+#         _ = vec.square()
+#         res = (vec * (_ + 6.0) / (_ + 4.0).pow(1.5) + 1.0) / 2.0
+#     elif nu == 5:
+#         res = (
+#             (vec / 2.23606797749979).atan() / 3.141592653589793
+#             + (
+#                 (vec.square() * 3.0 + 25.0)
+#                 * 0.23725418113905902
+#                 * vec
+#                 / (vec.square() + 5.0).square()
+#             )
+#             + 0.5
+#         )
 
-    elif nu == 6:
-        res = vec.square()
-        res = ((res.square() * 2.0 + res * 30.0 + 135.0) * vec / (res + 6.0).pow(2.5)) / 4.0 + 0.5
+#     elif nu == 6:
+#         res = vec.square()
+#         res = ((res.square() * 2.0 + res * 30.0 + 135.0) * vec / (res + 6.0).pow(2.5)) / 4.0 + 0.5
 
-    else:
-        nu = max(min(_NU_MAX, nu), _NU_MIN)
-        res = inc_beta_reg(vec=nu / (vec.square() + nu), a=nu / 2.0, b=0.5)
-        idx = vec > 0.0
-        res[idx] = 2.0 - res[idx]
-        res *= 0.5
-    return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
+#     else:
+#         nu = max(min(_NU_MAX, nu), _NU_MIN)
+#         res = inc_beta_reg(vec=nu / (vec.square() + nu), a=nu / 2.0, b=0.5)
+#         idx = vec > 0.0
+#         res[idx] = 2.0 - res[idx]
+#         res *= 0.5
+#     return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
 
-def qt(vec: torch.Tensor, nu: float) -> torch.Tensor:
-    vec2 = vec * 2.0
-    nu2 = nu / 2.0
-    res = torch.empty_like(input=vec, device=vec.device)
-    idx = vec < 0.5
-    res[idx] = (inc_beta_reg_inv(vec=vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt().neg()
-    idx = ~idx
-    res[idx] = (inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt()
-    res[vec == 0.5] = 0.0
-    res *= math.sqrt(nu)
-    return res.nan_to_num()
+# def qt(vec: torch.Tensor, nu: float) -> torch.Tensor:
+#     vec2 = vec * 2.0
+#     nu2 = nu / 2.0
+#     res = torch.empty_like(input=vec, device=vec.device)
+#     idx = vec < 0.5
+#     res[idx] = (inc_beta_reg_inv(vec=vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt().neg()
+#     idx = ~idx
+#     res[idx] = (inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt()
+#     res[vec == 0.5] = 0.0
+#     res *= math.sqrt(nu)
+#     return res.nan_to_num()
 
 
 def pt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:

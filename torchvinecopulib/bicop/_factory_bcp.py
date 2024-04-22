@@ -9,7 +9,7 @@ from ._data_bcp import ENUM_FAM_BICOP, DataBiCop, SET_FAMnROT
 def bcp_from_obs(
     obs_bcp: torch.Tensor,
     tau: float | None = None,
-    thresh_trunc: float = 0.05,
+    thresh_trunc: float = 0.1,
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
     mtd_sel: str = "aic",
@@ -29,7 +29,7 @@ def bcp_from_obs(
     :type obs_bcp: torch.Tensor
     :param tau: Kendall's tau of the observations, defaults to None for the function to estimate
     :type tau: float, optional
-    :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.05
+    :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.1
     :type thresh_trunc: float, optional
     :param mtd_fit: parameter estimation method, either 'itau' (inverse of tau) or 'mle' (maximum likelihood estimation); defaults to "itau"
     :type mtd_fit: str, optional
