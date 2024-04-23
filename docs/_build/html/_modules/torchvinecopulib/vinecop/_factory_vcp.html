@@ -4,8 +4,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 7.2.6 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.3.3 documentation</title>
+    <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
+        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.4.0rc1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -122,7 +122,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.3.3 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.0rc1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -145,7 +145,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.3.3 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.0rc1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -192,10 +192,9 @@
         </div>
         <article role="main">
           <h1>Source code for torchvinecopulib.vinecop._factory_vcp</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">math</span>
-<span class="kn">import</span> <span class="nn">pickle</span>
+<span></span><span class="kn">import</span> <span class="nn">pickle</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
-<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span><span class="p">,</span> <span class="n">product</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span>
 <span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">itemgetter</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Deque</span>
@@ -208,19 +207,22 @@
 <span class="kn">from</span> <span class="nn">._data_vcp</span> <span class="kn">import</span> <span class="n">DataVineCop</span>
 
 
-<span class="k">def</span> <span class="nf">_mst_from_edge_rvine</span><span class="p">(</span><span class="n">lst_key_obs</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, using modified disjoint set/ union find.</span>
+<span class="k">def</span> <span class="nf">_mst_from_edge_rvine</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_rest</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to rvine, using modified disjoint set/ union find.</span>
 
-<span class="sd">    :param lst_key_obs: list of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
-<span class="sd">    :type lst_key_obs: list</span>
-<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_l, vertex_r, cond set) and corresponding bivariate dependence metric value</span>
+<span class="sd">    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
+<span class="sd">    :type tpl_key_obs: tuple</span>
+<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set) and corresponding bivariate dependence metric value</span>
 <span class="sd">    :type dct_edge_lv: dict</span>
+<span class="sd">    :param s_rest: vertices to be kept deeper in the simulation workflow (static, wont update at each level)</span>
+<span class="sd">    :type s_rest: set</span>
 <span class="sd">    :return: list of edges (vertex_l, vertex_r, cond set) in the MST</span>
-<span class="sd">    :rtype: _type_</span>
+<span class="sd">    :rtype: list</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># * edge2tree, rvine (Kruskal&#39;s MST, disjoint set/ union find)</span>
-    <span class="c1"># ! modify &#39;parent&#39; to let pseudo obs linked to previous bicop edge</span>
-    <span class="n">parent</span> <span class="o">=</span> <span class="p">{</span><span class="n">k_obs</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">((</span><span class="n">k_obs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">*</span><span class="n">k_obs</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span> <span class="k">for</span> <span class="n">k_obs</span> <span class="ow">in</span> <span class="n">lst_key_obs</span><span class="p">}</span>
+    <span class="c1"># ! modify &#39;parent&#39; to let a pseudo obs vertex linked to its previous bicop vertex</span>
+    <span class="n">parent</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s_cond</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">((</span><span class="n">v_s_cond</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">*</span><span class="n">v_s_cond</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span> <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="n">tpl_key_obs</span><span class="p">}</span>
+    <span class="c1"># * and bicop vertices are linked to themselves</span>
     <span class="n">parent</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">parent</span><span class="o">.</span><span class="n">items</span><span class="p">()}}</span>
     <span class="n">rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">k_obs</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">k_obs</span> <span class="ow">in</span> <span class="n">parent</span><span class="p">}</span>
     <span class="n">mst</span> <span class="o">=</span> <span class="p">[]</span>
@@ -239,189 +241,225 @@
             <span class="k">if</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_b</span><span class="p">]</span> <span class="o">==</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_a</span><span class="p">]:</span>
                 <span class="n">rank</span><span class="p">[</span><span class="n">root_a</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
 
+    <span class="c1"># ! filter for edges that DONT touch rest set vertices</span>
+    <span class="n">dct_edge</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">):</span> <span class="n">bidep</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">s_rest</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">s_rest</span><span class="p">))</span>
+    <span class="p">}</span>
     <span class="c1"># * notice we sort edges by ABS(bidep) in DESCENDING order</span>
-    <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">),</span> <span class="n">bidep_abs</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
-        <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
-    <span class="p">):</span>
-        <span class="k">if</span> <span class="n">find</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">))</span> <span class="o">!=</span> <span class="n">find</span><span class="p">((</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)):</span>
-            <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">))</span>
-            <span class="n">union</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">))</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_edge</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">find</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span> <span class="o">!=</span> <span class="n">find</span><span class="p">((</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)):</span>
+            <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
+            <span class="n">union</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
+    <span class="c1"># ! filter for edges that touch rest set vertices</span>
+    <span class="n">dct_edge</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dct_edge_lv</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">dct_edge</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dct_edge</span><span class="p">:</span>
+        <span class="n">dct_edge</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">dct_edge</span><span class="p">}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="n">dct_edge</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">find</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span> <span class="o">!=</span> <span class="n">find</span><span class="p">((</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)):</span>
+                <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
+                <span class="n">union</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">mst</span>
 
 
 <span class="k">def</span> <span class="nf">_mst_from_edge_cvine</span><span class="p">(</span>
-    <span class="n">lst_key_obs</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">:</span> <span class="n">Deque</span>
+    <span class="n">tpl_key_obs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">:</span> <span class="n">Deque</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to cvine</span>
 
-<span class="sd">    :param lst_key_obs: list of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
-<span class="sd">    :type lst_key_obs: list</span>
-<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_l, vertex_r, cond set) and corresponding bivariate dependence metric value</span>
+<span class="sd">    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
+<span class="sd">    :type tpl_key_obs: tuple</span>
+<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set) and corresponding bivariate dependence metric value</span>
 <span class="sd">    :type dct_edge_lv: dict</span>
-<span class="sd">    :param s_first: set of vertices that are prioritized to be first in the simulation workflow</span>
-<span class="sd">    :type s_first: set</span>
-<span class="sd">    :param deq_sim: deque of vertices, to record the order of simulation (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)</span>
+<span class="sd">    :param deq_sim: deque of vertices, as simulation workflow (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)</span>
 <span class="sd">    :type deq_sim: Deque</span>
-<span class="sd">    :return: list of edges (vertex_l, vertex_r, cond set) in the MST; updated deq_sim; updated s_first</span>
+<span class="sd">    :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)</span>
+<span class="sd">    :type s_first: set</span>
+<span class="sd">    :return: list of edges (vertex_left, vertex_right, cond set) in the MST; updated deq_sim; updated s_first</span>
 <span class="sd">    :rtype: tuple</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># * edge2tree, cvine (MST, restricted to cvine)</span>
     <span class="c1"># init dict, the sum of abs bidep for each vertex</span>
     <span class="k">if</span> <span class="n">s_first</span><span class="p">:</span>
-        <span class="c1"># prioritize this set; only consider edges from/to vertices in this set</span>
-        <span class="n">dct_bidep_abs_sum</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v_s</span> <span class="ow">in</span> <span class="n">lst_key_obs</span> <span class="k">if</span> <span class="n">v_s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">}</span>
-        <span class="n">dct_edge_lv</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">):</span> <span class="n">bidep</span>
-            <span class="k">for</span> <span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">),</span> <span class="n">bidep</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-            <span class="k">if</span> <span class="p">((</span><span class="n">v_l</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">))</span>
-        <span class="p">}</span>
+        <span class="c1"># ! filter for edges that touch first set vertices</span>
+        <span class="n">dct_bidep_abs_sum</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s_cond</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="n">tpl_key_obs</span> <span class="k">if</span> <span class="n">v_s_cond</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">}</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">dct_bidep_abs_sum</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v_s</span> <span class="ow">in</span> <span class="n">lst_key_obs</span><span class="p">}</span>
-    <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">dct_bidep_abs_sum</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s_cond</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="n">tpl_key_obs</span><span class="p">}</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="c1"># cum sum of abs bidep for each vertex</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_bidep_abs_sum</span><span class="p">:</span>
-            <span class="n">dct_bidep_abs_sum</span><span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)]</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">bidep</span><span class="p">)</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_bidep_abs_sum</span><span class="p">:</span>
-            <span class="n">dct_bidep_abs_sum</span><span class="p">[(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)]</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">bidep</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_bidep_abs_sum</span><span class="p">:</span>
+            <span class="n">dct_bidep_abs_sum</span><span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">bidep</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_bidep_abs_sum</span><span class="p">:</span>
+            <span class="n">dct_bidep_abs_sum</span><span class="p">[(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">bidep</span><span class="p">)</span>
     <span class="c1"># center vertex (and its cond set) for cvine at this level</span>
-    <span class="n">v_c</span><span class="p">,</span> <span class="n">s_c</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_bidep_abs_sum</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-    <span class="c1"># record edges from/to the center vertex</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">v_c</span><span class="p">,</span> <span class="n">s_cond_c</span><span class="p">),</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_bidep_abs_sum</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="c1"># ! exclude those already in deq_sim</span>
+        <span class="k">if</span> <span class="n">v_c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">:</span>
+            <span class="k">break</span>
+    <span class="c1"># record edges that touch the center vertex</span>
     <span class="n">mst</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">s_and</span> <span class="o">==</span> <span class="n">s_c</span><span class="p">)</span> <span class="ow">and</span> <span class="p">((</span><span class="n">v_c</span> <span class="o">==</span> <span class="n">v_l</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">v_c</span> <span class="o">==</span> <span class="n">v_r</span><span class="p">)))</span>
+        <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">s_cond</span> <span class="o">==</span> <span class="n">s_cond_c</span><span class="p">)</span> <span class="ow">and</span> <span class="p">((</span><span class="n">v_c</span> <span class="o">==</span> <span class="n">v_l</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">v_c</span> <span class="o">==</span> <span class="n">v_r</span><span class="p">)))</span>
     <span class="p">]</span>
     <span class="c1"># update the deq_sim, let those sim first be last in the deq_sim</span>
     <span class="n">deq_sim</span><span class="o">.</span><span class="n">appendleft</span><span class="p">(</span><span class="n">v_c</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mst</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="c1"># for the last lv, only one edge left, appendleft the other vertex into deq_sim</span>
         <span class="n">deq_sim</span><span class="o">.</span><span class="n">appendleft</span><span class="p">(</span><span class="n">v_l</span> <span class="k">if</span> <span class="n">v_l</span> <span class="o">!=</span> <span class="n">v_c</span> <span class="k">else</span> <span class="n">v_r</span><span class="p">)</span>
-    <span class="c1"># update the priority set</span>
+    <span class="c1"># update the first set</span>
     <span class="n">s_first</span> <span class="o">-=</span> <span class="p">{</span><span class="n">v_c</span><span class="p">}</span>
     <span class="c1"># * mst(cvine), deq_sim, s_first</span>
     <span class="k">return</span> <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="n">s_first</span>
 
 
-<span class="k">def</span> <span class="nf">_mst_from_edge_dvine</span><span class="p">(</span><span class="n">lst_key_obs</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine</span>
+<span class="k">def</span> <span class="nf">_mst_from_edge_dvine</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine. For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.</span>
 
-<span class="sd">    :param lst_key_obs: list of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
-<span class="sd">    :type lst_key_obs: list</span>
+<span class="sd">    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
+<span class="sd">    :type tpl_key_obs: tuple</span>
 <span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_l, vertex_r, cond set) and corresponding bivariate dependence metric value</span>
 <span class="sd">    :type dct_edge_lv: dict</span>
-<span class="sd">    :param s_first: set of vertices that are prioritized to be first in the simulation workflow</span>
+<span class="sd">    :param s_first: set of vertices that are kept shallower in the simulation workflow</span>
 <span class="sd">    :type s_first: set</span>
 <span class="sd">    :return: list of edges (vertex_l, vertex_r, cond set) in the MST (lv0); updated deq_sim; emptied s_first</span>
 <span class="sd">    :rtype: tuple</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># * edge2tree, dvine (MST, restricted to dvine)</span>
-    <span class="c1"># for dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.</span>
-    <span class="c1"># ! at lv0, s_and is known to be empty</span>
-    <span class="kn">from</span> <span class="nn">networkx</span> <span class="kn">import</span> <span class="n">Graph</span>
-    <span class="kn">from</span> <span class="nn">networkx.algorithms.approximation</span> <span class="kn">import</span> <span class="n">threshold_accepting_tsp</span>
-
-    <span class="c1"># revert bidep into cost per edge for TSP</span>
-    <span class="n">dct_cost</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span> <span class="n">math</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">bidep</span><span class="p">),</span> <span class="mf">1e-10</span><span class="p">))</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-    <span class="p">}</span>
-    <span class="n">G</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
-    <span class="n">G</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">([(</span><span class="o">*</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_cost</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
-    <span class="n">s_rest</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">nodes</span><span class="p">)</span> <span class="o">-</span> <span class="n">s_first</span>
-    <span class="c1"># rest set: build tsp</span>
-    <span class="n">tsp_rest</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="n">s_rest</span><span class="p">),</span> <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
-    <span class="n">len_first</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_first</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">len_first</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="c1"># just drop the top cost edge in s_rest, when s_first is empty</span>
-        <span class="n">rest_drop_cost</span> <span class="o">=</span> <span class="o">-</span><span class="n">math</span><span class="o">.</span><span class="n">inf</span>
-        <span class="n">mst_lv0</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v_rest</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_rest</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="k">continue</span>
-            <span class="n">edge</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_rest</span><span class="p">,</span> <span class="n">tsp_rest</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])),)</span>
-            <span class="n">mst_lv0</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">edge</span><span class="p">)</span>
-            <span class="n">edge_cost</span> <span class="o">=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="n">edge</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">edge_cost</span> <span class="o">&gt;</span> <span class="n">rest_drop_cost</span><span class="p">:</span>
-                <span class="n">rest_drop</span> <span class="o">=</span> <span class="n">edge</span>
-                <span class="n">rest_drop_cost</span> <span class="o">=</span> <span class="n">edge_cost</span>
-        <span class="n">mst_lv0</span> <span class="o">=</span> <span class="p">[(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_</span><span class="p">),</span> <span class="nb">frozenset</span><span class="p">())</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">mst_lv0</span> <span class="k">if</span> <span class="n">_</span> <span class="o">!=</span> <span class="n">edge</span><span class="p">]</span>
-
+    <span class="c1"># * at lv0, s_cond is known to be empty</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="c1"># ! only two vertices</span>
+        <span class="n">v_head</span><span class="p">,</span> <span class="n">v_tail</span> <span class="o">=</span> <span class="n">tpl_key_obs</span>
+        <span class="n">v_head</span><span class="p">,</span> <span class="n">v_tail</span> <span class="o">=</span> <span class="n">v_head</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">v_tail</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">mst</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_head</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># ! drop one edge from tsp_first and one from tsp_rest, then add an edge connecting two sets</span>
-        <span class="c1"># ! iter all combinations, decide drop fwd/bwd, then calculate cost difference for each (drop,drop,add) modification</span>
-        <span class="c1"># * drop: pick the edge to drop (from the hamiltonian circle), either fwd or bwd that has higher cost</span>
-        <span class="c1"># rest set: record forward/backward links</span>
-        <span class="n">num_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_rest</span><span class="p">)</span>
-        <span class="n">dct_rest_fwd</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">tsp_rest</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_rest</span><span class="p">)</span> <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">num_dim</span><span class="p">}</span>
-        <span class="n">dct_rest_bwd</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">tsp_rest</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_rest</span><span class="p">)</span> <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">}</span>
-        <span class="c1"># ! when s_first has only one element, nothing to drop.</span>
-        <span class="n">first_drop</span><span class="p">,</span> <span class="n">first_drop_cost</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="mi">0</span>
-        <span class="k">if</span> <span class="n">len_first</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="c1"># cond set: build tsp, record forward/backward links</span>
-            <span class="n">tsp_first</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span>
-                <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="n">s_first</span><span class="p">),</span>
-                <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">,</span>
+        <span class="c1"># ! more than two vertices</span>
+        <span class="kn">import</span> <span class="nn">math</span>
+        <span class="kn">from</span> <span class="nn">networkx</span> <span class="kn">import</span> <span class="n">Graph</span>
+        <span class="kn">from</span> <span class="nn">networkx.algorithms.approximation</span> <span class="kn">import</span> <span class="n">threshold_accepting_tsp</span>
+
+        <span class="n">dct_cost</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span> <span class="n">math</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">bidep</span><span class="p">),</span> <span class="mf">1e-10</span><span class="p">))</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
+        <span class="n">G</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">([(</span><span class="o">*</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_cost</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+        <span class="n">s_rest</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">nodes</span><span class="p">)</span> <span class="o">-</span> <span class="n">s_first</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">s_first</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="n">s_rest</span><span class="p">):</span>
+            <span class="c1"># ! one set is empty: global TSP</span>
+            <span class="n">tsp</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
+            <span class="c1"># * fetch the edges in the TSP, drop the one with max cost</span>
+            <span class="n">mst</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">tsp</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])))</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="p">]</span>
+            <span class="n">s_l_r_cost</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+                <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">dct_cost</span><span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">)])</span> <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">],</span>
+                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">dct_first_fwd</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="n">v</span><span class="p">:</span> <span class="n">tsp_first</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_first</span><span class="p">)</span> <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">len_first</span>
-            <span class="p">}</span>
-            <span class="n">dct_first_bwd</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">tsp_first</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_first</span><span class="p">)</span> <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">}</span>
-        <span class="n">cost_diff</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">inf</span>
-        <span class="k">for</span> <span class="n">v_first</span><span class="p">,</span> <span class="n">v_rest</span> <span class="ow">in</span> <span class="n">product</span><span class="p">(</span><span class="n">s_first</span><span class="p">,</span> <span class="n">s_rest</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">len_first</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="c1"># ! drop an edge from cond set, only when s_first has more than 2 elements</span>
-                <span class="n">first_drop</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_first</span><span class="p">,</span> <span class="n">dct_first_fwd</span><span class="p">[</span><span class="n">v_first</span><span class="p">])),)</span>
-                <span class="n">first_drop_cost</span> <span class="o">=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="n">first_drop</span><span class="p">]</span>
-                <span class="n">edge</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_first</span><span class="p">,</span> <span class="n">dct_first_bwd</span><span class="p">[</span><span class="n">v_first</span><span class="p">])),)</span>
-                <span class="n">edge_cost</span> <span class="o">=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="n">edge</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">edge_cost</span> <span class="o">&gt;</span> <span class="n">first_drop_cost</span><span class="p">:</span>
-                    <span class="n">first_drop</span><span class="p">,</span> <span class="n">first_drop_cost</span> <span class="o">=</span> <span class="n">edge</span><span class="p">,</span> <span class="n">edge_cost</span>
-            <span class="c1"># drop an edge from rest set</span>
-            <span class="n">rest_drop</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_rest</span><span class="p">,</span> <span class="n">dct_rest_fwd</span><span class="p">[</span><span class="n">v_rest</span><span class="p">])),)</span>
-            <span class="n">rest_drop_cost</span> <span class="o">=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="n">rest_drop</span><span class="p">]</span>
-            <span class="n">edge</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_rest</span><span class="p">,</span> <span class="n">dct_rest_bwd</span><span class="p">[</span><span class="n">v_rest</span><span class="p">])),)</span>
-            <span class="n">edge_cost</span> <span class="o">=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="n">edge</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">edge_cost</span> <span class="o">&gt;</span> <span class="n">rest_drop_cost</span><span class="p">:</span>
-                <span class="n">rest_drop</span><span class="p">,</span> <span class="n">rest_drop_cost</span> <span class="o">=</span> <span class="n">edge</span><span class="p">,</span> <span class="n">edge_cost</span>
-            <span class="c1"># add an edge to connect two sets</span>
-            <span class="n">edge</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_first</span><span class="p">,</span> <span class="n">v_rest</span><span class="p">)),)</span>
-            <span class="c1"># record total cost diff (as forming a hamiltonian path from two hamiltonian circles)</span>
-            <span class="n">tmp_cost_diff</span> <span class="o">=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="n">edge</span><span class="p">]</span> <span class="o">-</span> <span class="n">first_drop_cost</span> <span class="o">-</span> <span class="n">rest_drop_cost</span>
-            <span class="k">if</span> <span class="n">tmp_cost_diff</span> <span class="o">&lt;</span> <span class="n">cost_diff</span><span class="p">:</span>
-                <span class="n">drop_drop_add</span> <span class="o">=</span> <span class="p">(</span><span class="n">first_drop</span><span class="p">,</span> <span class="n">rest_drop</span><span class="p">,</span> <span class="n">edge</span><span class="p">)</span>
-                <span class="n">cost_diff</span> <span class="o">=</span> <span class="n">tmp_cost_diff</span>
-        <span class="c1"># mst: add, drop, drop</span>
-        <span class="n">mst_lv0</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">len_first</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="p">[(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)),)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_first_fwd</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
-        <span class="n">mst_lv0</span> <span class="o">+=</span> <span class="p">[(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)),)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_rest_fwd</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
-        <span class="n">mst_lv0</span> <span class="o">+=</span> <span class="p">[</span><span class="n">drop_drop_add</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
-        <span class="n">mst_lv0</span> <span class="o">=</span> <span class="nb">list</span><span class="p">({(</span><span class="o">*</span><span class="n">_</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">mst_lv0</span> <span class="k">if</span> <span class="n">_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">drop_drop_add</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]})</span>
-    <span class="c1"># ! for dvine, deq_sim is known and s_first is empty now</span>
-    <span class="n">s_edge</span> <span class="o">=</span> <span class="p">{(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">)</span> <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span> <span class="ow">in</span> <span class="n">mst_lv0</span><span class="p">}</span>
-    <span class="n">deq_sim</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
-    <span class="n">num_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lst_key_obs</span><span class="p">)</span>
-    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num_dim</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">s_edge</span><span class="p">):</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
+            <span class="n">mst</span> <span class="o">=</span> <span class="n">s_l_r_cost</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">mst</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span> <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">]</span>
+            <span class="n">v_head</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">s_l_r_cost</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_first</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="c1"># ! one set is a singleton (head-neck-...-tail: add head-neck, drop neck-tail)</span>
+            <span class="n">tsp</span><span class="p">,</span> <span class="n">v_head</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">s_first</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">s_rest</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_rest</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="p">(</span><span class="n">s_rest</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">s_first</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="c1"># * TSP on the subgraph without the singleton</span>
+            <span class="n">tsp</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">tsp</span><span class="p">),</span> <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
+            <span class="c1"># * loop over the TSP and pick the combination with min cost</span>
+            <span class="n">tsp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tsp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">cost</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">inf</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">v_prev</span><span class="p">,</span> <span class="n">v_next</span> <span class="o">=</span> <span class="n">tsp</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">tsp</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="c1"># tail given neck</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">cost_next</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">v_next</span><span class="p">)))])</span> <span class="o">&gt;</span> <span class="p">(</span>
+                    <span class="n">cost_prev</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">v_prev</span><span class="p">)))]</span>
+                <span class="p">):</span>
+                    <span class="n">v_nebr</span><span class="p">,</span> <span class="n">cost_nebr</span> <span class="o">=</span> <span class="n">v_next</span><span class="p">,</span> <span class="n">cost_next</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">v_nebr</span><span class="p">,</span> <span class="n">cost_nebr</span> <span class="o">=</span> <span class="n">v_prev</span><span class="p">,</span> <span class="n">cost_prev</span>
+                <span class="c1"># neck</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">i_cost</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_head</span><span class="p">,</span> <span class="n">v</span><span class="p">)))]</span> <span class="o">-</span> <span class="n">cost_nebr</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">cost</span><span class="p">:</span>
+                    <span class="n">v_tail</span><span class="p">,</span> <span class="n">v_neck</span><span class="p">,</span> <span class="n">cost</span> <span class="o">=</span> <span class="n">v_nebr</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">i_cost</span>
+            <span class="n">mst</span> <span class="o">=</span> <span class="p">[(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_head</span><span class="p">,</span> <span class="n">v_neck</span><span class="p">)),</span> <span class="nb">frozenset</span><span class="p">())]</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">tsp</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]))</span>
+                <span class="k">if</span> <span class="p">{</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">!=</span> <span class="p">{</span><span class="n">v_neck</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">}:</span>
+                    <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># ! both sets have more than one vertex (head-...-neck-body-...-tail, drop head-neck, add neck-body, drop body-tail)</span>
+            <span class="n">tsp_first</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">s_first</span><span class="p">),</span> <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
+            <span class="n">tsp_first</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tsp_first</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">tsp_rest</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">s_rest</span><span class="p">),</span> <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
+            <span class="n">tsp_rest</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tsp_rest</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">cost</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">inf</span>
+            <span class="c1"># * loop over two TSPs and pick the combination with min cost</span>
+            <span class="k">for</span> <span class="n">idx_neck</span><span class="p">,</span> <span class="n">_v_neck</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_first</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="c1"># * for the first TSP, drop head-neck</span>
+                <span class="n">v_prev</span><span class="p">,</span> <span class="n">v_next</span> <span class="o">=</span> <span class="n">tsp_first</span><span class="p">[</span><span class="n">idx_neck</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">tsp_first</span><span class="p">[</span><span class="n">idx_neck</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">cost_next</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">_v_neck</span><span class="p">,</span> <span class="n">v_next</span><span class="p">)))])</span> <span class="o">&gt;</span> <span class="p">(</span>
+                    <span class="n">cost_prev</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">_v_neck</span><span class="p">,</span> <span class="n">v_prev</span><span class="p">)))]</span>
+                <span class="p">):</span>
+                    <span class="n">v_nebr_neck</span><span class="p">,</span> <span class="n">cost_nebr_neck</span> <span class="o">=</span> <span class="n">v_next</span><span class="p">,</span> <span class="n">cost_next</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">v_nebr_neck</span><span class="p">,</span> <span class="n">cost_nebr_neck</span> <span class="o">=</span> <span class="n">v_prev</span><span class="p">,</span> <span class="n">cost_prev</span>
+                <span class="k">for</span> <span class="n">idx_body</span><span class="p">,</span> <span class="n">_v_body</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_rest</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="c1"># * for the second TSP, drop body-tail</span>
+                    <span class="n">v_prev</span><span class="p">,</span> <span class="n">v_next</span> <span class="o">=</span> <span class="n">tsp_rest</span><span class="p">[</span><span class="n">idx_body</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">tsp_rest</span><span class="p">[</span><span class="n">idx_body</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">cost_next</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">_v_body</span><span class="p">,</span> <span class="n">v_next</span><span class="p">)))])</span> <span class="o">&gt;</span> <span class="p">(</span>
+                        <span class="n">cost_prev</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">_v_body</span><span class="p">,</span> <span class="n">v_prev</span><span class="p">)))]</span>
+                    <span class="p">):</span>
+                        <span class="n">v_nebr_body</span><span class="p">,</span> <span class="n">cost_nebr_body</span> <span class="o">=</span> <span class="n">v_next</span><span class="p">,</span> <span class="n">cost_next</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">v_nebr_body</span><span class="p">,</span> <span class="n">cost_nebr_body</span> <span class="o">=</span> <span class="n">v_prev</span><span class="p">,</span> <span class="n">cost_prev</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="n">i_cost</span> <span class="o">:=</span> <span class="n">dct_cost</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">_v_neck</span><span class="p">,</span> <span class="n">_v_body</span><span class="p">)))]</span>
+                        <span class="o">-</span> <span class="n">cost_nebr_neck</span>
+                        <span class="o">-</span> <span class="n">cost_nebr_body</span>
+                    <span class="p">)</span> <span class="o">&lt;</span> <span class="n">cost</span><span class="p">:</span>
+                        <span class="c1"># ! cost, drop head-neck, drop body-tail, add neck-body</span>
+                        <span class="n">v_head</span><span class="p">,</span> <span class="n">v_neck</span><span class="p">,</span> <span class="n">v_body</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">,</span> <span class="n">cost</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="n">v_nebr_neck</span><span class="p">,</span>
+                            <span class="n">_v_neck</span><span class="p">,</span>
+                            <span class="n">_v_body</span><span class="p">,</span>
+                            <span class="n">v_nebr_body</span><span class="p">,</span>
+                            <span class="n">i_cost</span><span class="p">,</span>
+                        <span class="p">)</span>
+            <span class="n">mst</span> <span class="o">=</span> <span class="p">[(</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_neck</span><span class="p">,</span> <span class="n">v_body</span><span class="p">)),</span> <span class="nb">frozenset</span><span class="p">())]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tsp_first</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_head</span><span class="p">,</span> <span class="n">v_neck</span><span class="p">)),</span> <span class="nb">frozenset</span><span class="p">()))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_first</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">tsp_first</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]))</span>
+                    <span class="k">if</span> <span class="p">{</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">!=</span> <span class="p">{</span><span class="n">v_head</span><span class="p">,</span> <span class="n">v_neck</span><span class="p">}:</span>
+                        <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tsp_rest</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="o">*</span><span class="nb">sorted</span><span class="p">((</span><span class="n">v_body</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">)),</span> <span class="nb">frozenset</span><span class="p">()))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tsp_rest</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">tsp_rest</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]))</span>
+                    <span class="k">if</span> <span class="p">{</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">!=</span> <span class="p">{</span><span class="n">v_body</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">}:</span>
+                        <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()))</span>
+    <span class="c1"># * sim workflow, chain the vertices in deq_sim</span>
+    <span class="n">deq_sim</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([</span><span class="n">v_head</span><span class="p">])</span>
+    <span class="n">s_edge</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">mst</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">deq_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">v_tail</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">s_edge</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">v_l</span> <span class="o">==</span> <span class="n">deq_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
                 <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
-                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">))</span>
-            <span class="k">elif</span> <span class="n">v_l</span> <span class="o">==</span> <span class="n">deq_sim</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-                <span class="n">deq_sim</span><span class="o">.</span><span class="n">appendleft</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
-                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">))</span>
-            <span class="k">elif</span> <span class="n">v_l</span> <span class="o">==</span> <span class="n">deq_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
-                <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
-                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">))</span>
-            <span class="k">elif</span> <span class="n">v_r</span> <span class="o">==</span> <span class="n">deq_sim</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-                <span class="n">deq_sim</span><span class="o">.</span><span class="n">appendleft</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
-                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">))</span>
+                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
             <span class="k">elif</span> <span class="n">v_r</span> <span class="o">==</span> <span class="n">deq_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
                 <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
-                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">))</span>
-    <span class="c1"># let those sim first be last in the lst_sim</span>
-    <span class="k">if</span> <span class="n">s_first</span> <span class="ow">and</span> <span class="p">(</span><span class="n">deq_sim</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">):</span>
+                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
+    <span class="c1"># ! let those sim first (s_first) be last in the tpl_sim</span>
+    <span class="k">if</span> <span class="n">deq_sim</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">:</span>
         <span class="n">deq_sim</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
     <span class="c1"># * mst(dvine), deq_sim, s_first</span>
-    <span class="k">return</span> <span class="n">mst_lv0</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="p">{}</span>
 
 
 <div class="viewcode-block" id="vcp_from_obs">
@@ -429,10 +467,11 @@
 <span class="k">def</span> <span class="nf">vcp_from_obs</span><span class="p">(</span>
     <span class="n">obs_mvcp</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">is_Dissmann</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">cdrvine</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rvine&quot;</span><span class="p">,</span>
-    <span class="n">lst_first</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
     <span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">tpl_first</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
+    <span class="n">mtd_vine</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rvine&quot;</span><span class="p">,</span>
     <span class="n">mtd_bidep</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;chatterjee_xi&quot;</span><span class="p">,</span>
+    <span class="n">thresh_trunc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
     <span class="n">mtd_fit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;itau&quot;</span><span class="p">,</span>
     <span class="n">mtd_mle</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;COBYLA&quot;</span><span class="p">,</span>
     <span class="n">mtd_sel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;aic&quot;</span><span class="p">,</span>
@@ -446,38 +485,42 @@
     <span class="p">),</span>
     <span class="n">topk</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataVineCop</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a vine copula model from multivariate observations, with structure prescribed by either Dissmann&#39;s (MST per level) method or a given matrix. May prioritize some vertices to be first in the cond simulation workflow.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a vine copula model from multivariate observations, with structure prescribed by either Dissmann&#39;s (MST per level) method or a given matrix. May prioritize some vertices to be first (shallower) in the quantile-regression/conditional-simulation workflow.</span>
 
 <span class="sd">    :param obs_mvcp: multivariate observations, of shape (num_obs, num_dim)</span>
 <span class="sd">    :type obs_mvcp: torch.Tensor</span>
 <span class="sd">    :param is_Dissmann: whether to use Dissmann&#39;s method or follow a given matrix, defaults to True; Dissmann, J., Brechmann, E. C., Czado, C., &amp; Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics &amp; Data Analysis, 59, 52-69.</span>
 <span class="sd">    :type is_Dissmann: bool, optional</span>
-<span class="sd">    :param cdrvine: one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;, defaults to &quot;rvine&quot;</span>
-<span class="sd">    :type cdrvine: str, optional</span>
-<span class="sd">    :param lst_first: list of vertices to be prioritized in the cond sim workflow, only used when cdrvine is &quot;cvine&quot; or &quot;dvine&quot;. if empty then no priority is set, defaults to []</span>
-<span class="sd">    :type lst_first: list[int], optional</span>
-<span class="sd">    :param matrix: matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None</span>
+<span class="sd">    :param mtd_vine: one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;, defaults to &quot;rvine&quot;</span>
+<span class="sd">    :type mtd_vine: str, optional</span>
+<span class="sd">    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow. if empty then no priority is set, defaults to tuple()</span>
+<span class="sd">    :type tpl_first: tuple[int], optional</span>
+<span class="sd">    :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None</span>
 <span class="sd">    :type matrix: np.ndarray | None, optional</span>
 <span class="sd">    :param mtd_bidep: method to calculate bivariate dependence, one of &quot;kendall_tau&quot;, &quot;mutual_info&quot;, &quot;ferreira_tail_dep_coeff&quot;, &quot;chatterjee_xi&quot;, &quot;wasserstein_dist_ind&quot;, defaults to &quot;chatterjee_xi&quot;</span>
 <span class="sd">    :type mtd_bidep: str, optional</span>
+<span class="sd">    :param thresh_trunc: threshold of Kendall&#39;s tau independence test, below which we reject independent bicop, defaults to 0.1</span>
+<span class="sd">    :type thresh_trunc: float, optional</span>
 <span class="sd">    :param mtd_fit: method to fit bivariate copula, either &#39;itau&#39; (inverse of tau) or &#39;mle&#39; (maximum likelihood estimation); defaults to &quot;itau&quot;</span>
 <span class="sd">    :type mtd_fit: str, optional</span>
 <span class="sd">    :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to &quot;COBYLA&quot;</span>
 <span class="sd">    :type mtd_mle: str, optional</span>
 <span class="sd">    :param mtd_sel: bivariate copula model selection criterion, either &#39;aic&#39; or &#39;bic&#39;; defaults to &quot;aic&quot;</span>
 <span class="sd">    :type mtd_sel: str, optional</span>
-<span class="sd">    :param tpl_fam: tuple of str as candidate family names to fit bicop, could be a subset of (&#39;Clayton&#39;, &#39;Frank&#39;, &#39;Gaussian&#39;, &#39;Gumbel&#39;, &#39;Independent&#39;, &#39;Joe&#39;, &#39;StudentT&#39;)</span>
+<span class="sd">    :param tpl_fam: tuple of str as candidate family names to fit bicop, could be a subset of (&#39;Clayton&#39;, &#39;Frank&#39;, &#39;Gaussian&#39;, &#39;Gumbel&#39;, &#39;Independent&#39;, &#39;Joe&#39;, &#39;StudentT&#39;), defaults to ( &quot;Clayton&quot;, &quot;Frank&quot;, &quot;Gaussian&quot;, &quot;Gumbel&quot;, &quot;Independent&quot;, &quot;Joe&quot;)</span>
 <span class="sd">    :type tpl_fam: tuple[str, ...], optional</span>
-<span class="sd">    :param topk: number of best itau fit taken into further mle, used when mtd_fit is &#39;mle&#39;; defaults to 2</span>
+<span class="sd">    :param topk: number of best &quot;itau&quot; fit taken into further &quot;mle&quot;, used when mtd_fit is &quot;mle&quot;; defaults to 2</span>
 <span class="sd">    :type topk: int, optional</span>
-<span class="sd">    :raises ValueError: when cdrvine is not one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;</span>
-<span class="sd">    :return: a fitted DataVineCop object</span>
+<span class="sd">    :raises ValueError: when mtd_vine is not one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;</span>
+<span class="sd">    :return: a constructed DataVineCop object</span>
 <span class="sd">    :rtype: DataVineCop</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_kendall_tau</span> <span class="o">=</span> <span class="n">mtd_bidep</span> <span class="o">==</span> <span class="s2">&quot;kendall_tau&quot;</span>
     <span class="n">f_bidep</span> <span class="o">=</span> <span class="n">ENUM_FUNC_BIDEP</span><span class="p">[</span><span class="n">mtd_bidep</span><span class="p">]</span><span class="o">.</span><span class="n">_value_</span>
     <span class="n">num_dim</span> <span class="o">=</span> <span class="n">obs_mvcp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">s_first</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">lst_first</span><span class="p">)</span> <span class="k">if</span> <span class="n">lst_first</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
-    <span class="c1"># * a list to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)</span>
+    <span class="n">s_first</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">tpl_first</span><span class="p">)</span>
+    <span class="n">s_rest</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">))</span> <span class="o">-</span> <span class="n">s_first</span>
+    <span class="c1"># ! an object to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)</span>
     <span class="n">deq_sim</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
     <span class="n">r_D1</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
     <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{</span><span class="n">_</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">r_D1</span><span class="p">}</span>
@@ -489,99 +532,117 @@
 
     <span class="k">def</span> <span class="nf">_update_obs</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;calc hfunc for pseudo obs and update dct_obs, only when necessary (lazy hfunc)&quot;&quot;&quot;</span>
+        <span class="c1"># * v and s_cond are from the pseudo obs</span>
         <span class="n">lv</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_cond</span><span class="p">)</span>
-        <span class="n">lv_1</span> <span class="o">=</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">),</span> <span class="n">bcp</span> <span class="ow">in</span> <span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv_1</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="c1"># * lv_bcp and s_cond_bcp mark the prev lv and bcp cond set</span>
+        <span class="n">lv_bcp</span> <span class="o">=</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">),</span> <span class="n">bcp</span> <span class="ow">in</span> <span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv_bcp</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="c1"># ! notice hfunc1 or hfunc2</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">==</span> <span class="n">v_l</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">s_cond</span> <span class="o">==</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">v_r</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_and</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">==</span> <span class="n">v_l</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">s_cond</span> <span class="o">==</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">v_r</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_cond_bcp</span><span class="p">)):</span>
                 <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hfunc2</span><span class="p">(</span>
                     <span class="n">obs</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
                         <span class="p">[</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_1</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_1</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
+                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_bcp</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
+                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_bcp</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
                         <span class="p">]</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
-            <span class="k">elif</span> <span class="p">(</span><span class="n">v</span> <span class="o">==</span> <span class="n">v_r</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">s_cond</span> <span class="o">==</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">v_l</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_and</span><span class="p">)):</span>
+            <span class="k">elif</span> <span class="p">(</span><span class="n">v</span> <span class="o">==</span> <span class="n">v_r</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">s_cond</span> <span class="o">==</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">v_l</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_cond_bcp</span><span class="p">)):</span>
                 <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hfunc1</span><span class="p">(</span>
                     <span class="n">obs</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
                         <span class="p">[</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_1</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_1</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
+                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_bcp</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
+                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv_bcp</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_bcp</span><span class="p">],</span>
                         <span class="p">]</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
 
     <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="n">r_D1</span><span class="p">:</span>
-        <span class="c1"># ! lv_0 obs, preprocess to append a cond frozenset (s_and)</span>
+        <span class="c1"># * lv_0 obs, preprocess to append an empty frozenset (s_cond)</span>
         <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">dct_obs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">{(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()):</span> <span class="n">obs_mvcp</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">)}</span>
         <span class="k">if</span> <span class="n">is_Dissmann</span><span class="p">:</span>
             <span class="c1"># * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep</span>
-            <span class="n">lst_key_obs</span> <span class="o">=</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">tpl_l</span><span class="p">,</span> <span class="n">tpl_r</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">lst_key_obs</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
-                <span class="c1"># ! only those obs with same &#39;cond set&#39; (the frozen set) can have edges (proximity condition)</span>
-                <span class="k">if</span> <span class="n">tpl_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">tpl_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">tpl_key_obs</span> <span class="o">=</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_r</span><span class="p">)</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+                <span class="c1"># ! proximity condition: only those obs with same &#39;cond set&#39; (the frozen set) can have edges</span>
+                <span class="k">if</span> <span class="n">s_cond_l</span> <span class="o">==</span> <span class="n">s_cond_r</span><span class="p">:</span>
                     <span class="c1"># ! sorted !</span>
-                    <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">tpl_l</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tpl_r</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-                    <span class="n">s_and</span> <span class="o">=</span> <span class="n">tpl_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-                    <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="n">_update_obs</span><span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="n">_update_obs</span><span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)</span>
-                    <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
-                        <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
-                        <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
-                    <span class="p">)</span>
-            <span class="k">if</span> <span class="n">cdrvine</span> <span class="o">==</span> <span class="s2">&quot;dvine&quot;</span><span class="p">:</span>
+                    <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">_update_obs</span><span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">_update_obs</span><span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">is_kendall_tau</span><span class="p">:</span>
+                        <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                            <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                            <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond_l</span><span class="p">],</span>
+                        <span class="p">)</span>
+            <span class="k">if</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;dvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, dvine</span>
+                <span class="c1"># ! for dvine, the whole struct (and deq_sim) is known after lv0</span>
                 <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="c1"># ! for dvine the whole struct (and deq_sim) is known after lv0</span>
                     <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="n">s_first</span> <span class="o">=</span> <span class="n">_mst_from_edge_dvine</span><span class="p">(</span>
-                        <span class="n">lst_key_obs</span><span class="o">=</span><span class="n">lst_key_obs</span><span class="p">,</span>
+                        <span class="n">tpl_key_obs</span><span class="o">=</span><span class="n">tpl_key_obs</span><span class="p">,</span>
                         <span class="n">dct_edge_lv</span><span class="o">=</span><span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">],</span>
                         <span class="n">s_first</span><span class="o">=</span><span class="n">s_first</span><span class="p">,</span>
                     <span class="p">)</span>
                     <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_edge</span><span class="p">:</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">key_edge</span><span class="p">]</span> <span class="k">for</span> <span class="n">key_edge</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">}</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span>
-            <span class="k">elif</span> <span class="n">cdrvine</span> <span class="o">==</span> <span class="s2">&quot;cvine&quot;</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;cvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, cvine</span>
-                <span class="c1"># ! for cvine, at each lv the center vertex is chosen to be the one with the largest sum of abs bidep</span>
+                <span class="c1"># ! for cvine, at each lv the center vertex is the one with the largest sum of abs bidep</span>
                 <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="n">s_first</span> <span class="o">=</span> <span class="n">_mst_from_edge_cvine</span><span class="p">(</span>
-                    <span class="n">lst_key_obs</span><span class="o">=</span><span class="n">lst_key_obs</span><span class="p">,</span>
+                    <span class="n">tpl_key_obs</span><span class="o">=</span><span class="n">tpl_key_obs</span><span class="p">,</span>
                     <span class="n">dct_edge_lv</span><span class="o">=</span><span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">],</span>
                     <span class="n">s_first</span><span class="o">=</span><span class="n">s_first</span><span class="p">,</span>
                     <span class="n">deq_sim</span><span class="o">=</span><span class="n">deq_sim</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_edge</span><span class="p">:</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">key_edge</span><span class="p">]</span> <span class="k">for</span> <span class="n">key_edge</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">}</span>
-            <span class="k">elif</span> <span class="n">cdrvine</span> <span class="o">==</span> <span class="s2">&quot;rvine&quot;</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;rvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, rvine</span>
-                <span class="n">mst</span> <span class="o">=</span> <span class="n">_mst_from_edge_rvine</span><span class="p">(</span><span class="n">lst_key_obs</span><span class="o">=</span><span class="n">lst_key_obs</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="o">=</span><span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">])</span>
+                <span class="n">mst</span> <span class="o">=</span> <span class="n">_mst_from_edge_rvine</span><span class="p">(</span>
+                    <span class="n">tpl_key_obs</span><span class="o">=</span><span class="n">tpl_key_obs</span><span class="p">,</span>
+                    <span class="n">dct_edge_lv</span><span class="o">=</span><span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">],</span>
+                    <span class="n">s_rest</span><span class="o">=</span><span class="n">s_rest</span><span class="p">,</span>
+                <span class="p">)</span>
                 <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">key_edge</span><span class="p">:</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">key_edge</span><span class="p">]</span> <span class="k">for</span> <span class="n">key_edge</span> <span class="ow">in</span> <span class="n">mst</span><span class="p">}</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cdrvine must be one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;mtd_vine must be one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># * tree structure is inferred from matrix, if not Dissmann</span>
             <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
                 <span class="c1"># ! sorted !</span>
                 <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">idx</span><span class="p">],</span> <span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]))</span>
-                <span class="n">s_and</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span><span class="p">)</span> <span class="p">:])</span>
-                <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">_update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_and</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">_update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_and</span><span class="p">)</span>
-                <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
-                    <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
-                    <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span>
-                <span class="p">)</span>
+                <span class="n">s_cond</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span><span class="p">)</span> <span class="p">:])</span>
+                <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">_update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">_update_obs</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">is_kendall_tau</span><span class="p">:</span>
+                    <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                    <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">f_bidep</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)],</span>
+                    <span class="p">)</span>
         <span class="c1"># * tree2bicop, fit bicop &amp; record key of potential pseudo obs for next lv (lazy hfunc later)</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bcp_from_obs</span><span class="p">(</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bcp_from_obs</span><span class="p">(</span>
                 <span class="n">obs_bcp</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span><span class="p">],</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span><span class="p">]],</span>
+                    <span class="p">[</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">],</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">]],</span>
                 <span class="p">),</span>
                 <span class="n">tau</span><span class="o">=</span><span class="n">bidep</span> <span class="k">if</span> <span class="n">mtd_bidep</span> <span class="o">==</span> <span class="s2">&quot;kendall_tau&quot;</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">thresh_trunc</span><span class="o">=</span><span class="n">thresh_trunc</span><span class="p">,</span>
                 <span class="n">mtd_fit</span><span class="o">=</span><span class="n">mtd_fit</span><span class="p">,</span>
                 <span class="n">mtd_mle</span><span class="o">=</span><span class="n">mtd_mle</span><span class="p">,</span>
                 <span class="n">mtd_sel</span><span class="o">=</span><span class="n">mtd_sel</span><span class="p">,</span>
@@ -590,32 +651,40 @@
             <span class="p">)</span>
             <span class="n">i_lv_next</span> <span class="o">=</span> <span class="n">lv</span> <span class="o">+</span> <span class="mi">1</span>
             <span class="k">if</span> <span class="n">i_lv_next</span> <span class="o">&lt;</span> <span class="n">num_dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">i_lv_next</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">}]</span> <span class="o">=</span> <span class="kc">None</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">i_lv_next</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_and</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">}]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">dct_obs</span><span class="p">[</span><span class="n">i_lv_next</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">}]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">dct_obs</span><span class="p">[</span><span class="n">i_lv_next</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">}]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="c1"># ! garbage collection</span>
         <span class="k">if</span> <span class="n">is_Dissmann</span><span class="p">:</span>
             <span class="k">del</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">lv</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">del</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
     <span class="c1"># * for cvine/dvine, deq_sim is known and s_first is empty now</span>
-    <span class="c1"># * for rvine, deq_sim is empty and to be filled by diag of matrix</span>
+    <span class="c1"># * for rvine, deq_sim is empty and to be arranged</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">deq_sim</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_tree</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-            <span class="n">v_diag</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">for</span> <span class="n">i_lv</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lv</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
-                <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_and</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">i_lv</span><span class="p">]:</span>
-                    <span class="k">if</span> <span class="p">(</span><span class="n">v_diag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">):</span>
-                        <span class="c1"># ! pick the node with smaller index (v_l &lt; v_r), then mat &lt;-&gt; structure is bijection</span>
-                        <span class="n">v_diag</span> <span class="o">=</span> <span class="n">v_l</span>
-                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_diag</span><span class="p">)</span>
-                        <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]:</span>
+                <span class="c1"># ! if this bcp vertex is not yet in the paths of existing deq_sim elements</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">):</span>
+                    <span class="c1"># ! obs in set_rest but not yet arranged in deq_sim</span>
+                    <span class="k">if</span> <span class="n">s_tmp</span> <span class="o">:=</span> <span class="n">s_rest</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">v_l</span> <span class="ow">in</span> <span class="n">s_tmp</span><span class="p">:</span>
+                            <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
                             <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
-                        <span class="k">break</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># ! pick the node with smaller index (v_l &lt; v_r), then sim paths &lt;-&gt; structure is bijection</span>
+                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">v_l</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">:</span>
+                            <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
+                    <span class="k">break</span>
 
     <span class="k">return</span> <span class="n">DataVineCop</span><span class="p">(</span>
         <span class="n">dct_bcp</span><span class="o">=</span><span class="n">dct_bcp</span><span class="p">,</span>
         <span class="n">dct_tree</span><span class="o">=</span><span class="n">dct_tree</span><span class="p">,</span>
-        <span class="n">lst_sim</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">),</span>
+        <span class="n">tpl_sim</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">),</span>
         <span class="n">mtd_bidep</span><span class="o">=</span><span class="n">mtd_bidep</span><span class="p">,</span>
     <span class="p">)</span></div>
 
@@ -638,7 +707,7 @@
     <span class="k">return</span> <span class="n">DataVineCop</span><span class="p">(</span>
         <span class="n">dct_bcp</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;dct_bcp&quot;</span><span class="p">],</span>
         <span class="n">dct_tree</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;dct_tree&quot;</span><span class="p">],</span>
-        <span class="n">lst_sim</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;lst_sim&quot;</span><span class="p">],</span>
+        <span class="n">tpl_sim</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;tpl_sim&quot;</span><span class="p">],</span>
         <span class="n">mtd_bidep</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;mtd_bidep&quot;</span><span class="p">],</span>
     <span class="p">)</span></div>
 
@@ -690,8 +759,8 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=4cd5f65a"></script>
-    <script src="../../../_static/doctools.js?v=888ff710"></script>
+</div><script src="../../../_static/documentation_options.js?v=c7a7491c"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>

@@ -4,8 +4,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" />
 
-    <!-- Generated with Sphinx 7.2.6 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.util - torchvinecopulib 2024.3.3 documentation</title>
+    <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
+        <title>torchvinecopulib.util - torchvinecopulib 2024.4.0rc1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -122,7 +122,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">torchvinecopulib 2024.3.3 documentation</div></a>
+      <a href="../../index.html"><div class="brand">torchvinecopulib 2024.4.0rc1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -145,7 +145,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.3.3 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.0rc1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -197,7 +197,7 @@
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">t</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">t</span><span class="p">,</span> <span class="n">kendalltau</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;ENUM_FUNC_BIDEP&quot;</span><span class="p">,</span>
@@ -217,6 +217,22 @@
 <span class="n">_TAU_MIN</span><span class="p">,</span> <span class="n">_TAU_MAX</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.999</span><span class="p">,</span> <span class="mf">0.999</span>
 
 
+<span class="c1"># def kendall_tau(</span>
+<span class="c1">#     x: torch.Tensor,</span>
+<span class="c1">#     y: torch.Tensor,</span>
+<span class="c1">#     tau_min: float = _TAU_MIN,</span>
+<span class="c1">#     tau_max: float = _TAU_MAX,</span>
+<span class="c1"># ) -&gt; float:</span>
+<span class="c1">#     &quot;&quot;&quot;https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94</span>
+<span class="c1">#     x,y are both of shape (n, 1)</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     n = x.shape[0]</span>
+<span class="c1">#     n *= n - 1</span>
+<span class="c1">#     return (</span>
+<span class="c1">#         ((x.T - x).sign() * (y.T - y).sign()).sum().div(n).clamp(min=tau_min, max=tau_max).item()</span>
+<span class="c1">#     )</span>
+
+
 <div class="viewcode-block" id="kendall_tau">
 <a class="viewcode-back" href="../../torchvinecopulib.util.html#torchvinecopulib.util.kendall_tau">[docs]</a>
 <span class="k">def</span> <span class="nf">kendall_tau</span><span class="p">(</span>
@@ -228,32 +244,46 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94</span>
 <span class="sd">    x,y are both of shape (n, 1)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">n</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">n</span> <span class="o">*=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
-    <span class="k">return</span> <span class="p">(</span>
-        <span class="p">((</span><span class="n">x</span><span class="o">.</span><span class="n">T</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sign</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">T</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">sign</span><span class="p">())</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="n">tau_min</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">tau_max</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-    <span class="p">)</span></div>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">kendalltau</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tau_max</span><span class="p">),</span> <span class="n">tau_min</span><span class="p">),</span> <span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
 
 
 
 <div class="viewcode-block" id="mutual_info">
 <a class="viewcode-back" href="../../torchvinecopulib.util.html#torchvinecopulib.util.mutual_info">[docs]</a>
-<span class="k">def</span> <span class="nf">mutual_info</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">mutual_info</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">is_sklearn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html</span>
 <span class="sd">    x,y are both of shape (n, 1)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># TODO: remove sklearn dependency</span>
-    <span class="kn">from</span> <span class="nn">sklearn.feature_selection</span> <span class="kn">import</span> <span class="n">mutual_info_regression</span>
 
-    <span class="k">return</span> <span class="n">mutual_info_regression</span><span class="p">(</span>
-        <span class="n">X</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
-        <span class="c1"># ! notice the shape of y</span>
-        <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
-        <span class="n">discrete_features</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-        <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+<span class="sd">    Purkayastha, S., &amp; Song, P. X. K. (2024).</span>
+<span class="sd">    fastMI: A fast and consistent copula-based nonparametric estimator of mutual information.</span>
+<span class="sd">    Journal of Multivariate Analysis, 201, 105270.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_sklearn</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">sklearn.feature_selection</span> <span class="kn">import</span> <span class="n">mutual_info_regression</span>
+
+        <span class="k">return</span> <span class="n">mutual_info_regression</span><span class="p">(</span>
+            <span class="n">X</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+            <span class="c1"># ! notice the shape of y</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
+            <span class="n">discrete_features</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Purkayastha, S., &amp; Song, P. X. K. (2024).</span>
+        <span class="kn">from</span> <span class="nn">fastkde.fastKDE</span> <span class="kn">import</span> <span class="n">pdf_at_points</span>
+        <span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">log</span>
+
+        <span class="n">x_</span><span class="p">,</span> <span class="n">y_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">y</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="n">joint</span> <span class="o">=</span> <span class="n">pdf_at_points</span><span class="p">(</span><span class="n">var1</span><span class="o">=</span><span class="n">x_</span><span class="p">,</span> <span class="n">var2</span><span class="o">=</span><span class="n">y_</span><span class="p">)</span>
+        <span class="n">joint</span> <span class="o">=</span> <span class="n">joint</span><span class="p">[</span><span class="n">joint</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">margin_x</span> <span class="o">=</span> <span class="n">pdf_at_points</span><span class="p">(</span><span class="n">var1</span><span class="o">=</span><span class="n">x_</span><span class="p">)</span>
+        <span class="n">margin_x</span> <span class="o">=</span> <span class="n">margin_x</span><span class="p">[</span><span class="n">margin_x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">margin_y</span> <span class="o">=</span> <span class="n">pdf_at_points</span><span class="p">(</span><span class="n">var1</span><span class="o">=</span><span class="n">y_</span><span class="p">)</span>
+        <span class="n">margin_y</span> <span class="o">=</span> <span class="n">margin_y</span><span class="p">[</span><span class="n">margin_y</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">log</span><span class="p">(</span><span class="n">joint</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">log</span><span class="p">(</span><span class="n">margin_x</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">log</span><span class="p">(</span><span class="n">margin_y</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span><span class="o">.</span><span class="n">item</span><span class="p">()</span></div>
 
 
 
@@ -334,48 +364,49 @@
 <span class="k">def</span> <span class="nf">wasserstein_dist_ind</span><span class="p">(</span>
     <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-    <span class="n">reg</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-2</span><span class="p">,</span>
-    <span class="n">metric</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;sqeuclidean&quot;</span><span class="p">,</span>
+    <span class="n">reg</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">num_sim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wasserstein distance from bicop obs to indep bicop simulations, by ot.bregman.empirical_sinkhorn2 (averaged for each observation).</span>
-
-<span class="sd">    if num_row &lt;= 1000, use all obs; otherwise, use 1000 random obs</span>
-
-<span class="sd">    https://pythonot.github.io/gen_modules/ot.bregman.html#ot.bregman.empirical_sinkhorn2</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wasserstein distance from bicop obs to indep bicop simulations, by ot.sinkhorn2 (averaged for each observation).</span>
 
 <span class="sd">    :param x: copula obs of shape (n,1)</span>
 <span class="sd">    :type x: torch.Tensor</span>
 <span class="sd">    :param y: copula obs of shape (n,1)</span>
 <span class="sd">    :type y: torch.Tensor</span>
-<span class="sd">    :param reg: regularization strength, defaults to 1e-2</span>
+<span class="sd">    :param reg: regularization strength, defaults to 0.1</span>
 <span class="sd">    :type reg: float, optional</span>
-<span class="sd">    :param metric: ground metric for the Wasserstein problem, defaults to &#39;sqeuclidean&#39;</span>
-<span class="sd">    :type metric: str, optional</span>
+<span class="sd">    :param p: p-norm distance to calculate between each vector pair, defaults to 2</span>
+<span class="sd">    :type p: int, optional</span>
 <span class="sd">    :param seed: random seed for torch.manual_seed() in indep bicop simulations, defaults to 0</span>
 <span class="sd">    :type seed: int, optional</span>
 <span class="sd">    :return: Wasserstein distance from bicop obs to indep bicop simulations</span>
 <span class="sd">    :rtype: float</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># * remove ot dependency</span>
-    <span class="kn">from</span> <span class="nn">ot.bregman</span> <span class="kn">import</span> <span class="n">empirical_sinkhorn2</span>
+    <span class="kn">from</span> <span class="nn">ot</span> <span class="kn">import</span> <span class="n">sinkhorn2</span>
 
     <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">num_row</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">num_row</span> <span class="o">&lt;=</span> <span class="mi">1000</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">empirical_sinkhorn2</span><span class="p">(</span>
-            <span class="n">X_s</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]),</span>
-            <span class="n">X_t</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_row</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span>
-            <span class="n">reg</span><span class="o">=</span><span class="n">reg</span><span class="p">,</span>
-            <span class="n">metric</span><span class="o">=</span><span class="n">metric</span><span class="p">,</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">empirical_sinkhorn2</span><span class="p">(</span>
-            <span class="n">X_s</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])[</span><span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">num_row</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)[:</span><span class="mi">1000</span><span class="p">],</span> <span class="p">:],</span>
-            <span class="n">X_t</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span>
-            <span class="n">reg</span><span class="o">=</span><span class="n">reg</span><span class="p">,</span>
-            <span class="n">metric</span><span class="o">=</span><span class="n">metric</span><span class="p">,</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span></div>
+    <span class="n">X_s</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])</span>
+    <span class="n">num_obs</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_obs</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_obs</span><span class="p">,</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_obs</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_obs</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="nb">sum</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">sinkhorn2</span><span class="p">(</span>
+                    <span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+                    <span class="n">b</span><span class="o">=</span><span class="n">b</span><span class="p">,</span>
+                    <span class="n">M</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">cdist</span><span class="p">(</span><span class="n">X_s</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand_like</span><span class="p">(</span><span class="n">X_s</span><span class="p">),</span> <span class="n">p</span><span class="o">=</span><span class="n">p</span><span class="p">),</span>
+                    <span class="n">reg</span><span class="o">=</span><span class="n">reg</span><span class="p">,</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_sim</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="o">/</span> <span class="n">num_sim</span>
+    <span class="p">)</span></div>
 
 
 
@@ -534,137 +565,137 @@
     <span class="p">)</span>
 
 
-<span class="c1"># * Student&#39;s t distribution CDF (p), PPF (q), density (d)</span>
-<span class="k">def</span> <span class="nf">inc_beta_reg</span><span class="p">(</span><span class="n">vec</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="c1"># * regularized incomplete beta integral, with a = 0.5, b = nu / 2, vec in [0,1]</span>
-    <span class="c1"># https://stats.stackexchange.com/questions/615961/students-t-cdf-ppf-or-hypergeometric-2f1-or-betainc-using-pytorch</span>
-    <span class="c1"># https://stats.stackexchange.com/questions/52341/formula-to-generate-critical-t-values-for-t-test-instead-of-using-a-look-up-arr</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">idx</span> <span class="o">:=</span> <span class="n">vec</span> <span class="o">&gt;</span> <span class="p">((</span><span class="n">a</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">+</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)))</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-        <span class="n">res</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">inc_beta_reg</span><span class="p">(</span><span class="n">vec</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">vec</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">a</span><span class="o">=</span><span class="n">b</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">a</span><span class="p">)</span>
-    <span class="n">idx</span> <span class="o">=</span> <span class="o">~</span><span class="n">idx</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-    <span class="n">qab</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-    <span class="n">qap</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="mf">1.0</span>
-    <span class="n">qam</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="mf">1.0</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">qab</span> <span class="o">*</span> <span class="n">x</span> <span class="o">/</span> <span class="n">qap</span><span class="p">)</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
-    <span class="n">front</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="o">-</span><span class="n">math</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
-        <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
-        <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>
-        <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
-        <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">log</span><span class="p">()</span> <span class="o">*</span> <span class="n">a</span>
-        <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">neg</span><span class="p">()</span><span class="o">.</span><span class="n">log1p</span><span class="p">()</span> <span class="o">*</span> <span class="n">b</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">200</span><span class="p">):</span>
-        <span class="n">i2</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="mf">2.0</span>
-        <span class="n">ai2</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">i2</span>
-        <span class="n">nmrt</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">b</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">qam</span> <span class="o">+</span> <span class="n">i2</span><span class="p">)</span> <span class="o">*</span> <span class="n">ai2</span><span class="p">))</span> <span class="o">*</span> <span class="n">x</span>
-        <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">*</span> <span class="n">nmrt</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">()</span>
-        <span class="n">c</span> <span class="o">=</span> <span class="n">nmrt</span> <span class="o">/</span> <span class="n">c</span> <span class="o">+</span> <span class="mf">1.0</span>
-        <span class="n">f</span> <span class="o">*=</span> <span class="n">c</span> <span class="o">*</span> <span class="n">d</span>
-        <span class="n">nmrt</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">qab</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">qap</span> <span class="o">+</span> <span class="n">i2</span><span class="p">)</span> <span class="o">*</span> <span class="n">ai2</span><span class="p">))</span> <span class="o">*</span> <span class="n">x</span>
-        <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">*</span> <span class="n">nmrt</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">()</span>
-        <span class="n">c</span> <span class="o">=</span> <span class="n">nmrt</span> <span class="o">/</span> <span class="n">c</span> <span class="o">+</span> <span class="mf">1.0</span>
-        <span class="n">cd</span> <span class="o">=</span> <span class="n">c</span> <span class="o">*</span> <span class="n">d</span>
-        <span class="n">f</span> <span class="o">*=</span> <span class="n">cd</span>
-        <span class="k">if</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">cd</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
-            <span class="k">break</span>
-    <span class="n">res</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">front</span> <span class="o">*</span> <span class="n">f</span>
-    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">()</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="n">_CDF_MIN</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">_CDF_MAX</span><span class="p">)</span>
+<span class="c1"># # * Student&#39;s t distribution CDF (p), PPF (q), density (d)</span>
+<span class="c1"># def inc_beta_reg(vec: torch.Tensor, a: float, b: float) -&gt; torch.Tensor:</span>
+<span class="c1">#     # * regularized incomplete beta integral, with a = 0.5, b = nu / 2, vec in [0,1]</span>
+<span class="c1">#     # https://stats.stackexchange.com/questions/615961/students-t-cdf-ppf-or-hypergeometric-2f1-or-betainc-using-pytorch</span>
+<span class="c1">#     # https://stats.stackexchange.com/questions/52341/formula-to-generate-critical-t-values-for-t-test-instead-of-using-a-look-up-arr</span>
+<span class="c1">#     res = torch.empty_like(vec)</span>
+<span class="c1">#     if (idx := vec &gt; ((a + 1.0) / (2.0 + a + b))).any():</span>
+<span class="c1">#         res[idx] = 1.0 - inc_beta_reg(vec=1.0 - vec[idx], a=b, b=a)</span>
+<span class="c1">#     idx = ~idx</span>
+<span class="c1">#     x = vec[idx]</span>
+<span class="c1">#     qab = a + b</span>
+<span class="c1">#     qap = a + 1.0</span>
+<span class="c1">#     qam = a - 1.0</span>
+<span class="c1">#     c = torch.ones_like(x)</span>
+<span class="c1">#     d = 1.0 / (1.0 - qab * x / qap)</span>
+<span class="c1">#     f = d.clone()</span>
+<span class="c1">#     front = (</span>
+<span class="c1">#         -math.lgamma(a)</span>
+<span class="c1">#         - math.lgamma(b)</span>
+<span class="c1">#         + math.lgamma(a + b)</span>
+<span class="c1">#         - math.log(a)</span>
+<span class="c1">#         + x.log() * a</span>
+<span class="c1">#         + x.neg().log1p() * b</span>
+<span class="c1">#     ).exp()</span>
+<span class="c1">#     for i in range(1, 200):</span>
+<span class="c1">#         i2 = i * 2.0</span>
+<span class="c1">#         ai2 = a + i2</span>
+<span class="c1">#         nmrt = (i * (b - i) / ((qam + i2) * ai2)) * x</span>
+<span class="c1">#         d = (d * nmrt + 1.0).reciprocal()</span>
+<span class="c1">#         c = nmrt / c + 1.0</span>
+<span class="c1">#         f *= c * d</span>
+<span class="c1">#         nmrt = (-(a + i) * (qab + i) / ((qap + i2) * ai2)) * x</span>
+<span class="c1">#         d = (d * nmrt + 1.0).reciprocal()</span>
+<span class="c1">#         c = nmrt / c + 1.0</span>
+<span class="c1">#         cd = c * d</span>
+<span class="c1">#         f *= cd</span>
+<span class="c1">#         if ((1.0 - cd).abs() &lt; 1e-6).all():</span>
+<span class="c1">#             break</span>
+<span class="c1">#     res[idx] = front * f</span>
+<span class="c1">#     return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)</span>
 
 
-<span class="k">def</span> <span class="nf">inc_beta_reg_inv</span><span class="p">(</span><span class="n">vec</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="n">a1</span><span class="p">,</span> <span class="n">b1</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">b</span> <span class="o">-</span> <span class="mf">1.0</span>
-    <span class="k">if</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="mf">1.0</span> <span class="ow">and</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
-        <span class="n">tmp</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">&gt;=</span> <span class="mf">0.5</span>
-        <span class="n">tmp</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">tmp</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">tmp</span><span class="o">.</span><span class="n">log</span><span class="p">())</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.30753</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="mf">0.27061</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.99229</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="mf">0.04481</span><span class="p">))</span> <span class="o">-</span> <span class="n">t</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="o">~</span><span class="n">idx</span>
-        <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">al</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span> <span class="o">-</span> <span class="mf">3.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">6.0</span>
-        <span class="n">h</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">a</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">b</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">))</span>
-        <span class="n">w</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">al</span> <span class="o">+</span> <span class="n">h</span><span class="p">)</span> <span class="o">/</span> <span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">b</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">a</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span>
-            <span class="n">al</span> <span class="o">+</span> <span class="mf">5.0</span> <span class="o">/</span> <span class="mf">6.0</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">h</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">a</span> <span class="o">/</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">())</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">a</span> <span class="o">/</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)))</span> <span class="o">/</span> <span class="n">a</span>
-        <span class="n">w</span> <span class="o">=</span> <span class="n">t</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">b</span> <span class="o">/</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)))</span> <span class="o">/</span> <span class="n">b</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">&lt;</span> <span class="n">t</span> <span class="o">/</span> <span class="n">w</span>
-        <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">w</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">a</span><span class="p">)</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="o">~</span><span class="n">idx</span>
-        <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">w</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]))</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span>
-    <span class="n">afac</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span> <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">lgamma</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="n">a1</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">log</span><span class="p">()</span> <span class="o">+</span> <span class="n">b1</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">neg</span><span class="p">()</span><span class="o">.</span><span class="n">log1p</span><span class="p">()</span> <span class="o">+</span> <span class="n">afac</span><span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span>
-        <span class="n">u</span> <span class="o">=</span> <span class="p">(</span><span class="n">inc_beta_reg</span><span class="p">(</span><span class="n">vec</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">b</span><span class="p">)</span> <span class="o">-</span> <span class="n">vec</span><span class="p">)</span> <span class="o">/</span> <span class="n">t</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="n">u</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">u</span> <span class="o">*</span> <span class="p">(</span><span class="n">a1</span> <span class="o">/</span> <span class="n">x</span> <span class="o">-</span> <span class="n">b1</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">x</span><span class="p">)))</span><span class="o">.</span><span class="n">clamp_max</span><span class="p">(</span><span class="nb">max</span><span class="o">=</span><span class="mf">1.0</span><span class="p">))</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">)</span>
-        <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">-=</span> <span class="n">t</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mf">0.0</span>
-        <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="n">t</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mf">1.0</span>
-        <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="n">t</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">()</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="n">_CDF_MIN</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">_CDF_MAX</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">x</span>
+<span class="c1"># def inc_beta_reg_inv(vec: torch.Tensor, a: float, b: float) -&gt; torch.Tensor:</span>
+<span class="c1">#     a1, b1 = a - 1.0, b - 1.0</span>
+<span class="c1">#     if a &gt; 1.0 and b &gt; 1.0:</span>
+<span class="c1">#         tmp = vec.clone()</span>
+<span class="c1">#         idx = vec &gt;= 0.5</span>
+<span class="c1">#         tmp[idx] = 1.0 - tmp[idx]</span>
+<span class="c1">#         t = (-2.0 * tmp.log()).sqrt()</span>
+<span class="c1">#         x = (2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t</span>
+<span class="c1">#         idx = ~idx</span>
+<span class="c1">#         x[idx] = -x[idx]</span>
+<span class="c1">#         al = (x.square() - 3.0) / 6.0</span>
+<span class="c1">#         h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0))</span>
+<span class="c1">#         w = (x * math.sqrt(al + h) / h) - (1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)) * (</span>
+<span class="c1">#             al + 5.0 / 6.0 - 2.0 / (3.0 * h)</span>
+<span class="c1">#         )</span>
+<span class="c1">#         x = a / (a + b * (2.0 * w).exp())</span>
+<span class="c1">#     else:</span>
+<span class="c1">#         x = vec.clone()</span>
+<span class="c1">#         t = math.exp(a * math.log(a / (a + b))) / a</span>
+<span class="c1">#         w = t + math.exp(b * math.log(b / (a + b))) / b</span>
+<span class="c1">#         idx = vec &lt; t / w</span>
+<span class="c1">#         x[idx] = (a * w * x[idx]).pow(1.0 / a)</span>
+<span class="c1">#         idx = ~idx</span>
+<span class="c1">#         x[idx] = 1.0 - (b * w * (1.0 - x[idx])).pow(1.0 / b)</span>
+<span class="c1">#     afac = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)</span>
+<span class="c1">#     for _ in range(10):</span>
+<span class="c1">#         t = (a1 * x.log() + b1 * x.neg().log1p() + afac).exp()</span>
+<span class="c1">#         u = (inc_beta_reg(vec=x, a=a, b=b) - vec) / t</span>
+<span class="c1">#         t = u / (1.0 - 0.5 * (u * (a1 / x - b1 / (1.0 - x))).clamp_max(max=1.0))</span>
+<span class="c1">#         idx = (x &gt; 0.0) &amp; (x &lt; 1.0)</span>
+<span class="c1">#         x[idx] -= t[idx]</span>
+<span class="c1">#         idx = x &lt; 0.0</span>
+<span class="c1">#         x[idx] = 0.5 * (x[idx] + t[idx])</span>
+<span class="c1">#         idx = x &gt; 1.0</span>
+<span class="c1">#         x[idx] = 0.5 * (x[idx] + t[idx] + 1.0)</span>
+<span class="c1">#         x = x.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)</span>
+<span class="c1">#     return x</span>
 
 
-<span class="k">def</span> <span class="nf">pt</span><span class="p">(</span><span class="n">vec</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="k">if</span> <span class="n">nu</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">atan</span><span class="p">()</span> <span class="o">/</span> <span class="mf">3.141592653589793</span> <span class="o">+</span> <span class="mf">0.5</span>
-    <span class="k">elif</span> <span class="n">nu</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="n">vec</span> <span class="o">/</span> <span class="p">(</span><span class="n">vec</span><span class="o">.</span><span class="n">square</span><span class="p">()</span> <span class="o">+</span> <span class="mf">2.0</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
-    <span class="k">elif</span> <span class="n">nu</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="p">(</span><span class="n">vec</span> <span class="o">/</span> <span class="mf">1.7320508075688772</span><span class="p">)</span><span class="o">.</span><span class="n">atan</span><span class="p">()</span> <span class="o">/</span> <span class="mf">3.141592653589793</span>
-            <span class="o">+</span> <span class="mf">0.5</span>
-            <span class="o">+</span> <span class="mf">0.5513288954217921</span> <span class="o">*</span> <span class="n">vec</span> <span class="o">/</span> <span class="p">(</span><span class="n">vec</span><span class="o">.</span><span class="n">square</span><span class="p">()</span> <span class="o">+</span> <span class="mf">3.0</span><span class="p">)</span>
-        <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">nu</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
-        <span class="n">_</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">square</span><span class="p">()</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="n">vec</span> <span class="o">*</span> <span class="p">(</span><span class="n">_</span> <span class="o">+</span> <span class="mf">6.0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">_</span> <span class="o">+</span> <span class="mf">4.0</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
-    <span class="k">elif</span> <span class="n">nu</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="p">(</span><span class="n">vec</span> <span class="o">/</span> <span class="mf">2.23606797749979</span><span class="p">)</span><span class="o">.</span><span class="n">atan</span><span class="p">()</span> <span class="o">/</span> <span class="mf">3.141592653589793</span>
-            <span class="o">+</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">vec</span><span class="o">.</span><span class="n">square</span><span class="p">()</span> <span class="o">*</span> <span class="mf">3.0</span> <span class="o">+</span> <span class="mf">25.0</span><span class="p">)</span>
-                <span class="o">*</span> <span class="mf">0.23725418113905902</span>
-                <span class="o">*</span> <span class="n">vec</span>
-                <span class="o">/</span> <span class="p">(</span><span class="n">vec</span><span class="o">.</span><span class="n">square</span><span class="p">()</span> <span class="o">+</span> <span class="mf">5.0</span><span class="p">)</span><span class="o">.</span><span class="n">square</span><span class="p">()</span>
-            <span class="p">)</span>
-            <span class="o">+</span> <span class="mf">0.5</span>
-        <span class="p">)</span>
+<span class="c1"># def pt(vec: torch.Tensor, nu: float) -&gt; torch.Tensor:</span>
+<span class="c1">#     if nu == 1:</span>
+<span class="c1">#         res = vec.atan() / 3.141592653589793 + 0.5</span>
+<span class="c1">#     elif nu == 2:</span>
+<span class="c1">#         res = (vec / (vec.square() + 2.0).sqrt() + 1.0) / 2.0</span>
+<span class="c1">#     elif nu == 3:</span>
+<span class="c1">#         res = (</span>
+<span class="c1">#             (vec / 1.7320508075688772).atan() / 3.141592653589793</span>
+<span class="c1">#             + 0.5</span>
+<span class="c1">#             + 0.5513288954217921 * vec / (vec.square() + 3.0)</span>
+<span class="c1">#         )</span>
+<span class="c1">#     elif nu == 4:</span>
+<span class="c1">#         _ = vec.square()</span>
+<span class="c1">#         res = (vec * (_ + 6.0) / (_ + 4.0).pow(1.5) + 1.0) / 2.0</span>
+<span class="c1">#     elif nu == 5:</span>
+<span class="c1">#         res = (</span>
+<span class="c1">#             (vec / 2.23606797749979).atan() / 3.141592653589793</span>
+<span class="c1">#             + (</span>
+<span class="c1">#                 (vec.square() * 3.0 + 25.0)</span>
+<span class="c1">#                 * 0.23725418113905902</span>
+<span class="c1">#                 * vec</span>
+<span class="c1">#                 / (vec.square() + 5.0).square()</span>
+<span class="c1">#             )</span>
+<span class="c1">#             + 0.5</span>
+<span class="c1">#         )</span>
 
-    <span class="k">elif</span> <span class="n">nu</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">square</span><span class="p">()</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">((</span><span class="n">res</span><span class="o">.</span><span class="n">square</span><span class="p">()</span> <span class="o">*</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">res</span> <span class="o">*</span> <span class="mf">30.0</span> <span class="o">+</span> <span class="mf">135.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">vec</span> <span class="o">/</span> <span class="p">(</span><span class="n">res</span> <span class="o">+</span> <span class="mf">6.0</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mf">2.5</span><span class="p">))</span> <span class="o">/</span> <span class="mf">4.0</span> <span class="o">+</span> <span class="mf">0.5</span>
+<span class="c1">#     elif nu == 6:</span>
+<span class="c1">#         res = vec.square()</span>
+<span class="c1">#         res = ((res.square() * 2.0 + res * 30.0 + 135.0) * vec / (res + 6.0).pow(2.5)) / 4.0 + 0.5</span>
 
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">nu</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">_NU_MAX</span><span class="p">,</span> <span class="n">nu</span><span class="p">),</span> <span class="n">_NU_MIN</span><span class="p">)</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="n">inc_beta_reg</span><span class="p">(</span><span class="n">vec</span><span class="o">=</span><span class="n">nu</span> <span class="o">/</span> <span class="p">(</span><span class="n">vec</span><span class="o">.</span><span class="n">square</span><span class="p">()</span> <span class="o">+</span> <span class="n">nu</span><span class="p">),</span> <span class="n">a</span><span class="o">=</span><span class="n">nu</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">&gt;</span> <span class="mf">0.0</span>
-        <span class="n">res</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="n">res</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">res</span> <span class="o">*=</span> <span class="mf">0.5</span>
-    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">()</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="n">_CDF_MIN</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">_CDF_MAX</span><span class="p">)</span>
+<span class="c1">#     else:</span>
+<span class="c1">#         nu = max(min(_NU_MAX, nu), _NU_MIN)</span>
+<span class="c1">#         res = inc_beta_reg(vec=nu / (vec.square() + nu), a=nu / 2.0, b=0.5)</span>
+<span class="c1">#         idx = vec &gt; 0.0</span>
+<span class="c1">#         res[idx] = 2.0 - res[idx]</span>
+<span class="c1">#         res *= 0.5</span>
+<span class="c1">#     return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)</span>
 
 
-<span class="k">def</span> <span class="nf">qt</span><span class="p">(</span><span class="n">vec</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="n">vec2</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">*</span> <span class="mf">2.0</span>
-    <span class="n">nu2</span> <span class="o">=</span> <span class="n">nu</span> <span class="o">/</span> <span class="mf">2.0</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">vec</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">vec</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-    <span class="n">idx</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">&lt;</span> <span class="mf">0.5</span>
-    <span class="n">res</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">inc_beta_reg_inv</span><span class="p">(</span><span class="n">vec</span><span class="o">=</span><span class="n">vec2</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">a</span><span class="o">=</span><span class="n">nu2</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">()</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span><span class="o">.</span><span class="n">neg</span><span class="p">()</span>
-    <span class="n">idx</span> <span class="o">=</span> <span class="o">~</span><span class="n">idx</span>
-    <span class="n">res</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">inc_beta_reg_inv</span><span class="p">(</span><span class="n">vec</span><span class="o">=</span><span class="mf">2.0</span> <span class="o">-</span> <span class="n">vec2</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">a</span><span class="o">=</span><span class="n">nu2</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">()</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
-    <span class="n">res</span><span class="p">[</span><span class="n">vec</span> <span class="o">==</span> <span class="mf">0.5</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-    <span class="n">res</span> <span class="o">*=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">nu</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">()</span>
+<span class="c1"># def qt(vec: torch.Tensor, nu: float) -&gt; torch.Tensor:</span>
+<span class="c1">#     vec2 = vec * 2.0</span>
+<span class="c1">#     nu2 = nu / 2.0</span>
+<span class="c1">#     res = torch.empty_like(input=vec, device=vec.device)</span>
+<span class="c1">#     idx = vec &lt; 0.5</span>
+<span class="c1">#     res[idx] = (inc_beta_reg_inv(vec=vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt().neg()</span>
+<span class="c1">#     idx = ~idx</span>
+<span class="c1">#     res[idx] = (inc_beta_reg_inv(vec=2.0 - vec2[idx], a=nu2, b=0.5).reciprocal() - 1.0).sqrt()</span>
+<span class="c1">#     res[vec == 0.5] = 0.0</span>
+<span class="c1">#     res *= math.sqrt(nu)</span>
+<span class="c1">#     return res.nan_to_num()</span>
 
 
 <span class="k">def</span> <span class="nf">pt_scipy</span><span class="p">(</span><span class="n">vec</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
@@ -998,8 +1029,8 @@
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=4cd5f65a"></script>
-    <script src="../../_static/doctools.js?v=888ff710"></script>
+</div><script src="../../_static/documentation_options.js?v=c7a7491c"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>

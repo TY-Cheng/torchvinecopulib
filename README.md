@@ -11,10 +11,12 @@
 
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
+- C/D/R-Vine full simulation/ quantile-regression/ conditoinal-simulation, all in one package
+  - Flexible simulation workflow for experienced users
 - Vectorized tensor computation with GPU (`device='cuda'`) support
 - Shorter runtimes for higher dimension simulations
 - Decoupled dataclasses and factory methods
-- Pure `Python` library, tested against [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
+- Pure `Python` library, inspired by and tested against [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
 - IO and visualization support
 
 ## Dependencies
@@ -54,9 +56,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.3.3-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.4.0rc1-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.3.3.tar.gz
+pip install ./dist/torchvinecopulib-2024.4.0rc1.tar.gz
 ```
 
 ## Examples
@@ -110,10 +112,9 @@ We welcome contributions, whether it's a bug report, feature suggestion, code co
 - [torch.jit.script can be slower](https://discuss.pytorch.org/t/why-is-torch-jit-script-slower/120131/6)
 
 ### TODO
-
-1. more `bicop` class in `torch`
-2. potentially deprecating `'mle'` from `mtd_fit`
-3. bivariate dependence funcs in `util.ENUM_FUNC_BIDEP`, resolve non-`torch` pkg dependencies (`scikit-learn`, `pot`)
+1. non-par bicop
+2. more (non-parametric) `bicop` class in `torch`
+3. potentially deprecating `'mle'` from `mtd_fit`
 
 ## License
 

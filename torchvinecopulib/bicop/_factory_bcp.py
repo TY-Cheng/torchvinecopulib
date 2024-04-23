@@ -9,6 +9,7 @@ from ._data_bcp import ENUM_FAM_BICOP, DataBiCop, SET_FAMnROT
 def bcp_from_obs(
     obs_bcp: torch.Tensor,
     tau: float | None = None,
+    thresh_trunc: float = 0.1,
     mtd_fit: str = "itau",
     mtd_mle: str = "COBYLA",
     mtd_sel: str = "aic",
@@ -28,6 +29,8 @@ def bcp_from_obs(
     :type obs_bcp: torch.Tensor
     :param tau: Kendall's tau of the observations, defaults to None for the function to estimate
     :type tau: float, optional
+    :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.1
+    :type thresh_trunc: float, optional
     :param mtd_fit: parameter estimation method, either 'itau' (inverse of tau) or 'mle' (maximum likelihood estimation); defaults to "itau"
     :type mtd_fit: str, optional
     :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to "COBYLA"
@@ -46,7 +49,9 @@ def bcp_from_obs(
     num_obs = obs_bcp.shape[0]
     # * tau from data, for inv-tau/tau2par, whose par is taken as init value for mle
     if tau is None:
-        tau = kendall_tau(x=obs_bcp[:, [0]], y=obs_bcp[:, [1]])
+        tau, pval = kendall_tau(x=obs_bcp[:, [0]], y=obs_bcp[:, [1]])
+        if pval >= thresh_trunc:
+            return DataBiCop(fam="Independent", negloglik=0.0, num_obs=num_obs, par=tuple(), rot=0)
 
     def _fit_itau(i_fam: str, i_rot: int) -> DataBiCop:
         # fetch the class

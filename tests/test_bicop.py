@@ -51,14 +51,18 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
             lst_pvc.append(np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum())
             lst_tvc.append(
                 np.abs(
-                    bcp_from_obs(obs_bcp=obs, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]).par
+                    bcp_from_obs(
+                        obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
+                    ).par
                 ).sum()
             )
         else:
             obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=(i_par,), rot=rot, num_sim=2000)
             lst_pvc.append(Bicop(data=obs.cpu(), controls=temp_fcb).parameters.item())
             lst_tvc.append(
-                bcp_from_obs(obs_bcp=obs, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]).par[0]
+                bcp_from_obs(
+                    obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
+                ).par[0]
             )
     return np.array(lst_pvc), np.array(lst_tvc)
 

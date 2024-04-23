@@ -4,8 +4,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 7.2.6 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.bicop._factory_bcp - torchvinecopulib 2024.3.3 documentation</title>
+    <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
+        <title>torchvinecopulib.bicop._factory_bcp - torchvinecopulib 2024.4.0rc1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -122,7 +122,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.3.3 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.0rc1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -145,7 +145,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.3.3 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.0rc1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -205,6 +205,7 @@
 <span class="k">def</span> <span class="nf">bcp_from_obs</span><span class="p">(</span>
     <span class="n">obs_bcp</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">tau</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">thresh_trunc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
     <span class="n">mtd_fit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;itau&quot;</span><span class="p">,</span>
     <span class="n">mtd_mle</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;COBYLA&quot;</span><span class="p">,</span>
     <span class="n">mtd_sel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;aic&quot;</span><span class="p">,</span>
@@ -224,6 +225,8 @@
 <span class="sd">    :type obs_bcp: torch.Tensor</span>
 <span class="sd">    :param tau: Kendall&#39;s tau of the observations, defaults to None for the function to estimate</span>
 <span class="sd">    :type tau: float, optional</span>
+<span class="sd">    :param thresh_trunc: threshold of Kendall&#39;s tau independence test, below which we reject independent bicop, defaults to 0.1</span>
+<span class="sd">    :type thresh_trunc: float, optional</span>
 <span class="sd">    :param mtd_fit: parameter estimation method, either &#39;itau&#39; (inverse of tau) or &#39;mle&#39; (maximum likelihood estimation); defaults to &quot;itau&quot;</span>
 <span class="sd">    :type mtd_fit: str, optional</span>
 <span class="sd">    :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to &quot;COBYLA&quot;</span>
@@ -242,7 +245,9 @@
     <span class="n">num_obs</span> <span class="o">=</span> <span class="n">obs_bcp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="c1"># * tau from data, for inv-tau/tau2par, whose par is taken as init value for mle</span>
     <span class="k">if</span> <span class="n">tau</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">tau</span> <span class="o">=</span> <span class="n">kendall_tau</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">y</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">tau</span><span class="p">,</span> <span class="n">pval</span> <span class="o">=</span> <span class="n">kendall_tau</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">y</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="k">if</span> <span class="n">pval</span> <span class="o">&gt;=</span> <span class="n">thresh_trunc</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DataBiCop</span><span class="p">(</span><span class="n">fam</span><span class="o">=</span><span class="s2">&quot;Independent&quot;</span><span class="p">,</span> <span class="n">negloglik</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">num_obs</span><span class="o">=</span><span class="n">num_obs</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(),</span> <span class="n">rot</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_fit_itau</span><span class="p">(</span><span class="n">i_fam</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">i_rot</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataBiCop</span><span class="p">:</span>
         <span class="c1"># fetch the class</span>
@@ -342,8 +347,8 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=4cd5f65a"></script>
-    <script src="../../../_static/doctools.js?v=888ff710"></script>
+</div><script src="../../../_static/documentation_options.js?v=c7a7491c"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
