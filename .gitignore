@@ -1,9 +1,7 @@
 # manual
-.gitignore
 scratch*.ipynb
 poetry.lock
 /docs/**/*
-/docs/*.py
 !/docs/index.rst
 !docs/_build/html/*
 
