@@ -1,5 +1,9 @@
 const DOCUMENTATION_OPTIONS = {
+<<<<<<< HEAD
     VERSION: '2024.4.0rc1',
+=======
+    VERSION: '2024.4.0',
+>>>>>>> dev_ian
     LANGUAGE: 'en',
     COLLAPSE_INDEX: false,
     BUILDER: 'html',

@@ -56,9 +56,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.4.0rc1-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.4.0-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.4.0rc1.tar.gz
+pip install ./dist/torchvinecopulib-2024.4.0.tar.gz
 ```
 
 ## Examples
