@@ -9,9 +9,9 @@ from ._data_bcp import ENUM_FAM_BICOP, DataBiCop, SET_FAMnROT
 def bcp_from_obs(
     obs_bcp: torch.Tensor,
     tau: float | None = None,
-    thresh_trunc: float = 0.1,
+    thresh_trunc: float = 0.05,
     mtd_fit: str = "itau",
-    mtd_mle: str = "COBYLA",
+    mtd_mle: str = "L-BFGS-B",
     mtd_sel: str = "aic",
     tpl_fam: tuple[str, ...] = (
         "Clayton",
@@ -92,11 +92,12 @@ def bcp_from_obs(
             # fetch the class
             i_cls = ENUM_FAM_BICOP[i_fam].value
 
-            def f_nll(vec: np.array) -> float:
-                return i_cls.negloglik(par=vec, obs=obs_bcp, rot=i_rot)
-
             res = minimize(
-                fun=f_nll,
+                fun=lambda par: i_cls.l_pdf(par=par, obs=obs_bcp, rot=i_rot)
+                .nan_to_num(posinf=0.0, neginf=0.0)
+                .sum()
+                .neg()
+                .item(),
                 x0=vec_bcp_data[i_idx].par,
                 bounds=tuple(zip(i_cls._PAR_MIN, i_cls._PAR_MAX)),
                 method=mtd_mle,

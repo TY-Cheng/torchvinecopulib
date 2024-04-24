@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.bicop._factory_bcp - torchvinecopulib 2024.4.0 documentation</title>
+        <title>torchvinecopulib.bicop._factory_bcp - torchvinecopulib 2024.4.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -122,7 +122,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.0 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -145,7 +145,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.0 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -205,9 +205,9 @@
 <span class="k">def</span> <span class="nf">bcp_from_obs</span><span class="p">(</span>
     <span class="n">obs_bcp</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">tau</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">thresh_trunc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">thresh_trunc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">mtd_fit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;itau&quot;</span><span class="p">,</span>
-    <span class="n">mtd_mle</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;COBYLA&quot;</span><span class="p">,</span>
+    <span class="n">mtd_mle</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span>
     <span class="n">mtd_sel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;aic&quot;</span><span class="p">,</span>
     <span class="n">tpl_fam</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
         <span class="s2">&quot;Clayton&quot;</span><span class="p">,</span>
@@ -288,11 +288,12 @@
             <span class="c1"># fetch the class</span>
             <span class="n">i_cls</span> <span class="o">=</span> <span class="n">ENUM_FAM_BICOP</span><span class="p">[</span><span class="n">i_fam</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
 
-            <span class="k">def</span> <span class="nf">f_nll</span><span class="p">(</span><span class="n">vec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">i_cls</span><span class="o">.</span><span class="n">negloglik</span><span class="p">(</span><span class="n">par</span><span class="o">=</span><span class="n">vec</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">,</span> <span class="n">rot</span><span class="o">=</span><span class="n">i_rot</span><span class="p">)</span>
-
             <span class="n">res</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
-                <span class="n">fun</span><span class="o">=</span><span class="n">f_nll</span><span class="p">,</span>
+                <span class="n">fun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">par</span><span class="p">:</span> <span class="n">i_cls</span><span class="o">.</span><span class="n">l_pdf</span><span class="p">(</span><span class="n">par</span><span class="o">=</span><span class="n">par</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs_bcp</span><span class="p">,</span> <span class="n">rot</span><span class="o">=</span><span class="n">i_rot</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">posinf</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">neginf</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">neg</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">item</span><span class="p">(),</span>
                 <span class="n">x0</span><span class="o">=</span><span class="n">vec_bcp_data</span><span class="p">[</span><span class="n">i_idx</span><span class="p">]</span><span class="o">.</span><span class="n">par</span><span class="p">,</span>
                 <span class="n">bounds</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">i_cls</span><span class="o">.</span><span class="n">_PAR_MIN</span><span class="p">,</span> <span class="n">i_cls</span><span class="o">.</span><span class="n">_PAR_MAX</span><span class="p">)),</span>
                 <span class="n">method</span><span class="o">=</span><span class="n">mtd_mle</span><span class="p">,</span>
