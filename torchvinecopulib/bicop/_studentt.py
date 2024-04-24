@@ -81,21 +81,13 @@ class StudentT(BiCopElliptical):
 
     @classmethod
     def tau2par(
-        cls, tau: float = None, obs: torch.Tensor = None, mtd_opt: str = "COBYLA", **kwargs
+        cls, tau: float = None, obs: torch.Tensor = None, mtd_opt: str = "L-BFGS-B", **kwargs
     ) -> tuple:
         if tau is None:
             tau, _ = kendall_tau(x=obs[:, [0]], y=obs[:, [1]])
-
         rho = cls.tau2rho_0(tau=tau)
-
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # TODO: change estimator for nu
-        # * scipy minimize, Powell, Nelder-Mead, COBYLA
-        def fun_nll(vec):
-            return -StudentT.l_pdf_0(obs=obs, par=(rho, vec[0])).sum().item()
-
         nu = minimize(
-            fun=fun_nll,
+            fun=lambda nu: StudentT.l_pdf_0(obs=obs, par=(rho, nu.item())).sum().neg().item(),
             x0=(2.0,),
             bounds=((_NU_MIN, _NU_MAX),),
             method=mtd_opt,

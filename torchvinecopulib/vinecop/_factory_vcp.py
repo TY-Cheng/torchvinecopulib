@@ -275,9 +275,9 @@ def vcp_from_obs(
     tpl_first: tuple[int] = tuple(),
     mtd_vine: str = "rvine",
     mtd_bidep: str = "chatterjee_xi",
-    thresh_trunc: float = 0.1,
+    thresh_trunc: float = 0.05,
     mtd_fit: str = "itau",
-    mtd_mle: str = "COBYLA",
+    mtd_mle: str = "L-BFGS-B",
     mtd_sel: str = "aic",
     tpl_fam: tuple[str, ...] = (
         "Clayton",
