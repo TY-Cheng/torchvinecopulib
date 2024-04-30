@@ -6,16 +6,9 @@ import unittest
 import networkx as nx
 import pyvinecopulib as pvc
 
-from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pkl
+from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pth
 
-from . import (
-    DCT_FAM,
-    DEVICE,
-    LST_MTD_FIT,
-    LST_MTD_SEL,
-    compare_chart_vec,
-    sim_vcp_from_bcp,
-)
+from . import DCT_FAM, DEVICE, LST_MTD_FIT, LST_MTD_SEL, compare_chart_vec, sim_vcp_from_bcp
 
 
 class TestVineCop(unittest.TestCase):
@@ -203,7 +196,7 @@ class TestVineCop(unittest.TestCase):
                         )
 
     def test_io(self):
-        """test vcp_from_json, vcp_from_pkl and vcp_to_json, vcp_to_pkl"""
+        """test vcp_from_json, vcp_from_pth and vcp_to_json, vcp_to_pth"""
         fam = "Clayton"
         bcp_tvc = DCT_FAM[fam][1]
         mtd_fit = "itau"
@@ -250,10 +243,10 @@ class TestVineCop(unittest.TestCase):
         tmp_f = vcp_from_json(tmp_p)
         assert tmp_f == res_tvc
         os.remove(tmp_p)
-        # pkl
-        path = "./vcp.pkl"
-        tmp_p = res_tvc.vcp_to_pkl(f_path=path)
-        tmp_f = vcp_from_pkl(tmp_p)
+        # pth
+        path = "./vcp.pth"
+        tmp_p = res_tvc.vcp_to_pth(f_path=path)
+        tmp_f = vcp_from_pth(tmp_p)
         assert tmp_f == res_tvc
         os.remove(tmp_p)
 

@@ -31,13 +31,15 @@ def bcp_from_obs(
     :type tau: float, optional
     :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.1
     :type thresh_trunc: float, optional
-    :param mtd_fit: parameter estimation method, either 'itau' (inverse of tau) or 'mle' (maximum likelihood estimation); defaults to "itau"
+    :param mtd_fit: parameter estimation method, either 'itau' (inverse of tau) or
+        'mle' (maximum likelihood estimation); defaults to "itau"
     :type mtd_fit: str, optional
     :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to "COBYLA"
     :type mtd_mle: str, optional
     :param mtd_sel: model selection criterion, either 'aic' or 'bic'; defaults to "aic"
     :type mtd_sel: str, optional
-    :param tpl_fam: tuple of str as candidate family names to fit, could be a subset of ('Clayton', 'Frank', 'Gaussian', 'Gumbel', 'Independent', 'Joe', 'StudentT')
+    :param tpl_fam: tuple of str as candidate family names to fit,
+        could be a subset of ('Clayton', 'Frank', 'Gaussian', 'Gumbel', 'Independent', 'Joe', 'StudentT')
     :type tpl_fam: tuple, optional
     :param topk: number of best itau fit taken into further mle, used when mtd_fit is 'mle'; defaults to 2
     :type topk: int, optional
@@ -93,11 +95,7 @@ def bcp_from_obs(
             i_cls = ENUM_FAM_BICOP[i_fam].value
 
             res = minimize(
-                fun=lambda par: i_cls.l_pdf(par=par, obs=obs_bcp, rot=i_rot)
-                .nan_to_num(posinf=0.0, neginf=0.0)
-                .sum()
-                .neg()
-                .item(),
+                fun=lambda par: i_cls.l_pdf(par=par, obs=obs_bcp, rot=i_rot).sum().neg().item(),
                 x0=vec_bcp_data[i_idx].par,
                 bounds=tuple(zip(i_cls._PAR_MIN, i_cls._PAR_MAX)),
                 method=mtd_mle,

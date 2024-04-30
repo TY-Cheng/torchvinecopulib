@@ -56,9 +56,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.4.1-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.4.2-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.4.1.tar.gz
+pip install ./dist/torchvinecopulib-2024.4.2.tar.gz
 ```
 
 ## Examples
@@ -112,9 +112,8 @@ We welcome contributions, whether it's a bug report, feature suggestion, code co
 - [torch.jit.script can be slower](https://discuss.pytorch.org/t/why-is-torch-jit-script-slower/120131/6)
 
 ### TODO
-1. non-par bicop
-2. more (non-parametric) `bicop` class in `torch`
-3. potentially deprecating `'mle'` from `mtd_fit`
+1. more (non-parametric) `bicop` class in `torch`
+2. potentially deprecating `'mle'` from `mtd_fit`
 
 ## License
 

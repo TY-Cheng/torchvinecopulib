@@ -2,18 +2,12 @@ import logging
 import unittest
 
 import numpy as np
-from torchvinecopulib.bicop import bcp_from_obs
 from pyvinecopulib import Bicop, FitControlsBicop
 
-from . import (
-    _TAU_MAX,
-    _TAU_MIN,
-    DCT_FAM,
-    LST_MTD_FIT,
-    SET_FAMnROT,
-    compare_chart_vec,
-    sim_from_bcp,
-)
+from torchvinecopulib.bicop import SET_FAMnROT, bcp_from_obs
+from torchvinecopulib.util import _TAU_MAX, _TAU_MIN
+
+from . import DCT_FAM, LST_MTD_FIT, compare_chart_vec, sim_from_bcp
 
 
 def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tuple | None:
