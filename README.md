@@ -1,5 +1,6 @@
 # TorchVineCopuLib
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/a7822e96815c4e16b8a8b6f567f812ec)](https://app.codacy.com/gh/TY-Cheng/torchvinecopulib?utm_source=github.com&utm_medium=referral&utm_content=TY-Cheng/torchvinecopulib&utm_campaign=Badge_Grade)
 [![Python package](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
 ![Static Badge](https://img.shields.io/badge/Python-%203.10%7C3.11%7C3.12-blue)
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/e8a7a7448b2043d9bbefafc5a3ec14f7)](https://app.codacy.com?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
