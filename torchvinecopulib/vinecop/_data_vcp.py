@@ -1,7 +1,7 @@
+import json
 import math
-import pickle
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from operator import itemgetter
 from pathlib import Path
 from pprint import pformat
@@ -17,9 +17,15 @@ class DataVineCop(ABC):
     dct_bcp: dict
     """bivariate copulas, stored as {level: {(vertex_left, vertex_right, frozenset_cond): DataBiCop}}"""
     dct_tree: dict
-    """bivariate dependency measures of edges in trees, stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}"""
+    """
+    bivariate dependency measures of edges in trees,
+    stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}
+    """
     tpl_sim: tuple
-    """the source vertices (pseudo-obs) of simulation paths, read from right to left; some vertices can be given as simulated at the beginning of each simulation workflow"""
+    """
+    the source vertices (pseudo-obs) of simulation paths, read from right to left;
+    some vertices can be given as simulated at the beginning of each simulation workflow
+    """
     mtd_bidep: str
     """method to calculate bivariate dependence"""
 
@@ -45,7 +51,8 @@ class DataVineCop(ABC):
 
     @property
     def matrix(self) -> np.array:
-        """structure matrix: upper triangular, in row-major order (each row has a bicop as: vertex_left,...,vertex_right;set_cond)
+        """structure matrix: upper triangular, in row-major order
+        (each row has a bicop as: vertex_left,...,vertex_right;set_cond)
 
         :return: structure matrix
         :rtype: np.array
@@ -117,11 +124,14 @@ class DataVineCop(ABC):
         tpl_first_vs: tuple[tuple[int, frozenset]] = tuple(),
         tpl_sim: tuple[int] = tuple(),
     ) -> tuple[dict, list[int]]:
-        """reference counting for each vertex during simulation (quant-reg/cond-sim) workflow, for garbage collection (memory release)
+        """reference counting for each vertex during simulation (quant-reg/cond-sim) workflow,
+        for garbage collection (memory release)
 
-        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set) that are taken as known at the beginning of a simulation workflow, defaults to tuple()
+        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)
+            that are taken as known at the beginning of a simulation workflow, defaults to tuple()
         :type tpl_first_vs: tuple[tuple[int, frozenset]], optional
-        :param tpl_sim: tuple of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :param tpl_sim: tuple of vertices in a full simulation workflow,
+            gives flexibility to experienced users, defaults to tuple()
         :type tpl_sim: tuple[int], optional
         :return: reference counting for each vertex; list of source vertices in this simulation workflow from shallow to deep
         :rtype: tuple[dict, list[int]]
@@ -221,7 +231,8 @@ class DataVineCop(ABC):
         f_path: Path = None,
         fig_size: tuple = None,
     ) -> tuple:
-        """draw the vine structure at a given level. Each edge corresponds to a fitted bicop. Each node is a bicop of prev lv (is_bcp=True) or pseudo-obs of the given lv (is_bcp=False).
+        """draw the vine structure at a given level. Each edge corresponds to a fitted bicop.
+        Each node is a bicop of prev lv (is_bcp=True) or pseudo-obs of the given lv (is_bcp=False).
 
         :param lv: level, defaults to 0
         :type lv: int, optional
@@ -328,11 +339,15 @@ class DataVineCop(ABC):
         f_path: Path = None,
         fig_size: tuple = None,
     ) -> tuple:
-        """draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes. The source nodes in simulation workflow are highlighted in yellow.
+        """draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes.
+        The source nodes in simulation workflow are highlighted in yellow.
 
-        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set) that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to tuple()
+        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)
+            that are taken as already simulated at the beginning of a simulation workflow,
+            affecting the color of nodes, defaults to tuple()
         :type tpl_first_vs: tuple, optional
-        :param tpl_sim: tuple of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :param tpl_sim: tuple of vertices in a full simulation workflow,
+            gives flexibility to experienced users, defaults to tuple()
         :type tpl_sim: tuple, optional
         :param font_size_vertex: font size for vertex labels, defaults to 8
         :type font_size_vertex: int, optional
@@ -473,23 +488,37 @@ class DataVineCop(ABC):
         """
         f_path = Path(f_path)
         f_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_json = asdict(self)
+        for lv in tmp_json["dct_bcp"]:
+            tmp_json["dct_bcp"][lv] = {
+                str((key[0], key[1], tuple(key[2]))): val
+                for key, val in tmp_json["dct_bcp"][lv].items()
+            }
+            tmp_json["dct_tree"][lv] = {
+                str((key[0], key[1], tuple(key[2]))): val
+                for key, val in tmp_json["dct_tree"][lv].items()
+            }
         with open(f_path, "w") as file:
-            file.write(self.__repr__())
+            json.dump(
+                obj=tmp_json,
+                fp=file,
+                indent=4,
+            )
         return f_path
 
-    def vcp_to_pkl(self, f_path: Path = Path("./vcp.pkl")) -> Path:
-        """save to a pickle file
+    def vcp_to_pth(self, f_path: Path = Path("./vcp.pth")) -> Path:
+        """save to a pth file
 
         :param self: an instance of the DataVineCop dataclass
-        :param f_path: file path to save the pickle file, defaults to Path('./vcp.pkl')
+        :param f_path: file path to save the pth file, defaults to Path('./vcp.pth')
         :type f_path: Path, optional
-        :return: file path where the pickle file is saved
+        :return: file path where the pth file is saved
         :rtype: Path
         """
         f_path = Path(f_path)
         f_path.parent.mkdir(parents=True, exist_ok=True)
         with open(f_path, "wb") as file:
-            pickle.dump(self, file)
+            torch.save(self, file)
         return f_path
 
     def l_pdf(self, obs_mvcp: torch.Tensor) -> torch.Tensor:
@@ -563,11 +592,13 @@ class DataVineCop(ABC):
         obs_mvcp: torch.Tensor,
         tpl_sim: tuple = tuple(),
     ) -> torch.Tensor:
-        """Rosenblatt transformation, from the multivariate copula (with dependence) to the uniform multivariate copula (independent), using constructed vine copula
+        """Rosenblatt transformation, from the multivariate copula (with dependence)
+        to the uniform multivariate copula (independent), using constructed vine copula
 
         :param obs_mvcp: observation of the multivariate copula, of shape (num_obs, num_dim)
         :type obs_mvcp: torch.Tensor
-        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow,
+            gives flexibility to experienced users, defaults to tuple()
         :type tpl_sim: tuple, optional
         :return: ideally independent uniform multivariate copula, of shape (num_obs, num_dim)
         :rtype: torch.Tensor
@@ -640,13 +671,19 @@ class DataVineCop(ABC):
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
-        """full simulation/ quantile-regression/ conditional-simulation using the vine copula. Sequentially for each beginning vertex in the tpl_sim (from right to left, as from shallower lv to deeper lv in the DAG), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.
+        """full simulation/ quantile-regression/ conditional-simulation using the vine copula.
+        Sequentially for each beginning vertex in the tpl_sim
+        (from right to left, as from shallower lv to deeper lv in the DAG),
+        walk upward by calling hinv until the top vertex (whose cond set is empty) is reached.
+        (Recursively) call hfunc for the other upper vertex if necessary.
 
         :param num_sim: number of simulations; ignored when dct_first_vs is not empty
         :type num_sim: int
-        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))} in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}
+        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))}
+            in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}
         :type dct_first_vs: dict, optional
-        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()
+        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow,
+            gives flexibility to experienced users, defaults to tuple()
         :type tpl_sim: tuple, optional
         :param seed: random seed for torch.manual_seed(), defaults to 0
         :type seed: int, optional
@@ -693,7 +730,8 @@ class DataVineCop(ABC):
 
         def visit_hinv(v_down: int, s_down: frozenset) -> tuple:
             """
-            hinv from (v_down,s_down) (surely exist) and (v_up,s_up) (may not exist yet and recursively call visit_hfunc if necessary)
+            hinv from (v_down,s_down) (surely exist) and (v_up,s_up)
+            (may not exist yet and recursively call visit_hfunc if necessary)
             to (v_down,s_up); then update dct_obs and dct_ref_count and do garbage collection
             """
             # * locate the bicop on upper level that connects the 3 vertices

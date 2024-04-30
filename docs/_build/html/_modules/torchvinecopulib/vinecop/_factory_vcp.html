@@ -4,10 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.4.1 documentation</title>
+    <!-- Generated with Sphinx 7.3.7 and Furo 2024.04.27 -->
+        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.4.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=437aa6ec" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
     
     
@@ -111,6 +111,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -122,7 +124,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.1 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.2 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -145,8 +147,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.1 documentation</span>
-
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.2 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -191,10 +192,11 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <h1>Source code for torchvinecopulib.vinecop._factory_vcp</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pickle</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
+<span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">ast</span> <span class="kn">import</span> <span class="n">literal_eval</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span>
 <span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">itemgetter</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
@@ -203,17 +205,19 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 
-<span class="kn">from</span> <span class="nn">..bicop</span> <span class="kn">import</span> <span class="n">bcp_from_obs</span>
+<span class="kn">from</span> <span class="nn">..bicop</span> <span class="kn">import</span> <span class="n">DataBiCop</span><span class="p">,</span> <span class="n">bcp_from_obs</span>
 <span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="n">ENUM_FUNC_BIDEP</span>
 <span class="kn">from</span> <span class="nn">._data_vcp</span> <span class="kn">import</span> <span class="n">DataVineCop</span>
 
 
 <span class="k">def</span> <span class="nf">_mst_from_edge_rvine</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_rest</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to rvine, using modified disjoint set/ union find.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges,</span>
+<span class="sd">    restricted to rvine, using modified disjoint set/ union find.</span>
 
 <span class="sd">    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
 <span class="sd">    :type tpl_key_obs: tuple</span>
-<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set) and corresponding bivariate dependence metric value</span>
+<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set)</span>
+<span class="sd">        and corresponding bivariate dependence metric value</span>
 <span class="sd">    :type dct_edge_lv: dict</span>
 <span class="sd">    :param s_rest: vertices to be kept deeper in the simulation workflow (static, wont update at each level)</span>
 <span class="sd">    :type s_rest: set</span>
@@ -273,9 +277,11 @@
 
 <span class="sd">    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
 <span class="sd">    :type tpl_key_obs: tuple</span>
-<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set) and corresponding bivariate dependence metric value</span>
+<span class="sd">    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set)</span>
+<span class="sd">        and corresponding bivariate dependence metric value</span>
 <span class="sd">    :type dct_edge_lv: dict</span>
-<span class="sd">    :param deq_sim: deque of vertices, as simulation workflow (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)</span>
+<span class="sd">    :param deq_sim: deque of vertices, as simulation workflow (read from right to left,</span>
+<span class="sd">        as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)</span>
 <span class="sd">    :type deq_sim: Deque</span>
 <span class="sd">    :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)</span>
 <span class="sd">    :type s_first: set</span>
@@ -318,7 +324,8 @@
 
 
 <span class="k">def</span> <span class="nf">_mst_from_edge_dvine</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine. For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine.</span>
+<span class="sd">    For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.</span>
 
 <span class="sd">    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)</span>
 <span class="sd">    :type tpl_key_obs: tuple</span>
@@ -339,6 +346,7 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># ! more than two vertices</span>
         <span class="kn">import</span> <span class="nn">math</span>
+
         <span class="kn">from</span> <span class="nn">networkx</span> <span class="kn">import</span> <span class="n">Graph</span>
         <span class="kn">from</span> <span class="nn">networkx.algorithms.approximation</span> <span class="kn">import</span> <span class="n">threshold_accepting_tsp</span>
 
@@ -392,7 +400,8 @@
                 <span class="k">if</span> <span class="p">{</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">!=</span> <span class="p">{</span><span class="n">v_neck</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">}:</span>
                     <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()))</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># ! both sets have more than one vertex (head-...-neck-body-...-tail, drop head-neck, add neck-body, drop body-tail)</span>
+            <span class="c1"># ! both sets have more than one vertex</span>
+            <span class="c1"># ! (head-...-neck-body-...-tail, drop head-neck, add neck-body, drop body-tail)</span>
             <span class="n">tsp_first</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">s_first</span><span class="p">),</span> <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
             <span class="n">tsp_first</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tsp_first</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
             <span class="n">tsp_rest</span> <span class="o">=</span> <span class="n">threshold_accepting_tsp</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">s_rest</span><span class="p">),</span> <span class="n">init_cycle</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
@@ -486,29 +495,40 @@
     <span class="p">),</span>
     <span class="n">topk</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataVineCop</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a vine copula model from multivariate observations, with structure prescribed by either Dissmann&#39;s (MST per level) method or a given matrix. May prioritize some vertices to be first (shallower) in the quantile-regression/conditional-simulation workflow.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a vine copula model from multivariate observations,</span>
+<span class="sd">    with structure prescribed by either Dissmann&#39;s (MST per level) method or a given matrix.</span>
+<span class="sd">    May prioritize some vertices to be first (shallower) in the quantile-regression/conditional-simulation workflow.</span>
 
 <span class="sd">    :param obs_mvcp: multivariate observations, of shape (num_obs, num_dim)</span>
 <span class="sd">    :type obs_mvcp: torch.Tensor</span>
-<span class="sd">    :param is_Dissmann: whether to use Dissmann&#39;s method or follow a given matrix, defaults to True; Dissmann, J., Brechmann, E. C., Czado, C., &amp; Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics &amp; Data Analysis, 59, 52-69.</span>
+<span class="sd">    :param is_Dissmann: whether to use Dissmann&#39;s method or follow a given matrix,</span>
+<span class="sd">        defaults to True; Dissmann, J., Brechmann, E. C., Czado, C., &amp; Kurowicka, D. (2013).</span>
+<span class="sd">        Selecting and estimating regular vine copulae and application to financial returns.</span>
+<span class="sd">        Computational Statistics &amp; Data Analysis, 59, 52-69.</span>
 <span class="sd">    :type is_Dissmann: bool, optional</span>
 <span class="sd">    :param mtd_vine: one of &#39;cvine&#39;, &#39;dvine&#39;, &#39;rvine&#39;, defaults to &quot;rvine&quot;</span>
 <span class="sd">    :type mtd_vine: str, optional</span>
-<span class="sd">    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow. if empty then no priority is set, defaults to tuple()</span>
+<span class="sd">    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow.</span>
+<span class="sd">        if empty then no priority is set, defaults to tuple()</span>
 <span class="sd">    :type tpl_first: tuple[int], optional</span>
-<span class="sd">    :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None</span>
+<span class="sd">    :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim),</span>
+<span class="sd">        used when is_Dissmann is False, defaults to None</span>
 <span class="sd">    :type matrix: np.ndarray | None, optional</span>
-<span class="sd">    :param mtd_bidep: method to calculate bivariate dependence, one of &quot;kendall_tau&quot;, &quot;mutual_info&quot;, &quot;ferreira_tail_dep_coeff&quot;, &quot;chatterjee_xi&quot;, &quot;wasserstein_dist_ind&quot;, defaults to &quot;chatterjee_xi&quot;</span>
+<span class="sd">    :param mtd_bidep: method to calculate bivariate dependence, one of &quot;kendall_tau&quot;, &quot;mutual_info&quot;,</span>
+<span class="sd">        &quot;ferreira_tail_dep_coeff&quot;, &quot;chatterjee_xi&quot;, &quot;wasserstein_dist_ind&quot;, defaults to &quot;chatterjee_xi&quot;</span>
 <span class="sd">    :type mtd_bidep: str, optional</span>
 <span class="sd">    :param thresh_trunc: threshold of Kendall&#39;s tau independence test, below which we reject independent bicop, defaults to 0.1</span>
 <span class="sd">    :type thresh_trunc: float, optional</span>
-<span class="sd">    :param mtd_fit: method to fit bivariate copula, either &#39;itau&#39; (inverse of tau) or &#39;mle&#39; (maximum likelihood estimation); defaults to &quot;itau&quot;</span>
+<span class="sd">    :param mtd_fit: method to fit bivariate copula, either &#39;itau&#39; (inverse of tau) or</span>
+<span class="sd">        &#39;mle&#39; (maximum likelihood estimation); defaults to &quot;itau&quot;</span>
 <span class="sd">    :type mtd_fit: str, optional</span>
 <span class="sd">    :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to &quot;COBYLA&quot;</span>
 <span class="sd">    :type mtd_mle: str, optional</span>
 <span class="sd">    :param mtd_sel: bivariate copula model selection criterion, either &#39;aic&#39; or &#39;bic&#39;; defaults to &quot;aic&quot;</span>
 <span class="sd">    :type mtd_sel: str, optional</span>
-<span class="sd">    :param tpl_fam: tuple of str as candidate family names to fit bicop, could be a subset of (&#39;Clayton&#39;, &#39;Frank&#39;, &#39;Gaussian&#39;, &#39;Gumbel&#39;, &#39;Independent&#39;, &#39;Joe&#39;, &#39;StudentT&#39;), defaults to ( &quot;Clayton&quot;, &quot;Frank&quot;, &quot;Gaussian&quot;, &quot;Gumbel&quot;, &quot;Independent&quot;, &quot;Joe&quot;)</span>
+<span class="sd">    :param tpl_fam: tuple of str as candidate family names to fit bicop,</span>
+<span class="sd">        could be a subset of (&#39;Clayton&#39;, &#39;Frank&#39;, &#39;Gaussian&#39;, &#39;Gumbel&#39;, &#39;Independent&#39;, &#39;Joe&#39;, &#39;StudentT&#39;),</span>
+<span class="sd">        defaults to ( &quot;Clayton&quot;, &quot;Frank&quot;, &quot;Gaussian&quot;, &quot;Gumbel&quot;, &quot;Independent&quot;, &quot;Joe&quot;)</span>
 <span class="sd">    :type tpl_fam: tuple[str, ...], optional</span>
 <span class="sd">    :param topk: number of best &quot;itau&quot; fit taken into further &quot;mle&quot;, used when mtd_fit is &quot;mle&quot;; defaults to 2</span>
 <span class="sd">    :type topk: int, optional</span>
@@ -521,7 +541,8 @@
     <span class="n">num_dim</span> <span class="o">=</span> <span class="n">obs_mvcp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">s_first</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">tpl_first</span><span class="p">)</span>
     <span class="n">s_rest</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">))</span> <span class="o">-</span> <span class="n">s_first</span>
-    <span class="c1"># ! an object to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)</span>
+    <span class="c1"># ! an object to record the order of sim (read from right to left,</span>
+    <span class="c1"># ! as simulated pseudo-obs vertices from shallowest to deepest level)</span>
     <span class="n">deq_sim</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
     <span class="n">r_D1</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
     <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{</span><span class="n">_</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">r_D1</span><span class="p">}</span>
@@ -701,31 +722,44 @@
 <span class="sd">    :return: a DataVineCop object</span>
 <span class="sd">    :rtype: DataVineCop</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">..bicop</span> <span class="kn">import</span> <span class="n">DataBiCop</span>
-
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
-    <span class="k">return</span> <span class="n">DataVineCop</span><span class="p">(</span>
-        <span class="n">dct_bcp</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;dct_bcp&quot;</span><span class="p">],</span>
-        <span class="n">dct_tree</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;dct_tree&quot;</span><span class="p">],</span>
-        <span class="n">tpl_sim</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;tpl_sim&quot;</span><span class="p">],</span>
-        <span class="n">mtd_bidep</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;mtd_bidep&quot;</span><span class="p">],</span>
-    <span class="p">)</span></div>
+        <span class="n">tmp_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="c1">#</span>
+    <span class="n">dct_bcp</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">lv</span><span class="p">,</span> <span class="n">i_dct</span> <span class="ow">in</span> <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_bcp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">i_dct</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">=</span> <span class="n">literal_eval</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">s_cond</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">s_cond</span><span class="p">)</span>
+            <span class="n">val</span><span class="p">[</span><span class="s2">&quot;par&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="s2">&quot;par&quot;</span><span class="p">])</span>
+            <span class="n">dct_bcp</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">lv</span><span class="p">)][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">DataBiCop</span><span class="p">(</span><span class="o">**</span><span class="n">val</span><span class="p">)</span>
+    <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_bcp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dct_bcp</span><span class="p">)</span>
+    <span class="c1">#</span>
+    <span class="n">dct_tree</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">lv</span><span class="p">,</span> <span class="n">i_dct</span> <span class="ow">in</span> <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_tree&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">i_dct</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">=</span> <span class="n">literal_eval</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">s_cond</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">s_cond</span><span class="p">)</span>
+            <span class="n">dct_tree</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">lv</span><span class="p">)][(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)]</span> <span class="o">=</span> <span class="n">val</span>
+    <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_tree&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dct_tree</span><span class="p">)</span>
+    <span class="c1">#</span>
+    <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;tpl_sim&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;tpl_sim&quot;</span><span class="p">])</span>
+    <span class="c1">#</span>
+    <span class="k">return</span> <span class="n">DataVineCop</span><span class="p">(</span><span class="o">**</span><span class="n">tmp_json</span><span class="p">)</span></div>
 
 
 
-<div class="viewcode-block" id="vcp_from_pkl">
-<a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.vcp_from_pkl">[docs]</a>
-<span class="k">def</span> <span class="nf">vcp_from_pkl</span><span class="p">(</span><span class="n">f_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./vcp.pkl&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">DataVineCop</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;load a DataVineCop from a pickle file</span>
+<div class="viewcode-block" id="vcp_from_pth">
+<a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.vcp_from_pth">[docs]</a>
+<span class="k">def</span> <span class="nf">vcp_from_pth</span><span class="p">(</span><span class="n">f_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./vcp.pth&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">DataVineCop</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;load a DataVineCop from a pth file</span>
 
-<span class="sd">    :param f_path: path to the pickle file, defaults to Path(&quot;./vcp.pkl&quot;)</span>
+<span class="sd">    :param f_path: path to the pth file, defaults to Path(&quot;./vcp.pth&quot;)</span>
 <span class="sd">    :type f_path: Path, optional</span>
 <span class="sd">    :return: a DataVineCop object</span>
 <span class="sd">    :rtype: DataVineCop</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">obj</span></div>
 
 </pre></div>
@@ -760,9 +794,9 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=f5768dfe"></script>
+</div><script src="../../../_static/documentation_options.js?v=66f6838d"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../../../_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>
     </body>
 </html>

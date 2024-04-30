@@ -39,7 +39,7 @@ class Frank(BiCopArchimedean):
         delta = par[0]
         x = obs[:, [0]]
         return (
-            _g(vec=torch.tensor(1.0), delta=delta)
+            _g(vec=torch.as_tensor(data=1.0, dtype=obs.dtype, device=obs.device), delta=delta)
             / ((-delta * x).exp() / obs[:, [1]] - _g(vec=x, delta=delta))
         ).log1p() / (-delta)
 

@@ -1,5 +1,6 @@
-import pickle
-from collections import deque
+import json
+from ast import literal_eval
+from collections import defaultdict, deque
 from itertools import combinations
 from operator import itemgetter
 from pathlib import Path
@@ -8,17 +9,19 @@ from typing import Deque
 import numpy as np
 import torch
 
-from ..bicop import bcp_from_obs
+from ..bicop import DataBiCop, bcp_from_obs
 from ..util import ENUM_FUNC_BIDEP
 from ._data_vcp import DataVineCop
 
 
 def _mst_from_edge_rvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_rest: set) -> list:
-    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to rvine, using modified disjoint set/ union find.
+    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges,
+    restricted to rvine, using modified disjoint set/ union find.
 
     :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
     :type tpl_key_obs: tuple
-    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set) and corresponding bivariate dependence metric value
+    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set)
+        and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
     :param s_rest: vertices to be kept deeper in the simulation workflow (static, wont update at each level)
     :type s_rest: set
@@ -78,9 +81,11 @@ def _mst_from_edge_cvine(
 
     :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
     :type tpl_key_obs: tuple
-    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set) and corresponding bivariate dependence metric value
+    :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set)
+        and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
-    :param deq_sim: deque of vertices, as simulation workflow (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)
+    :param deq_sim: deque of vertices, as simulation workflow (read from right to left,
+        as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)
     :type deq_sim: Deque
     :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)
     :type s_first: set
@@ -123,7 +128,8 @@ def _mst_from_edge_cvine(
 
 
 def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) -> tuple:
-    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine. For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
+    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine.
+    For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
 
     :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
     :type tpl_key_obs: tuple
@@ -144,6 +150,7 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
     else:
         # ! more than two vertices
         import math
+
         from networkx import Graph
         from networkx.algorithms.approximation import threshold_accepting_tsp
 
@@ -197,7 +204,8 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
                 if {v_l, v_r} != {v_neck, v_tail}:
                     mst.append((v_l, v_r, frozenset()))
         else:
-            # ! both sets have more than one vertex (head-...-neck-body-...-tail, drop head-neck, add neck-body, drop body-tail)
+            # ! both sets have more than one vertex
+            # ! (head-...-neck-body-...-tail, drop head-neck, add neck-body, drop body-tail)
             tsp_first = threshold_accepting_tsp(G.subgraph(s_first), init_cycle="greedy")
             tsp_first.append(tsp_first[1])
             tsp_rest = threshold_accepting_tsp(G.subgraph(s_rest), init_cycle="greedy")
@@ -289,29 +297,40 @@ def vcp_from_obs(
     ),
     topk: int = 2,
 ) -> DataVineCop:
-    """Construct a vine copula model from multivariate observations, with structure prescribed by either Dissmann's (MST per level) method or a given matrix. May prioritize some vertices to be first (shallower) in the quantile-regression/conditional-simulation workflow.
+    """Construct a vine copula model from multivariate observations,
+    with structure prescribed by either Dissmann's (MST per level) method or a given matrix.
+    May prioritize some vertices to be first (shallower) in the quantile-regression/conditional-simulation workflow.
 
     :param obs_mvcp: multivariate observations, of shape (num_obs, num_dim)
     :type obs_mvcp: torch.Tensor
-    :param is_Dissmann: whether to use Dissmann's method or follow a given matrix, defaults to True; Dissmann, J., Brechmann, E. C., Czado, C., & Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics & Data Analysis, 59, 52-69.
+    :param is_Dissmann: whether to use Dissmann's method or follow a given matrix,
+        defaults to True; Dissmann, J., Brechmann, E. C., Czado, C., & Kurowicka, D. (2013).
+        Selecting and estimating regular vine copulae and application to financial returns.
+        Computational Statistics & Data Analysis, 59, 52-69.
     :type is_Dissmann: bool, optional
     :param mtd_vine: one of 'cvine', 'dvine', 'rvine', defaults to "rvine"
     :type mtd_vine: str, optional
-    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow. if empty then no priority is set, defaults to tuple()
+    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow.
+        if empty then no priority is set, defaults to tuple()
     :type tpl_first: tuple[int], optional
-    :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim), used when is_Dissmann is False, defaults to None
+    :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim),
+        used when is_Dissmann is False, defaults to None
     :type matrix: np.ndarray | None, optional
-    :param mtd_bidep: method to calculate bivariate dependence, one of "kendall_tau", "mutual_info", "ferreira_tail_dep_coeff", "chatterjee_xi", "wasserstein_dist_ind", defaults to "chatterjee_xi"
+    :param mtd_bidep: method to calculate bivariate dependence, one of "kendall_tau", "mutual_info",
+        "ferreira_tail_dep_coeff", "chatterjee_xi", "wasserstein_dist_ind", defaults to "chatterjee_xi"
     :type mtd_bidep: str, optional
     :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.1
     :type thresh_trunc: float, optional
-    :param mtd_fit: method to fit bivariate copula, either 'itau' (inverse of tau) or 'mle' (maximum likelihood estimation); defaults to "itau"
+    :param mtd_fit: method to fit bivariate copula, either 'itau' (inverse of tau) or
+        'mle' (maximum likelihood estimation); defaults to "itau"
     :type mtd_fit: str, optional
     :param mtd_mle: optimization method for mle as used by scipy.optimize.minimize, defaults to "COBYLA"
     :type mtd_mle: str, optional
     :param mtd_sel: bivariate copula model selection criterion, either 'aic' or 'bic'; defaults to "aic"
     :type mtd_sel: str, optional
-    :param tpl_fam: tuple of str as candidate family names to fit bicop, could be a subset of ('Clayton', 'Frank', 'Gaussian', 'Gumbel', 'Independent', 'Joe', 'StudentT'), defaults to ( "Clayton", "Frank", "Gaussian", "Gumbel", "Independent", "Joe")
+    :param tpl_fam: tuple of str as candidate family names to fit bicop,
+        could be a subset of ('Clayton', 'Frank', 'Gaussian', 'Gumbel', 'Independent', 'Joe', 'StudentT'),
+        defaults to ( "Clayton", "Frank", "Gaussian", "Gumbel", "Independent", "Joe")
     :type tpl_fam: tuple[str, ...], optional
     :param topk: number of best "itau" fit taken into further "mle", used when mtd_fit is "mle"; defaults to 2
     :type topk: int, optional
@@ -324,7 +343,8 @@ def vcp_from_obs(
     num_dim = obs_mvcp.shape[1]
     s_first = set(tpl_first)
     s_rest = set(range(num_dim)) - s_first
-    # ! an object to record the order of sim (read from right to left, as simulated pseudo-obs vertices from shallowest to deepest level)
+    # ! an object to record the order of sim (read from right to left,
+    # ! as simulated pseudo-obs vertices from shallowest to deepest level)
     deq_sim = deque()
     r_D1 = range(num_dim - 1)
     dct_obs = {_: {} for _ in r_D1}
@@ -501,26 +521,39 @@ def vcp_from_json(f_path: Path = Path("./vcp.json")) -> DataVineCop:
     :return: a DataVineCop object
     :rtype: DataVineCop
     """
-    from ..bicop import DataBiCop
-
     with open(f_path, "r") as file:
-        obj = eval(file.read())
-    return DataVineCop(
-        dct_bcp=obj["dct_bcp"],
-        dct_tree=obj["dct_tree"],
-        tpl_sim=obj["tpl_sim"],
-        mtd_bidep=obj["mtd_bidep"],
-    )
+        tmp_json = json.load(file)
+    #
+    dct_bcp = defaultdict(dict)
+    for lv, i_dct in tmp_json["dct_bcp"].items():
+        for key, val in i_dct.items():
+            v_l, v_r, s_cond = literal_eval(key)
+            s_cond = frozenset(s_cond)
+            val["par"] = tuple(val["par"])
+            dct_bcp[int(lv)][(v_l, v_r, s_cond)] = DataBiCop(**val)
+    tmp_json["dct_bcp"] = dict(dct_bcp)
+    #
+    dct_tree = defaultdict(dict)
+    for lv, i_dct in tmp_json["dct_tree"].items():
+        for key, val in i_dct.items():
+            v_l, v_r, s_cond = literal_eval(key)
+            s_cond = frozenset(s_cond)
+            dct_tree[int(lv)][(v_l, v_r, s_cond)] = val
+    tmp_json["dct_tree"] = dict(dct_tree)
+    #
+    tmp_json["tpl_sim"] = tuple(tmp_json["tpl_sim"])
+    #
+    return DataVineCop(**tmp_json)
 
 
-def vcp_from_pkl(f_path: Path = Path("./vcp.pkl")) -> DataVineCop:
-    """load a DataVineCop from a pickle file
+def vcp_from_pth(f_path: Path = Path("./vcp.pth")) -> DataVineCop:
+    """load a DataVineCop from a pth file
 
-    :param f_path: path to the pickle file, defaults to Path("./vcp.pkl")
+    :param f_path: path to the pth file, defaults to Path("./vcp.pth")
     :type f_path: Path, optional
     :return: a DataVineCop object
     :rtype: DataVineCop
     """
     with open(f_path, "rb") as file:
-        obj = pickle.load(file)
+        obj = torch.load(file)
     return obj

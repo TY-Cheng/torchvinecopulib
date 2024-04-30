@@ -8,4 +8,16 @@ from ._independent import Independent
 from ._joe import Joe
 from ._studentt import StudentT
 
-__all__ = ["DataBiCop", "bcp_from_obs", "ENUM_FAM_BICOP"]
+__all__ = [
+    "bcp_from_obs",
+    "Clayton",
+    "DataBiCop",
+    "ENUM_FAM_BICOP",
+    "Frank",
+    "Gaussian",
+    "Gumbel",
+    "Independent",
+    "Joe",
+    "SET_FAMnROT",
+    "StudentT",
+]

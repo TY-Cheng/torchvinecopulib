@@ -45,15 +45,14 @@ def kendall_tau(
     tau_min: float = _TAU_MIN,
     tau_max: float = _TAU_MAX,
 ) -> float:
-    """https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94
-    x,y are both of shape (n, 1)
-    """
+    """x,y are both of shape (n, 1)"""
     res = kendalltau(x.cpu().ravel(), y.cpu().ravel())
     return (max(min(res[0], tau_max), tau_min), res[1])
 
 
 def mutual_info(x: torch.Tensor, y: torch.Tensor, is_sklearn: bool = True) -> float:
     """https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html
+
     x,y are both of shape (n, 1)
 
     Purkayastha, S., & Song, P. X. K. (2024).
@@ -116,7 +115,8 @@ def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> float:
 def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> float:
     """revised Chatterjee's rank correlation coefficient (ξ), taken max to be symmetric
 
-    Chatterjee, S., 2021. A new coefficient of correlation. Journal of the American Statistical Association, 116(536), pp.2009-2022.
+    Chatterjee, S., 2021. A new coefficient of correlation.
+    Journal of the American Statistical Association, 116(536), pp.2009-2022.
 
     Lin, Z. and Han, F., 2023. On boosting the power of Chatterjee’s rank correlation. Biometrika, 110(2), pp.283-299.
     "a large negative value of ξ has only one possible interpretation: the data does not resemble an iid sample."
@@ -353,8 +353,6 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
 # # * Student's t distribution CDF (p), PPF (q), density (d)
 # def inc_beta_reg(vec: torch.Tensor, a: float, b: float) -> torch.Tensor:
 #     # * regularized incomplete beta integral, with a = 0.5, b = nu / 2, vec in [0,1]
-#     # https://stats.stackexchange.com/questions/615961/students-t-cdf-ppf-or-hypergeometric-2f1-or-betainc-using-pytorch
-#     # https://stats.stackexchange.com/questions/52341/formula-to-generate-critical-t-values-for-t-test-instead-of-using-a-look-up-arr
 #     res = torch.empty_like(vec)
 #     if (idx := vec > ((a + 1.0) / (2.0 + a + b))).any():
 #         res[idx] = 1.0 - inc_beta_reg(vec=1.0 - vec[idx], a=b, b=a)
@@ -536,11 +534,19 @@ def pbvt(
     """
     h = obs[:, [0]]
     k = obs[:, [1]]
-    rho: torch.Tensor = torch.tensor(rho, dtype=obs.dtype, device=obs.device).clamp(
+    rho: torch.Tensor = torch.as_tensor(
+        data=rho,
+        dtype=obs.dtype,
+        device=obs.device,
+    ).clamp(
         min=_RHO_MIN,
         max=_RHO_MAX,
     )
-    nu: torch.Tensor = torch.tensor(nu, dtype=obs.dtype, device=obs.device).clamp(
+    nu: torch.Tensor = torch.as_tensor(
+        data=nu,
+        dtype=obs.dtype,
+        device=obs.device,
+    ).clamp(
         min=_NU_MIN,
         max=_NU_MAX,
     )
@@ -726,7 +732,9 @@ def solve_ITP(
 ) -> float:
     """Solve an arbitrary function for a zero-crossing.
 
-    Oliveira, I.F. and Takahashi, R.H., 2020. An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), pp.1-24.
+    Oliveira, I.F. and Takahashi, R.H., 2020.
+    An enhancement of the bisection method average performance preserving minmax optimality.
+    ACM Transactions on Mathematical Software (TOMS), 47(1), pp.1-24.
 
     https://docs.rs/kurbo/0.8.1/kurbo/common/fn.solve_itp.html
 
@@ -734,7 +742,8 @@ def solve_ITP(
 
     ! It is assumed that f(a) < 0 and f(b) > 0, otherwise unexpected results may occur.
 
-    The ITP method has tuning parameters. This implementation hardwires k2 to 2.0, both because it avoids an expensive floating point exponentiation,
+    The ITP method has tuning parameters. This implementation hardwires k2 to 2.0,
+    both because it avoids an expensive floating point exponentiation,
     and because this value has been tested to work well with curve fitting problems.
 
     The n0 parameter controls the relative impact of the bisection and secant components.

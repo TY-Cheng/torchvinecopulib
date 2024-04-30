@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -8,8 +9,6 @@ from pyvinecopulib import BicopFamily
 
 # build & install before test
 from torchvinecopulib import bicop
-from torchvinecopulib.bicop import SET_FAMnROT, bcp_from_obs
-from torchvinecopulib.util import _TAU_MAX, _TAU_MIN
 
 DIR_OUT_TEST = Path(".") / "out"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

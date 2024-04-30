@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="prev" title="torchvinecopulib.bicop package" href="torchvinecopulib.bicop.html" />
 
-    <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.util package - torchvinecopulib 2024.4.1 documentation</title>
+    <!-- Generated with Sphinx 7.3.7 and Furo 2024.04.27 -->
+        <title>torchvinecopulib.util package - torchvinecopulib 2024.4.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=437aa6ec" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
     
     
@@ -112,6 +112,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -123,7 +125,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">torchvinecopulib 2024.4.1 documentation</div></a>
+      <a href="index.html"><div class="brand">torchvinecopulib 2024.4.2 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,8 +148,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.1 documentation</span>
-
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.2 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -193,7 +194,7 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="torchvinecopulib-util-package">
 <h1>torchvinecopulib.util package<a class="headerlink" href="#torchvinecopulib-util-package" title="Link to this heading">¶</a></h1>
 <section id="module-torchvinecopulib.util">
@@ -254,7 +255,8 @@
 <dt class="sig sig-object py" id="torchvinecopulib.util.chatterjee_xi">
 <span class="sig-prename descclassname"><span class="pre">torchvinecopulib.util.</span></span><span class="sig-name descname"><span class="pre">chatterjee_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/util.html#chatterjee_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.util.chatterjee_xi" title="Link to this definition">¶</a></dt>
 <dd><p>revised Chatterjee’s rank correlation coefficient (ξ), taken max to be symmetric</p>
-<p>Chatterjee, S., 2021. A new coefficient of correlation. Journal of the American Statistical Association, 116(536), pp.2009-2022.</p>
+<p>Chatterjee, S., 2021. A new coefficient of correlation.
+Journal of the American Statistical Association, 116(536), pp.2009-2022.</p>
 <p>Lin, Z. and Han, F., 2023. On boosting the power of Chatterjee’s rank correlation. Biometrika, 110(2), pp.283-299.
 “a large negative value of ξ has only one possible interpretation: the data does not resemble an iid sample.”</p>
 <dl class="field-list simple">
@@ -304,15 +306,14 @@ Ferreira, M.S., 2013. Nonparametric estimation of the tail-dependence coefficien
 <dl class="py function">
 <dt class="sig sig-object py" id="torchvinecopulib.util.kendall_tau">
 <span class="sig-prename descclassname"><span class="pre">torchvinecopulib.util.</span></span><span class="sig-name descname"><span class="pre">kendall_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-0.999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.999</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/util.html#kendall_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.util.kendall_tau" title="Link to this definition">¶</a></dt>
-<dd><p><a class="reference external" href="https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94">https://gist.github.com/ili3p/f2b38b898f6eab0d87ec248ea39fde94</a>
-x,y are both of shape (n, 1)</p>
+<dd><p>x,y are both of shape (n, 1)</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="torchvinecopulib.util.mutual_info">
 <span class="sig-prename descclassname"><span class="pre">torchvinecopulib.util.</span></span><span class="sig-name descname"><span class="pre">mutual_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_sklearn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/util.html#mutual_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.util.mutual_info" title="Link to this definition">¶</a></dt>
-<dd><p><a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html">https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html</a>
-x,y are both of shape (n, 1)</p>
+<dd><p><a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html">https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html</a></p>
+<p>x,y are both of shape (n, 1)</p>
 <p>Purkayastha, S., &amp; Song, P. X. K. (2024).
 fastMI: A fast and consistent copula-based nonparametric estimator of mutual information.
 Journal of Multivariate Analysis, 201, 105270.</p>
@@ -322,11 +323,14 @@ Journal of Multivariate Analysis, 201, 105270.</p>
 <dt class="sig sig-object py" id="torchvinecopulib.util.solve_ITP">
 <span class="sig-prename descclassname"><span class="pre">torchvinecopulib.util.</span></span><span class="sig-name descname"><span class="pre">solve_ITP</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">31</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/util.html#solve_ITP"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.util.solve_ITP" title="Link to this definition">¶</a></dt>
 <dd><p>Solve an arbitrary function for a zero-crossing.</p>
-<p>Oliveira, I.F. and Takahashi, R.H., 2020. An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), pp.1-24.</p>
+<p>Oliveira, I.F. and Takahashi, R.H., 2020.
+An enhancement of the bisection method average performance preserving minmax optimality.
+ACM Transactions on Mathematical Software (TOMS), 47(1), pp.1-24.</p>
 <p><a class="reference external" href="https://docs.rs/kurbo/0.8.1/kurbo/common/fn.solve_itp.html">https://docs.rs/kurbo/0.8.1/kurbo/common/fn.solve_itp.html</a></p>
 <p><a class="reference external" href="https://en.wikipedia.org/wiki/ITP_method">https://en.wikipedia.org/wiki/ITP_method</a></p>
 <p>! It is assumed that f(a) &lt; 0 and f(b) &gt; 0, otherwise unexpected results may occur.</p>
-<p>The ITP method has tuning parameters. This implementation hardwires k2 to 2.0, both because it avoids an expensive floating point exponentiation,
+<p>The ITP method has tuning parameters. This implementation hardwires k2 to 2.0,
+both because it avoids an expensive floating point exponentiation,
 and because this value has been tested to work well with curve fitting problems.</p>
 <p>The n0 parameter controls the relative impact of the bisection and secant components.
 When it is 0, the number of iterations is guaranteed to be no more than the number required by bisection
@@ -443,9 +447,9 @@ the returned result is guaranteed to be within epsilon of the zero crossing.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=f5768dfe"></script>
+</div><script src="_static/documentation_options.js?v=66f6838d"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="_static/scripts/furo.js?v=4e2eecee"></script>
     </body>
 </html>

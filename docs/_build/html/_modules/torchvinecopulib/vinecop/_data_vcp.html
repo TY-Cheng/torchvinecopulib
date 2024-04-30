@@ -4,10 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 7.3.5 and Furo 2024.01.29 -->
-        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.4.1 documentation</title>
+    <!-- Generated with Sphinx 7.3.7 and Furo 2024.04.27 -->
+        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.4.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=437aa6ec" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
     
     
@@ -111,6 +111,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -122,7 +124,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.1 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.4.2 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -145,7 +147,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.1 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.4.2 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -190,12 +192,12 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <h1>Source code for torchvinecopulib.vinecop._data_vcp</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">math</span>
-<span class="kn">import</span> <span class="nn">pickle</span>
+<span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">math</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span>
-<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">asdict</span><span class="p">,</span> <span class="n">dataclass</span>
 <span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">itemgetter</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span> <span class="nn">pprint</span> <span class="kn">import</span> <span class="n">pformat</span>
@@ -213,9 +215,15 @@
     <span class="n">dct_bcp</span><span class="p">:</span> <span class="nb">dict</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;bivariate copulas, stored as {level: {(vertex_left, vertex_right, frozenset_cond): DataBiCop}}&quot;&quot;&quot;</span>
     <span class="n">dct_tree</span><span class="p">:</span> <span class="nb">dict</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;bivariate dependency measures of edges in trees, stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    bivariate dependency measures of edges in trees,</span>
+<span class="sd">    stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">tpl_sim</span><span class="p">:</span> <span class="nb">tuple</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;the source vertices (pseudo-obs) of simulation paths, read from right to left; some vertices can be given as simulated at the beginning of each simulation workflow&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    the source vertices (pseudo-obs) of simulation paths, read from right to left;</span>
+<span class="sd">    some vertices can be given as simulated at the beginning of each simulation workflow</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mtd_bidep</span><span class="p">:</span> <span class="nb">str</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;method to calculate bivariate dependence&quot;&quot;&quot;</span>
 
@@ -241,7 +249,8 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;structure matrix: upper triangular, in row-major order (each row has a bicop as: vertex_left,...,vertex_right;set_cond)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;structure matrix: upper triangular, in row-major order</span>
+<span class="sd">        (each row has a bicop as: vertex_left,...,vertex_right;set_cond)</span>
 
 <span class="sd">        :return: structure matrix</span>
 <span class="sd">        :rtype: np.array</span>
@@ -313,11 +322,14 @@
         <span class="n">tpl_first_vs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
         <span class="n">tpl_sim</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;reference counting for each vertex during simulation (quant-reg/cond-sim) workflow, for garbage collection (memory release)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;reference counting for each vertex during simulation (quant-reg/cond-sim) workflow,</span>
+<span class="sd">        for garbage collection (memory release)</span>
 
-<span class="sd">        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set) that are taken as known at the beginning of a simulation workflow, defaults to tuple()</span>
+<span class="sd">        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)</span>
+<span class="sd">            that are taken as known at the beginning of a simulation workflow, defaults to tuple()</span>
 <span class="sd">        :type tpl_first_vs: tuple[tuple[int, frozenset]], optional</span>
-<span class="sd">        :param tpl_sim: tuple of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()</span>
+<span class="sd">        :param tpl_sim: tuple of vertices in a full simulation workflow,</span>
+<span class="sd">            gives flexibility to experienced users, defaults to tuple()</span>
 <span class="sd">        :type tpl_sim: tuple[int], optional</span>
 <span class="sd">        :return: reference counting for each vertex; list of source vertices in this simulation workflow from shallow to deep</span>
 <span class="sd">        :rtype: tuple[dict, list[int]]</span>
@@ -419,7 +431,8 @@
         <span class="n">f_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fig_size</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;draw the vine structure at a given level. Each edge corresponds to a fitted bicop. Each node is a bicop of prev lv (is_bcp=True) or pseudo-obs of the given lv (is_bcp=False).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;draw the vine structure at a given level. Each edge corresponds to a fitted bicop.</span>
+<span class="sd">        Each node is a bicop of prev lv (is_bcp=True) or pseudo-obs of the given lv (is_bcp=False).</span>
 
 <span class="sd">        :param lv: level, defaults to 0</span>
 <span class="sd">        :type lv: int, optional</span>
@@ -529,11 +542,15 @@
         <span class="n">f_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fig_size</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes. The source nodes in simulation workflow are highlighted in yellow.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes.</span>
+<span class="sd">        The source nodes in simulation workflow are highlighted in yellow.</span>
 
-<span class="sd">        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set) that are taken as already simulated at the beginning of a simulation workflow, affecting the color of nodes, defaults to tuple()</span>
+<span class="sd">        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)</span>
+<span class="sd">            that are taken as already simulated at the beginning of a simulation workflow,</span>
+<span class="sd">            affecting the color of nodes, defaults to tuple()</span>
 <span class="sd">        :type tpl_first_vs: tuple, optional</span>
-<span class="sd">        :param tpl_sim: tuple of vertices in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()</span>
+<span class="sd">        :param tpl_sim: tuple of vertices in a full simulation workflow,</span>
+<span class="sd">            gives flexibility to experienced users, defaults to tuple()</span>
 <span class="sd">        :type tpl_sim: tuple, optional</span>
 <span class="sd">        :param font_size_vertex: font size for vertex labels, defaults to 8</span>
 <span class="sd">        :type font_size_vertex: int, optional</span>
@@ -677,26 +694,40 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">f_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">f_path</span><span class="p">)</span>
         <span class="n">f_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tmp_json</span> <span class="o">=</span> <span class="n">asdict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_bcp&quot;</span><span class="p">]:</span>
+            <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_bcp&quot;</span><span class="p">][</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="nb">str</span><span class="p">((</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">2</span><span class="p">]))):</span> <span class="n">val</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_bcp&quot;</span><span class="p">][</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+            <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_tree&quot;</span><span class="p">][</span><span class="n">lv</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="nb">str</span><span class="p">((</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">2</span><span class="p">]))):</span> <span class="n">val</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">tmp_json</span><span class="p">[</span><span class="s2">&quot;dct_tree&quot;</span><span class="p">][</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">())</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
+                <span class="n">obj</span><span class="o">=</span><span class="n">tmp_json</span><span class="p">,</span>
+                <span class="n">fp</span><span class="o">=</span><span class="n">file</span><span class="p">,</span>
+                <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="n">f_path</span></div>
 
 
-<div class="viewcode-block" id="DataVineCop.vcp_to_pkl">
-<a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.vcp_to_pkl">[docs]</a>
-    <span class="k">def</span> <span class="nf">vcp_to_pkl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./vcp.pkl&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;save to a pickle file</span>
+<div class="viewcode-block" id="DataVineCop.vcp_to_pth">
+<a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop.vcp_to_pth">[docs]</a>
+    <span class="k">def</span> <span class="nf">vcp_to_pth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./vcp.pth&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;save to a pth file</span>
 
 <span class="sd">        :param self: an instance of the DataVineCop dataclass</span>
-<span class="sd">        :param f_path: file path to save the pickle file, defaults to Path(&#39;./vcp.pkl&#39;)</span>
+<span class="sd">        :param f_path: file path to save the pth file, defaults to Path(&#39;./vcp.pth&#39;)</span>
 <span class="sd">        :type f_path: Path, optional</span>
-<span class="sd">        :return: file path where the pickle file is saved</span>
+<span class="sd">        :return: file path where the pth file is saved</span>
 <span class="sd">        :rtype: Path</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">f_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">f_path</span><span class="p">)</span>
         <span class="n">f_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">f_path</span></div>
 
 
@@ -776,11 +807,13 @@
         <span class="n">obs_mvcp</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
         <span class="n">tpl_sim</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rosenblatt transformation, from the multivariate copula (with dependence) to the uniform multivariate copula (independent), using constructed vine copula</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rosenblatt transformation, from the multivariate copula (with dependence)</span>
+<span class="sd">        to the uniform multivariate copula (independent), using constructed vine copula</span>
 
 <span class="sd">        :param obs_mvcp: observation of the multivariate copula, of shape (num_obs, num_dim)</span>
 <span class="sd">        :type obs_mvcp: torch.Tensor</span>
-<span class="sd">        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()</span>
+<span class="sd">        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow,</span>
+<span class="sd">            gives flexibility to experienced users, defaults to tuple()</span>
 <span class="sd">        :type tpl_sim: tuple, optional</span>
 <span class="sd">        :return: ideally independent uniform multivariate copula, of shape (num_obs, num_dim)</span>
 <span class="sd">        :rtype: torch.Tensor</span>
@@ -856,13 +889,19 @@
         <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;full simulation/ quantile-regression/ conditional-simulation using the vine copula. Sequentially for each beginning vertex in the tpl_sim (from right to left, as from shallower lv to deeper lv in the DAG), walk upward by calling hinv until the top vertex (whose cond set is empty) is reached. (Recursively) call hfunc for the other upper vertex if necessary.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;full simulation/ quantile-regression/ conditional-simulation using the vine copula.</span>
+<span class="sd">        Sequentially for each beginning vertex in the tpl_sim</span>
+<span class="sd">        (from right to left, as from shallower lv to deeper lv in the DAG),</span>
+<span class="sd">        walk upward by calling hinv until the top vertex (whose cond set is empty) is reached.</span>
+<span class="sd">        (Recursively) call hfunc for the other upper vertex if necessary.</span>
 
 <span class="sd">        :param num_sim: number of simulations; ignored when dct_first_vs is not empty</span>
 <span class="sd">        :type num_sim: int</span>
-<span class="sd">        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))} in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}</span>
+<span class="sd">        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))}</span>
+<span class="sd">            in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}</span>
 <span class="sd">        :type dct_first_vs: dict, optional</span>
-<span class="sd">        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow, gives flexibility to experienced users, defaults to tuple()</span>
+<span class="sd">        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow,</span>
+<span class="sd">            gives flexibility to experienced users, defaults to tuple()</span>
 <span class="sd">        :type tpl_sim: tuple, optional</span>
 <span class="sd">        :param seed: random seed for torch.manual_seed(), defaults to 0</span>
 <span class="sd">        :type seed: int, optional</span>
@@ -909,7 +948,8 @@
 
         <span class="k">def</span> <span class="nf">visit_hinv</span><span class="p">(</span><span class="n">v_down</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s_down</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
 <span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">            hinv from (v_down,s_down) (surely exist) and (v_up,s_up) (may not exist yet and recursively call visit_hfunc if necessary)</span>
+<span class="sd">            hinv from (v_down,s_down) (surely exist) and (v_up,s_up)</span>
+<span class="sd">            (may not exist yet and recursively call visit_hfunc if necessary)</span>
 <span class="sd">            to (v_down,s_up); then update dct_obs and dct_ref_count and do garbage collection</span>
 <span class="sd">            &quot;&quot;&quot;</span>
             <span class="c1"># * locate the bicop on upper level that connects the 3 vertices</span>
@@ -1039,9 +1079,9 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=f5768dfe"></script>
+</div><script src="../../../_static/documentation_options.js?v=66f6838d"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../../../_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>
     </body>
 </html>
