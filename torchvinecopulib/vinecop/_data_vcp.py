@@ -335,6 +335,7 @@ class DataVineCop(ABC):
         self,
         tpl_first_vs: tuple = tuple(),
         tpl_sim: tuple = tuple(),
+        title: str = "Vine Copula, Obs and BiCop",
         font_size_vertex: int = 8,
         f_path: Path = None,
         fig_size: tuple = None,
@@ -363,7 +364,7 @@ class DataVineCop(ABC):
 
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=fig_size)
         ax.set_title(
-            label="Vine Copula, Obs and BiCop",
+            label=title,
             fontsize=font_size_vertex + 1,
         )
         G = nx.DiGraph()
@@ -470,6 +471,7 @@ class DataVineCop(ABC):
             alpha=0.8,
         )
         fig.tight_layout()
+        plt.box(False)
         plt.draw_if_interactive()
         if f_path:
             fig.savefig(fname=f_path, bbox_inches="tight")
@@ -591,7 +593,7 @@ class DataVineCop(ABC):
         self,
         obs_mvcp: torch.Tensor,
         tpl_sim: tuple = tuple(),
-    ) -> torch.Tensor:
+    ) -> dict:
         """Rosenblatt transformation, from the multivariate copula (with dependence)
         to the uniform multivariate copula (independent), using constructed vine copula
 
@@ -601,7 +603,7 @@ class DataVineCop(ABC):
             gives flexibility to experienced users, defaults to tuple()
         :type tpl_sim: tuple, optional
         :return: ideally independent uniform multivariate copula, of shape (num_obs, num_dim)
-        :rtype: torch.Tensor
+        :rtype: dict
         """
         num_dim = self.num_dim
         if not tpl_sim:

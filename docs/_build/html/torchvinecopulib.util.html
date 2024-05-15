@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="prev" title="torchvinecopulib.bicop package" href="torchvinecopulib.bicop.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.04.27 -->
-        <title>torchvinecopulib.util package - torchvinecopulib 2024.4.2 documentation</title>
+        <title>torchvinecopulib.util package - torchvinecopulib 2024.5.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=437aa6ec" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -125,7 +125,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">torchvinecopulib 2024.4.2 documentation</div></a>
+      <a href="index.html"><div class="brand">torchvinecopulib 2024.5.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -148,7 +148,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.2 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.5.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -345,20 +345,21 @@ the returned result is guaranteed to be within epsilon of the zero crossing.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="torchvinecopulib.util.wasserstein_dist_ind">
-<span class="sig-prename descclassname"><span class="pre">torchvinecopulib.util.</span></span><span class="sig-name descname"><span class="pre">wasserstein_dist_ind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/util.html#wasserstein_dist_ind"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.util.wasserstein_dist_ind" title="Link to this definition">¶</a></dt>
-<dd><p>Wasserstein distance from bicop obs to indep bicop simulations, by ot.sinkhorn2 (averaged for each observation).</p>
+<span class="sig-prename descclassname"><span class="pre">torchvinecopulib.util.</span></span><span class="sig-name descname"><span class="pre">wasserstein_dist_ind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/util.html#wasserstein_dist_ind"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.util.wasserstein_dist_ind" title="Link to this definition">¶</a></dt>
+<dd><p>Wasserstein distance from bicop obs to indep bicop, by ot.sinkhorn2 (averaged for each observation).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> (<em>torch.Tensor</em>) – copula obs of shape (n,1)</p></li>
 <li><p><strong>y</strong> (<em>torch.Tensor</em>) – copula obs of shape (n,1)</p></li>
+<li><p><strong>p</strong> (<em>int</em><em>, </em><em>optional</em>) – p-norm to calculate distance between each vector pair, defaults to 2</p></li>
 <li><p><strong>reg</strong> (<em>float</em><em>, </em><em>optional</em>) – regularization strength, defaults to 0.1</p></li>
-<li><p><strong>p</strong> (<em>int</em><em>, </em><em>optional</em>) – p-norm distance to calculate between each vector pair, defaults to 2</p></li>
-<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – random seed for torch.manual_seed() in indep bicop simulations, defaults to 0</p></li>
+<li><p><strong>num_step</strong> (<em>int</em><em>, </em><em>optional</em>) – number of steps in the independent bivariate copula grid, defaults to 50</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – random seed for torch.manual_seed(), defaults to 0</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Wasserstein distance from bicop obs to indep bicop simulations</p>
+<dd class="field-even"><p>Wasserstein distance from bicop obs to indep bicop</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>float</p>
@@ -447,7 +448,7 @@ the returned result is guaranteed to be within epsilon of the zero crossing.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=66f6838d"></script>
+</div><script src="_static/documentation_options.js?v=84a3c7a7"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=4e2eecee"></script>

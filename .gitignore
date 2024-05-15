@@ -1,9 +1,11 @@
 # manual
 scratch*.ipynb
 poetry.lock
-/docs/**/*
+/docs/_build/doctrees/
+/docs/conf.py
+/docs/Makefile
+/docs/*.rst
 !/docs/index.rst
-!/docs/_build/html/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

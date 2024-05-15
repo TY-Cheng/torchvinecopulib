@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="torchvinecopulib.bicop package" href="torchvinecopulib.bicop.html" /><link rel="prev" title="Welcome to torchvinecopulib’s documentation!" href="index.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.04.27 -->
-        <title>torchvinecopulib.vinecop package - torchvinecopulib 2024.4.2 documentation</title>
+        <title>torchvinecopulib.vinecop package - torchvinecopulib 2024.5.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=437aa6ec" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -125,7 +125,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">torchvinecopulib 2024.4.2 documentation</div></a>
+      <a href="index.html"><div class="brand">torchvinecopulib 2024.5.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -148,7 +148,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.2 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.5.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -273,7 +273,7 @@ stored as {level: {(vertex_left, vertex_right, frozenset_cond): bidep}}</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="torchvinecopulib.vinecop.DataVineCop.draw_dag">
-<span class="sig-name descname"><span class="pre">draw_dag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tpl_first_vs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tpl_sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">font_size_vertex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fig_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/vinecop/_data_vcp.html#DataVineCop.draw_dag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.vinecop.DataVineCop.draw_dag" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">draw_dag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tpl_first_vs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tpl_sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Vine</span> <span class="pre">Copula,</span> <span class="pre">Obs</span> <span class="pre">and</span> <span class="pre">BiCop'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">font_size_vertex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fig_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/vinecop/_data_vcp.html#DataVineCop.draw_dag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.vinecop.DataVineCop.draw_dag" title="Link to this definition">¶</a></dt>
 <dd><p>draw the directed acyclic graph (DAG) of the vine copula, with pseudo observations and bicops as nodes.
 The source nodes in simulation workflow are highlighted in yellow.</p>
 <dl class="field-list simple">
@@ -399,7 +399,7 @@ Each node is a bicop of prev lv (is_bcp=True) or pseudo-obs of the given lv (is_
 
 <dl class="py method">
 <dt class="sig sig-object py" id="torchvinecopulib.vinecop.DataVineCop.rosenblatt_transform">
-<span class="sig-name descname"><span class="pre">rosenblatt_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs_mvcp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tpl_sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/vinecop/_data_vcp.html#DataVineCop.rosenblatt_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.vinecop.DataVineCop.rosenblatt_transform" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">rosenblatt_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs_mvcp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tpl_sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/vinecop/_data_vcp.html#DataVineCop.rosenblatt_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.vinecop.DataVineCop.rosenblatt_transform" title="Link to this definition">¶</a></dt>
 <dd><p>Rosenblatt transformation, from the multivariate copula (with dependence)
 to the uniform multivariate copula (independent), using constructed vine copula</p>
 <dl class="field-list simple">
@@ -414,7 +414,7 @@ gives flexibility to experienced users, defaults to tuple()</p></li>
 <dd class="field-even"><p>ideally independent uniform multivariate copula, of shape (num_obs, num_dim)</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>torch.Tensor</p>
+<dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
 </dd></dl>
@@ -674,7 +674,7 @@ defaults to ( “Clayton”, “Frank”, “Gaussian”, “Gumbel”, “Indep
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=66f6838d"></script>
+</div><script src="_static/documentation_options.js?v=84a3c7a7"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=4e2eecee"></script>

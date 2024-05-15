@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="torchvinecopulib.util package" href="torchvinecopulib.util.html" /><link rel="prev" title="torchvinecopulib.vinecop package" href="torchvinecopulib.vinecop.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.04.27 -->
-        <title>torchvinecopulib.bicop package - torchvinecopulib 2024.4.2 documentation</title>
+        <title>torchvinecopulib.bicop package - torchvinecopulib 2024.5.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=437aa6ec" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -125,7 +125,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">torchvinecopulib 2024.4.2 documentation</div></a>
+      <a href="index.html"><div class="brand">torchvinecopulib 2024.5.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -148,7 +148,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.4.2 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.5.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -792,7 +792,7 @@ rotation ignored, for tau is symmetric.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>obs_bcp</strong> (<em>torch.Tensor</em>) – bivariate copula obs, of shape (num_obs, 2) with values in [0, 1]</p></li>
 <li><p><strong>tau</strong> (<em>float</em><em>, </em><em>optional</em>) – Kendall’s tau of the observations, defaults to None for the function to estimate</p></li>
-<li><p><strong>thresh_trunc</strong> (<em>float</em><em>, </em><em>optional</em>) – threshold of Kendall’s tau independence test, below which we reject independent bicop, defaults to 0.1</p></li>
+<li><p><strong>thresh_trunc</strong> (<em>float</em><em>, </em><em>optional</em>) – threshold of Kendall’s tau independence test, below which we reject independent bicop, defaults to 0.05</p></li>
 <li><p><strong>mtd_fit</strong> (<em>str</em><em>, </em><em>optional</em>) – parameter estimation method, either ‘itau’ (inverse of tau) or
 ‘mle’ (maximum likelihood estimation); defaults to “itau”</p></li>
 <li><p><strong>mtd_mle</strong> (<em>str</em><em>, </em><em>optional</em>) – optimization method for mle as used by scipy.optimize.minimize, defaults to “COBYLA”</p></li>
@@ -985,7 +985,7 @@ could be a subset of (‘Clayton’, ‘Frank’, ‘Gaussian’, ‘Gumbel’, 
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=66f6838d"></script>
+</div><script src="_static/documentation_options.js?v=84a3c7a7"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=4e2eecee"></script>

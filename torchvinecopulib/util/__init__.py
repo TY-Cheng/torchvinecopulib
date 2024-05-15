@@ -1,9 +1,10 @@
 import math
 from enum import Enum
 from functools import partial
+from itertools import product
 
 import torch
-from scipy.stats import t, kendalltau
+from scipy.stats import kendalltau, t
 
 __all__ = [
     "ENUM_FUNC_BIDEP",
@@ -156,49 +157,50 @@ def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> float:
 def wasserstein_dist_ind(
     x: torch.Tensor,
     y: torch.Tensor,
-    reg: float = 0.1,
     p: int = 2,
+    reg: float = 0.1,
+    num_step: int = 50,
     seed: int = 0,
-    num_sim: int = 2,
 ) -> float:
-    """Wasserstein distance from bicop obs to indep bicop simulations, by ot.sinkhorn2 (averaged for each observation).
+    """Wasserstein distance from bicop obs to indep bicop, by ot.sinkhorn2 (averaged for each observation).
 
     :param x: copula obs of shape (n,1)
     :type x: torch.Tensor
     :param y: copula obs of shape (n,1)
     :type y: torch.Tensor
+    :param p: p-norm to calculate distance between each vector pair, defaults to 2
+    :type p: int, optional
     :param reg: regularization strength, defaults to 0.1
     :type reg: float, optional
-    :param p: p-norm distance to calculate between each vector pair, defaults to 2
-    :type p: int, optional
-    :param seed: random seed for torch.manual_seed() in indep bicop simulations, defaults to 0
+    :param num_step: number of steps in the independent bivariate copula grid, defaults to 50
+    :type num_step: int, optional
+    :param seed: random seed for torch.manual_seed(), defaults to 0
     :type seed: int, optional
-    :return: Wasserstein distance from bicop obs to indep bicop simulations
+    :return: Wasserstein distance from bicop obs to indep bicop
     :rtype: float
     """
     from ot import sinkhorn2
 
     torch.manual_seed(seed=seed)
-    X_s = torch.hstack([x, y])
-    num_obs = x.shape[0]
-    a, b = (
-        torch.ones(size=(num_obs, 1), device=x.device, dtype=x.dtype) / num_obs,
-        torch.ones(size=(num_obs, 1), device=x.device, dtype=x.dtype) / num_obs,
-    )
-    return (
-        sum(
-            (
-                sinkhorn2(
-                    a=a,
-                    b=b,
-                    M=torch.cdist(X_s, torch.rand_like(X_s), p=p),
-                    reg=reg,
-                ).item()
-                for _ in range(num_sim)
-            )
-        )
-        / num_sim
-    )
+    return sinkhorn2(
+        a=torch.ones_like(x) / x.shape[0],
+        b=torch.ones(size=(num_step**2, 1), device=x.device, dtype=x.dtype) / num_step**2,
+        M=torch.cdist(
+            x1=torch.hstack([x, y]),
+            x2=torch.as_tensor(
+                (
+                    *product(
+                        torch.linspace(0, 1, num_step),
+                        torch.linspace(0, 1, num_step),
+                    ),
+                ),
+                device=x.device,
+                dtype=x.dtype,
+            ),
+            p=p,
+        ),
+        reg=reg,
+    ).item()
 
 
 class ENUM_FUNC_BIDEP(Enum):
