@@ -14,7 +14,9 @@ from ..util import ENUM_FUNC_BIDEP
 from ._data_vcp import DataVineCop
 
 
-def _mst_from_edge_rvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_rest: set) -> list:
+def _mst_from_edge_rvine(
+    tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set, lv: int, num_dim: int
+) -> list:
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges,
     restricted to rvine, using modified disjoint set/ union find.
 
@@ -23,9 +25,13 @@ def _mst_from_edge_rvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_rest: set) -> 
     :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set)
         and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
-    :param s_rest: vertices to be kept deeper in the simulation workflow (static, wont update at each level)
-    :type s_rest: set
-    :return: list of edges (vertex_l, vertex_r, cond set) in the MST
+    :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)
+    :type s_first: set
+    :param lv: level, starting from 0
+    :type lv: int
+    :param num_dim: number of dimensions D
+    :type num_dim: int
+    :return: list of edges (vertex_left, vertex_right, cond set) in the MST
     :rtype: list
     """
     # * edge2tree, rvine (Kruskal's MST, disjoint set/ union find)
@@ -37,11 +43,13 @@ def _mst_from_edge_rvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_rest: set) -> 
     mst = []
 
     def find(v):
+        """path compression"""
         if parent[v] != v:
             parent[v] = find(parent[v])
         return parent[v]
 
     def union(a, b):
+        """union by rank"""
         root_a, root_b = find(a), find(b)
         if rank[root_a] < rank[root_b]:
             parent[root_a] = root_b
@@ -50,27 +58,31 @@ def _mst_from_edge_rvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_rest: set) -> 
             if rank[root_b] == rank[root_a]:
                 rank[root_a] += 1
 
-    # ! filter for edges that DONT touch rest set vertices
-    dct_edge = {
-        (v_l, v_r, s_cond): bidep
-        for (v_l, v_r, s_cond), bidep in dct_edge_lv.items()
-        if ((v_l not in s_rest) and (v_r not in s_rest))
-    }
-    # * notice we sort edges by ABS(bidep) in DESCENDING order
-    for (v_l, v_r, s_cond), _ in sorted(dct_edge.items(), key=lambda x: abs(x[1]), reverse=True):
-        if find((v_l, s_cond)) != find((v_r, s_cond)):
-            mst.append((v_l, v_r, s_cond))
-            union((v_l, s_cond), (v_r, s_cond))
-    # ! filter for edges that touch rest set vertices
-    dct_edge = set(dct_edge_lv) - set(dct_edge)
-    if dct_edge:
-        dct_edge = {k: v for k, v in dct_edge_lv.items() if k in dct_edge}
-        for (v_l, v_r, s_cond), _ in sorted(
-            dct_edge.items(), key=lambda x: abs(x[1]), reverse=True
-        ):
-            if find((v_l, s_cond)) != find((v_r, s_cond)):
-                mst.append((v_l, v_r, s_cond))
-                union((v_l, s_cond), (v_r, s_cond))
+    def kruskal(dct_edge: dict, num_mst: int) -> None:
+        if dct_edge:
+            # * notice we sort edges by ABS(bidep) in DESCENDING order
+            for (v_l, v_r, s_cond), _ in sorted(
+                dct_edge.items(), key=lambda x: abs(x[1]), reverse=True
+            ):
+                if find((v_l, s_cond)) != find((v_r, s_cond)):
+                    mst.append((v_l, v_r, s_cond))
+                    union((v_l, s_cond), (v_r, s_cond))
+                if len(mst) == num_mst:
+                    break
+
+    # ! filter for edges
+    s_sum = set()
+    dct_edge = dict()
+    for i_s in (s_first, set(range(num_dim))):
+        s_sum |= i_s
+        dct_edge = {
+            (v_l, v_r, s_cond): bidep
+            for (v_l, v_r, s_cond), bidep in dct_edge_lv.items()
+            if ((v_l in s_sum) and (v_r in s_sum)) and ((v_l, v_r, s_cond) not in dct_edge)
+        }
+        num_mst = max(0, len(s_sum) - lv - 1)
+        kruskal(dct_edge, num_mst=num_mst)
+
     return mst
 
 
@@ -84,11 +96,11 @@ def _mst_from_edge_cvine(
     :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set)
         and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
+    :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)
+    :type s_first: set
     :param deq_sim: deque of vertices, as simulation workflow (read from right to left,
         as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)
     :type deq_sim: Deque
-    :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)
-    :type s_first: set
     :return: list of edges (vertex_left, vertex_right, cond set) in the MST; updated deq_sim; updated s_first
     :rtype: tuple
     """
@@ -308,14 +320,14 @@ def vcp_from_obs(
         Selecting and estimating regular vine copulae and application to financial returns.
         Computational Statistics & Data Analysis, 59, 52-69.
     :type is_Dissmann: bool, optional
-    :param mtd_vine: one of 'cvine', 'dvine', 'rvine', defaults to "rvine"
-    :type mtd_vine: str, optional
-    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow.
-        if empty then no priority is set, defaults to tuple()
-    :type tpl_first: tuple[int], optional
     :param matrix: a matrix of vine copula structure, of shape (num_dim, num_dim),
         used when is_Dissmann is False, defaults to None
     :type matrix: np.ndarray | None, optional
+    :param tpl_first: tuple of vertices to be prioritized (kept shallower) in the cond sim workflow.
+        if empty then no priority is set, defaults to tuple()
+    :type tpl_first: tuple[int], optional
+    :param mtd_vine: one of 'cvine', 'dvine', 'rvine', defaults to "rvine"
+    :type mtd_vine: str, optional
     :param mtd_bidep: method to calculate bivariate dependence, one of "kendall_tau", "mutual_info",
         "ferreira_tail_dep_coeff", "chatterjee_xi", "wasserstein_dist_ind", defaults to "chatterjee_xi"
     :type mtd_bidep: str, optional
@@ -339,10 +351,9 @@ def vcp_from_obs(
     :rtype: DataVineCop
     """
     is_kendall_tau = mtd_bidep == "kendall_tau"
-    f_bidep = ENUM_FUNC_BIDEP[mtd_bidep]._value_
+    f_bidep = ENUM_FUNC_BIDEP[mtd_bidep].value
     num_dim = obs_mvcp.shape[1]
     s_first = set(tpl_first)
-    s_rest = set(range(num_dim)) - s_first
     # ! an object to record the order of sim (read from right to left,
     # ! as simulated pseudo-obs vertices from shallowest to deepest level)
     deq_sim = deque()
@@ -354,32 +365,28 @@ def vcp_from_obs(
     dct_tree = {_: {} for _ in r_D1}
     dct_bcp = {_: {} for _ in r_D1}
 
-    def _update_obs(v: int, s_cond: frozenset) -> torch.Tensor:
+    def _visit_hfunc(v_down: int, s_down: frozenset) -> None:
         """calc hfunc for pseudo obs and update dct_obs, only when necessary (lazy hfunc)"""
-        # * v and s_cond are from the pseudo obs
-        lv = len(s_cond)
-        # * lv_bcp and s_cond_bcp mark the prev lv and bcp cond set
-        lv_bcp = lv - 1
-        for (v_l, v_r, s_cond_bcp), bcp in dct_bcp[lv_bcp].items():
-            # ! notice hfunc1 or hfunc2
-            if (v == v_l) and (s_cond == frozenset({v_r} | s_cond_bcp)):
-                dct_obs[lv][(v_l, s_cond)] = bcp.hfunc2(
-                    obs=torch.hstack(
-                        [
-                            dct_obs[lv_bcp][v_l, s_cond_bcp],
-                            dct_obs[lv_bcp][v_r, s_cond_bcp],
-                        ]
+        # * v_down and s_down are from the child pseudo obs
+        lv_down = len(s_down)
+        # * lv_up and s_up are form the prev lv bcp
+        lv_up = lv_down - 1
+        for (v_l, v_r, s_up), bcp in dct_bcp[lv_up].items():
+            if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
+                # ! notice hfunc1 or hfunc2
+                if bcp.fam == "Independent":
+                    dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][(v_down, s_up)]
+                else:
+                    dct_obs[lv_down][(v_down, s_down)] = (
+                        bcp.hfunc2 if v_down == v_l else bcp.hfunc1
+                    )(
+                        obs=torch.hstack(
+                            [
+                                dct_obs[lv_up][(v_l, s_up)],
+                                dct_obs[lv_up][(v_r, s_up)],
+                            ]
+                        )
                     )
-                )
-            elif (v == v_r) and (s_cond == frozenset({v_l} | s_cond_bcp)):
-                dct_obs[lv][(v_r, s_cond)] = bcp.hfunc1(
-                    obs=torch.hstack(
-                        [
-                            dct_obs[lv_bcp][v_l, s_cond_bcp],
-                            dct_obs[lv_bcp][v_r, s_cond_bcp],
-                        ]
-                    )
-                )
 
     for lv in r_D1:
         # * lv_0 obs, preprocess to append an empty frozenset (s_cond)
@@ -388,25 +395,29 @@ def vcp_from_obs(
         if is_Dissmann:
             # * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep
             tpl_key_obs = dct_obs[lv].keys()
-            for (v_l, s_cond_l), (v_r, s_cond_r) in combinations(tpl_key_obs, 2):
-                # ! proximity condition: only those obs with same 'cond set' (the frozen set) can have edges
-                if s_cond_l == s_cond_r:
-                    # ! sorted !
-                    v_l, v_r = sorted((v_l, v_r))
-                    if dct_obs[lv][v_l, s_cond_l] is None:
-                        _update_obs(v_l, s_cond_l)
-                    if dct_obs[lv][v_r, s_cond_l] is None:
-                        _update_obs(v_r, s_cond_l)
-                    if is_kendall_tau:
-                        dct_edge[lv][(v_l, v_r, s_cond_l)] = f_bidep(
-                            x=dct_obs[lv][v_l, s_cond_l],
-                            y=dct_obs[lv][v_r, s_cond_l],
-                        )[0]
-                    else:
-                        dct_edge[lv][(v_l, v_r, s_cond_l)] = f_bidep(
-                            x=dct_obs[lv][v_l, s_cond_l],
-                            y=dct_obs[lv][v_r, s_cond_l],
-                        )
+            dct_s_cond_v = defaultdict(list)
+            for v, s_cond in tpl_key_obs:
+                dct_s_cond_v[s_cond].append(v)
+            # ! proximity condition: only those obs with same 'cond set' (the frozen set) can have edges
+            for s_cond, lst_v in dct_s_cond_v.items():
+                if len(lst_v) > 1:
+                    for v_l, v_r in combinations(lst_v, 2):
+                        # ! sorted !
+                        v_l, v_r = sorted((v_l, v_r))
+                        if dct_obs[lv][v_l, s_cond] is None:
+                            _visit_hfunc(v_l, s_cond)
+                        if dct_obs[lv][v_r, s_cond] is None:
+                            _visit_hfunc(v_r, s_cond)
+                        if is_kendall_tau:
+                            dct_edge[lv][(v_l, v_r, s_cond)] = f_bidep(
+                                x=dct_obs[lv][v_l, s_cond],
+                                y=dct_obs[lv][v_r, s_cond],
+                            )[0]
+                        else:
+                            dct_edge[lv][(v_l, v_r, s_cond)] = f_bidep(
+                                x=dct_obs[lv][v_l, s_cond],
+                                y=dct_obs[lv][v_r, s_cond],
+                            )
             if mtd_vine == "dvine":
                 # * edge2tree, dvine
                 # ! for dvine, the whole struct (and deq_sim) is known after lv0
@@ -434,7 +445,9 @@ def vcp_from_obs(
                 mst = _mst_from_edge_rvine(
                     tpl_key_obs=tpl_key_obs,
                     dct_edge_lv=dct_edge[lv],
-                    s_rest=s_rest,
+                    s_first=s_first,
+                    lv=lv,
+                    num_dim=num_dim,
                 )
                 dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
             else:
@@ -444,11 +457,11 @@ def vcp_from_obs(
             for idx in range(num_dim - lv - 1):
                 # ! sorted !
                 v_l, v_r = sorted((matrix[idx, idx], matrix[idx, num_dim - lv - 1]))
-                s_cond = frozenset(matrix[idx, (num_dim - lv) :])
+                s_cond = frozenset(matrix[idx, (num_dim - lv):])
                 if dct_obs[lv][v_l, s_cond] is None:
-                    _update_obs(v=v_l, s_cond=s_cond)
+                    _visit_hfunc(v_down=v_l, s_down=s_cond)
                 if dct_obs[lv][v_r, s_cond] is None:
-                    _update_obs(v=v_r, s_cond=s_cond)
+                    _visit_hfunc(v_down=v_r, s_down=s_cond)
                 if is_kendall_tau:
                     dct_tree[lv][(v_l, v_r, s_cond)] = f_bidep(
                         x=dct_obs[lv][(v_l, s_cond)],
@@ -490,19 +503,14 @@ def vcp_from_obs(
                 # ! if this bcp vertex is not yet in the paths of existing deq_sim elements
                 if (v_l not in deq_sim) and (v_r not in deq_sim):
                     # ! obs in set_rest but not yet arranged in deq_sim
-                    if s_tmp := s_rest - set(deq_sim):
-                        if v_l in s_tmp:
-                            deq_sim.append(v_l)
-                        else:
-                            deq_sim.append(v_r)
+                    s_tmp = set(range(num_dim)) - s_first - set(deq_sim)
+                    if s_tmp:
+                        deq_sim.append(v_l if v_l in s_tmp else v_r)
                     else:
                         # ! pick the node with smaller index (v_l < v_r), then sim paths <-> structure is bijection
                         deq_sim.append(v_l)
                     if lv == 0:
-                        if v_l in deq_sim:
-                            deq_sim.append(v_r)
-                        else:
-                            deq_sim.append(v_l)
+                        deq_sim.append(v_r if v_l in deq_sim else v_l)
                     break
 
     return DataVineCop(

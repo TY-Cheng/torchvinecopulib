@@ -5,6 +5,7 @@ poetry.lock
 /docs/conf.py
 /docs/Makefile
 /docs/*.rst
+!/docs/_build/html
 !/docs/index.rst
 
 # Byte-compiled / optimized / DLL files
