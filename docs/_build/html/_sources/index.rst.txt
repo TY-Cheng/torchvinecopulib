@@ -4,6 +4,9 @@
    contain the root `toctree` directive.
 
 Welcome to torchvinecopulib's documentation!
+
+https://github.com/TY-Cheng/torchvinecopulib
+
 ============================================
 
 .. toctree::

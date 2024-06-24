@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js" lang="en" data-content_root="../">
+<html class="no-js" lang="en" data-content_root="../../../">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.05.06 -->
-        <title>Overview: module code - torchvinecopulib 2024.6.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=387cc868" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+        <title>torchvinecopulib.bicop._independent - torchvinecopulib 2024.6.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=387cc868" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
     
     
 
@@ -178,7 +178,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">torchvinecopulib 2024.6.0 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.6.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -199,12 +199,12 @@
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
       
-      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
   <span class="sidebar-brand-text">torchvinecopulib 2024.6.0 documentation</span>
   
-</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
@@ -212,9 +212,9 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../torchvinecopulib.vinecop.html">torchvinecopulib.vinecop package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../torchvinecopulib.bicop.html">torchvinecopulib.bicop package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../torchvinecopulib.util.html">torchvinecopulib.util package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../torchvinecopulib.vinecop.html">torchvinecopulib.vinecop package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../torchvinecopulib.bicop.html">torchvinecopulib.bicop package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../torchvinecopulib.util.html">torchvinecopulib.util package</a></li>
 </ul>
 
 </div>
@@ -249,20 +249,79 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <h1>All modules for which code is available</h1>
-<ul><li><a href="torchvinecopulib/bicop/_clayton.html">torchvinecopulib.bicop._clayton</a></li>
-<li><a href="torchvinecopulib/bicop/_data_bcp.html">torchvinecopulib.bicop._data_bcp</a></li>
-<li><a href="torchvinecopulib/bicop/_factory_bcp.html">torchvinecopulib.bicop._factory_bcp</a></li>
-<li><a href="torchvinecopulib/bicop/_frank.html">torchvinecopulib.bicop._frank</a></li>
-<li><a href="torchvinecopulib/bicop/_gaussian.html">torchvinecopulib.bicop._gaussian</a></li>
-<li><a href="torchvinecopulib/bicop/_gumbel.html">torchvinecopulib.bicop._gumbel</a></li>
-<li><a href="torchvinecopulib/bicop/_independent.html">torchvinecopulib.bicop._independent</a></li>
-<li><a href="torchvinecopulib/bicop/_joe.html">torchvinecopulib.bicop._joe</a></li>
-<li><a href="torchvinecopulib/bicop/_studentt.html">torchvinecopulib.bicop._studentt</a></li>
-<li><a href="torchvinecopulib/util.html">torchvinecopulib.util</a></li>
-<li><a href="torchvinecopulib/vinecop/_data_vcp.html">torchvinecopulib.vinecop._data_vcp</a></li>
-<li><a href="torchvinecopulib/vinecop/_factory_vcp.html">torchvinecopulib.vinecop._factory_vcp</a></li>
-</ul>
+          <h1>Source code for torchvinecopulib.bicop._independent</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="kn">from</span> <span class="nn">._abc</span> <span class="kn">import</span> <span class="n">BiCopAbstract</span>
+
+
+<div class="viewcode-block" id="Independent">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent">[docs]</a>
+<span class="k">class</span> <span class="nc">Independent</span><span class="p">(</span><span class="n">BiCopAbstract</span><span class="p">):</span>
+    <span class="n">_PAR_MIN</span><span class="p">,</span> <span class="n">_PAR_MAX</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span> <span class="nb">tuple</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Independent.cdf_0">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent.cdf_0">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">cdf_0</span><span class="p">(</span><span class="n">obs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">obs</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span> <span class="n">obs</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]]</span></div>
+
+
+<div class="viewcode-block" id="Independent.pdf_0">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent.pdf_0">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">pdf_0</span><span class="p">(</span><span class="n">obs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">obs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">obs</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">obs</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Independent.hfunc1_0">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent.hfunc1_0">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">hfunc1_0</span><span class="p">(</span><span class="n">obs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;first h function, Prob(V2&lt;=v2 | V1=v1)&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">obs</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]]</span></div>
+
+
+    <span class="n">hinv1_0</span> <span class="o">=</span> <span class="n">hfunc1_0</span>
+
+<div class="viewcode-block" id="Independent.l_pdf_0">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent.l_pdf_0">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">l_pdf_0</span><span class="p">(</span><span class="n">obs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">obs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">obs</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">obs</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Independent.par2tau_0">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent.par2tau_0">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">par2tau_0</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span></div>
+
+
+<div class="viewcode-block" id="Independent.sim">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent.sim">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">sim</span><span class="p">(</span>
+        <span class="n">num_sim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="c1"># inverse Rosenblatt transform</span>
+        <span class="c1"># * p1p2~Unif, hfunc1(v2|v1)=p2, hinv1(p2|v1)=v2</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_sim</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Independent.tau2par_0">
+<a class="viewcode-back" href="../../../torchvinecopulib.bicop.html#torchvinecopulib.bicop.Independent.tau2par_0">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">tau2par_0</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
         </article>
       </div>
       <footer>
@@ -294,9 +353,9 @@
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=16dc194c"></script>
-    <script src="../_static/doctools.js?v=9a2dae69"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../_static/scripts/furo.js?v=4e2eecee"></script>
+</div><script src="../../../_static/documentation_options.js?v=16dc194c"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>
     </body>
 </html>

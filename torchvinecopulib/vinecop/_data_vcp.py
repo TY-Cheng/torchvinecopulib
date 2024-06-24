@@ -64,7 +64,7 @@ class DataVineCop(ABC):
         # * levels in reverse order
         for idx, lv in enumerate(sorted(self.dct_tree, reverse=True)):
             v_diag = None
-            lst_nebr = [-1 for _ in range(idx)]
+            lst_nebr = [-1] * idx
             for i_lv in range(lv, -1, -1):
                 for v_l, v_r, _ in self.dct_tree[i_lv]:
                     if (v_l not in lst_diag) and (v_r not in lst_diag):
@@ -77,7 +77,7 @@ class DataVineCop(ABC):
             lst_diag.append(v_diag)
             mat.append(lst_nebr)
         # ! append the last node
-        mat.append([-1 for _ in range(idx + 1)] + [mat[-1][-1]])
+        mat.append([-1] * (idx + 1) + [mat[-1][-1]])
         return np.array(mat)
 
     @property
@@ -115,8 +115,9 @@ class DataVineCop(ABC):
         :rtype: tuple
         """
         lv_up = len(s_down) - 1
+        s_bcp = {v_down} | s_down
         for (v_l, v_r, s_up), bcp in self.dct_bcp[lv_up].items():
-            if ({v_l, v_r} | s_up) == ({v_down} | s_down):
+            if ({v_l, v_r} | s_up) == s_bcp:
                 return v_l, v_r, s_up, bcp
 
     def _ref_count(
@@ -140,52 +141,41 @@ class DataVineCop(ABC):
         dct_first_vs = {v[0]: v for v in tpl_first_vs}
         lst_source = tpl_sim if tpl_sim else self.tpl_sim
         lst_source = [
-            (dct_first_vs[v] if v in dct_first_vs else (v, frozenset(lst_source[(idx + 1) :])))
+            (dct_first_vs.get(v, (v, frozenset(lst_source[(idx + 1):]))))
             for idx, v in enumerate(lst_source)
         ][::-1]
-
         # ! count in initial sim (pseudo obs that are given at the beginning of each sim path)
         dct_ref_count = {v_s_cond: 1 for v_s_cond in lst_source}
 
-        def visit_hfunc(v_down: int, s_down: frozenset):
-            v_l, v_r, s_up, _ = self._loc_bcp(v_down=v_down, s_down=s_down)
-            # vertex left on upper level
-            if dct_ref_count.get((v_l, s_up), 0) < 1:
-                visit_hfunc(v_down=v_l, s_down=s_up)
-            dct_ref_count[v_l, s_up] += 1
-            # vertex right on upper level
-            if dct_ref_count.get((v_r, s_up), 0) < 1:
-                visit_hfunc(v_down=v_r, s_down=s_up)
-            dct_ref_count[v_r, s_up] += 1
-            # * vertex reached by hfunc, on lower level
-            if dct_ref_count.get((v_down, s_down), 0) < 1:
-                dct_ref_count[v_down, s_down] = 1
+        def _ref_count_increment(v, s):
+            """increment the reference count for a given vertex and condition set"""
+            if dct_ref_count.get((v, s), 0) < 1:
+                dct_ref_count[v, s] = 1
             else:
-                dct_ref_count[v_down, s_down] += 1
+                dct_ref_count[v, s] += 1
 
-        def visit_hinv(v_down: int, s_down: frozenset):
+        def _visit(v_down: int, s_down: frozenset, is_hinv: bool = False):
+            """recursively visits vertices and update their reference counts"""
             v_l, v_r, s_up, _ = self._loc_bcp(v_down=v_down, s_down=s_down)
-            v_up = v_r if (v_down == v_l) else v_l
-            # hfunc from even upper, to generate this vertex on upper level
-            if dct_ref_count.get((v_up, s_up), 0) < 1:
-                visit_hfunc(v_down=v_up, s_down=s_up)
-            dct_ref_count[v_up, s_up] += 1
-            # vertex on lower level
-            dct_ref_count[v_down, s_down] += 1
-            # * vertex reached by hinv
-            if dct_ref_count.get((v_down, s_up), 0) < 1:
-                dct_ref_count[v_down, s_up] = 1
+            l_visit = [(v_l, s_up), (v_r, s_up), (v_down, s_down)]
+            for v, s in l_visit:
+                _ref_count_increment(v, s)
+            if is_hinv:
+                l_visit = [(v_r if v_down == v_l else v_l, s_up)]
             else:
-                dct_ref_count[v_down, s_up] += 1
-            return v_down, s_up
+                l_visit = [(v_l, s_up), (v_r, s_up)]
+            for v, s in l_visit:
+                if dct_ref_count[v, s] == 1:
+                    _visit(v, s, is_hinv=False)
+            if is_hinv:
+                return v_down, s_up
 
+        # * process each source vertex from the shallowest to the deepest
         for v, s in lst_source:
-            if len(s) < 1:
-                continue
-            else:
-                v_next, s_next = visit_hinv(v_down=v, s_down=s)
-                while len(s_next) > 0:
-                    v_next, s_next = visit_hinv(v_down=v_next, s_down=s_next)
+            if s:
+                v_next, s_next = _visit(v_down=v, s_down=s, is_hinv=True)
+                while s_next:
+                    v_next, s_next = _visit(v_down=v_next, s_down=s_next, is_hinv=True)
 
         return dct_ref_count, lst_source
 
@@ -542,30 +532,27 @@ class DataVineCop(ABC):
             dtype=obs_mvcp.dtype,
         )
 
-        def update_obs(v: int, s_cond: frozenset):
-            # * calc hfunc for pseudo obs when necessary
+        def _visit_hfunc(v_down: int, s_down: frozenset) -> None:
+            """calc hfunc for pseudo obs and update dct_obs, only when necessary (lazy hfunc)"""
             # the lv of bcp
-            lv = len(s_cond) - 1
-            for (v_l, v_r, s_cond_bcp), bcp in self.dct_bcp[lv].items():
-                # ! notice hfunc1 or hfunc2
-                if v == v_l and s_cond == frozenset({v_r} | s_cond_bcp):
-                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc2(
-                        obs=torch.hstack(
-                            [
-                                dct_obs[lv][v_l, s_cond_bcp],
-                                dct_obs[lv][v_r, s_cond_bcp],
-                            ]
+            lv_down = len(s_down)
+            lv_up = lv_down - 1
+            for (v_l, v_r, s_up), bcp in self.dct_bcp[lv_up].items():
+                if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
+                    # ! notice hfunc1 or hfunc2
+                    if bcp.fam == "Independent":
+                        dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][(v_down, s_up)]
+                    else:
+                        dct_obs[lv_down][(v_down, s_down)] = (
+                            bcp.hfunc2 if v_down == v_l else bcp.hfunc1
+                        )(
+                            obs=torch.hstack(
+                                [
+                                    dct_obs[lv_up][v_l, s_up],
+                                    dct_obs[lv_up][v_r, s_up],
+                                ]
+                            )
                         )
-                    )
-                elif v == v_r and s_cond == frozenset({v_l} | s_cond_bcp):
-                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc1(
-                        obs=torch.hstack(
-                            [
-                                dct_obs[lv][v_l, s_cond_bcp],
-                                dct_obs[lv][v_r, s_cond_bcp],
-                            ]
-                        )
-                    )
                 else:
                     pass
 
@@ -574,7 +561,7 @@ class DataVineCop(ABC):
                 # * update the pseudo observations
                 for idx in (v_l, v_r):
                     if dct_obs[lv].get((idx, s_cond)) is None:
-                        update_obs(v=idx, s_cond=s_cond)
+                        _visit_hfunc(v_down=idx, s_down=s_cond)
                 res += bcp.l_pdf(
                     obs=torch.hstack(
                         [
@@ -609,35 +596,32 @@ class DataVineCop(ABC):
         if not tpl_sim:
             tpl_sim = self.tpl_sim
         tpl_sim_v_s_cond = tuple(
-            (v, frozenset(tpl_sim[idx + 1 :])) for idx, v in enumerate(tpl_sim)
+            (v, frozenset(tpl_sim[idx + 1:])) for idx, v in enumerate(tpl_sim)
         )
         dct_obs = {_: {} for _ in range(num_dim)}
         dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
 
-        def update_obs(v: int, s_cond: frozenset):
-            # * calc hfunc for pseudo obs when necessary
+        def _visit_hfunc(v_down: int, s_down: frozenset) -> None:
+            """calc hfunc for pseudo obs and update dct_obs, only when necessary (lazy hfunc)"""
             # the lv of bcp
-            lv = len(s_cond) - 1
-            for (v_l, v_r, s_cond_bcp), bcp in self.dct_bcp[lv].items():
-                # ! notice hfunc1 or hfunc2
-                if v == v_l and s_cond == frozenset({v_r} | s_cond_bcp):
-                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc2(
-                        obs=torch.hstack(
-                            [
-                                dct_obs[lv][v_l, s_cond_bcp],
-                                dct_obs[lv][v_r, s_cond_bcp],
-                            ]
+            lv_down = len(s_down)
+            lv_up = lv_down - 1
+            for (v_l, v_r, s_up), bcp in self.dct_bcp[lv_up].items():
+                if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
+                    # ! notice hfunc1 or hfunc2
+                    if bcp.fam == "Independent":
+                        dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][(v_down, s_up)]
+                    else:
+                        dct_obs[lv_down][(v_down, s_down)] = (
+                            bcp.hfunc2 if v_down == v_l else bcp.hfunc1
+                        )(
+                            obs=torch.hstack(
+                                [
+                                    dct_obs[lv_up][v_l, s_up],
+                                    dct_obs[lv_up][v_r, s_up],
+                                ]
+                            )
                         )
-                    )
-                elif v == v_r and s_cond == frozenset({v_l} | s_cond_bcp):
-                    dct_obs[lv + 1][(v, s_cond)] = bcp.hfunc1(
-                        obs=torch.hstack(
-                            [
-                                dct_obs[lv][v_l, s_cond_bcp],
-                                dct_obs[lv][v_r, s_cond_bcp],
-                            ]
-                        )
-                    )
                 else:
                     pass
 
@@ -646,16 +630,15 @@ class DataVineCop(ABC):
                 # * update the pseudo observations
                 for idx in (v_l, v_r):
                     if dct_obs[lv].get((idx, s_cond)) is None:
-                        update_obs(v=idx, s_cond=s_cond)
+                        _visit_hfunc(v_down=idx, s_down=s_cond)
                 if (v_l, s_cond | {v_r}) in tpl_sim_v_s_cond:
-                    update_obs(v=v_l, s_cond=s_cond | {v_r})
+                    _visit_hfunc(v_down=v_l, s_down=s_cond | {v_r})
                 if (v_r, s_cond | {v_l}) in tpl_sim_v_s_cond:
-                    update_obs(v=v_r, s_cond=s_cond | {v_l})
+                    _visit_hfunc(v_down=v_r, s_down=s_cond | {v_l})
             if lv > 0:
-                # ! garbage collection
-                for v_s_cond in dict(dct_obs[lv - 1]):
-                    if v_s_cond not in tpl_sim_v_s_cond:
-                        del dct_obs[lv - 1][v_s_cond]
+                dct_obs[lv - 1] = {
+                    k: v for k, v in dct_obs[lv - 1].items() if k in tpl_sim_v_s_cond
+                }
         dct_obs = {
             k: v
             for dct_lv in dct_obs.values()
@@ -696,19 +679,20 @@ class DataVineCop(ABC):
         :return: simulated observations of the vine copula, of shape (num_sim, num_dim)
         :rtype: torch.Tensor
         """
+        torch.manual_seed(seed=seed)
         dct_obs = dct_first_vs.copy()
         # * source vertices in each path; reference counting for whole DAG
         dct_ref_count, lst_source = self._ref_count(
             tpl_first_vs=tuple(dct_first_vs), tpl_sim=tpl_sim
         )
 
-        def _update_ref_count(v: int, s: frozenset) -> None:
+        def _ref_count_decrement(v: int, s: frozenset) -> None:
             # * countdown and release memory if necessary
             dct_ref_count[v, s] -= 1
             if dct_ref_count[v, s] < 1:
                 del dct_obs[v, s]
 
-        def visit_hfunc(v_down: int, s_down: frozenset) -> None:
+        def _visit_hfunc(v_down: int, s_down: frozenset) -> None:
             """
             hfunc from (v_l,s_up) and (v_r,s_up) (both may not exist yet and recursively call visit_hfunc if necessary)
             to (v_down,s_down); then update dct_obs and dct_ref_count and do garbage collection
@@ -717,20 +701,23 @@ class DataVineCop(ABC):
             v_l, v_r, s_up, bcp = self._loc_bcp(v_down=v_down, s_down=s_down)
             # ! hfunc from even upper, to visit this vertex on upper level
             for v in (v_l, v_r):
-                if dct_obs.get((v, s_up), None) is None:
-                    visit_hfunc(v_down=v, s_down=s_up)
-            dct_obs[v_down, s_down] = (bcp.hfunc1 if v_down == v_r else bcp.hfunc2)(
-                torch.hstack([dct_obs[v_l, s_up], dct_obs[v_r, s_up]])
-            )
+                if (v, s_up) not in dct_obs:
+                    _visit_hfunc(v_down=v, s_down=s_up)
+            if bcp.fam == "Independent":
+                dct_obs[v_down, s_down] = dct_obs[v_down, s_up]
+            else:
+                dct_obs[v_down, s_down] = (bcp.hfunc1 if v_down == v_r else bcp.hfunc2)(
+                    torch.hstack([dct_obs[v_l, s_up], dct_obs[v_r, s_up]])
+                )
             # * garbage collection check
             for v, s in (
                 (v_l, s_up),
                 (v_r, s_up),
                 (v_down, s_down),
             ):
-                _update_ref_count(v=v, s=s)
+                _ref_count_decrement(v=v, s=s)
 
-        def visit_hinv(v_down: int, s_down: frozenset) -> tuple:
+        def _visit_hinv(v_down: int, s_down: frozenset) -> tuple:
             """
             hinv from (v_down,s_down) (surely exist) and (v_up,s_up)
             (may not exist yet and recursively call visit_hfunc if necessary)
@@ -740,39 +727,44 @@ class DataVineCop(ABC):
             v_l, v_r, s_up, bcp = self._loc_bcp(v_down=v_down, s_down=s_down)
             # ! if v_down==v_r then go hinv1([(v_l,s_up), (v_r,s_down)])
             is_down_right = v_down == v_r
-            (v_up, hinv) = (v_l, bcp.hinv1) if is_down_right else (v_r, bcp.hinv2)
+            (v_oppo, hinv) = (v_l, bcp.hinv1) if is_down_right else (v_r, bcp.hinv2)
             # ! hfunc from even upper, to visit this vertex on upper level
-            if dct_obs.get((v_up, s_up), None) is None:
-                visit_hfunc(v_down=v_up, s_down=s_up)
-            dct_obs[v_down, s_up] = hinv(
-                torch.hstack(
-                    [
-                        dct_obs[v_up, s_up],
-                        dct_obs[v_down, s_down],
-                    ]
-                    if is_down_right
-                    else [
-                        dct_obs[v_down, s_down],
-                        dct_obs[v_up, s_up],
-                    ]
+            if (v_oppo, s_up) not in dct_obs:
+                _visit_hfunc(v_down=v_oppo, s_down=s_up)
+            if bcp.fam == "Independent":
+                dct_obs[v_down, s_up] = dct_obs[v_down, s_down]
+            else:
+                dct_obs[v_down, s_up] = hinv(
+                    torch.hstack(
+                        [
+                            dct_obs[v_oppo, s_up],
+                            dct_obs[v_down, s_down],
+                        ]
+                        if is_down_right
+                        else [
+                            dct_obs[v_down, s_down],
+                            dct_obs[v_oppo, s_up],
+                        ]
+                    )
                 )
-            )
             # * garbage collection check
             for v, s in (
-                (v_up, s_up),
+                (v_oppo, s_up),
                 (v_down, s_down),
                 (v_down, s_up),
             ):
-                _update_ref_count(v=v, s=s)
+                _ref_count_decrement(v=v, s=s)
             # * return the next vertex
             return v_down, s_up
 
-        torch.manual_seed(seed=seed)
         # * init sim of U_mvcp (multivariate independent copula)
         dim_sim = self.num_dim - len(dct_first_vs)
-        if dim_sim > 0:
-            # ! skip for quant-reg
-            U_mvcp = torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
+        # ! skip for quant-reg
+        U_mvcp = (
+            torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
+            if dim_sim > 0
+            else None
+        )
         # * update dct_obs and dct_ref_count
         idx = 0
         for v, s in lst_source:
@@ -782,24 +774,23 @@ class DataVineCop(ABC):
             # ! let the top level obs (target vertices) escape garbage collection
             dct_ref_count[v, frozenset()] += 1
             # update ref count
-            dct_ref_count[v, s] -= 1
-        del seed, dct_first_vs, idx
-        if dim_sim > 0:
-            del U_mvcp
+            _ref_count_decrement(v=v, s=s)
+        del seed, dct_first_vs, idx, U_mvcp
+        # * process each source vertex from the shallowest to the deepest
         for v, s in lst_source:
             # walk the path if cond set is not empty
-            if len(s):
+            if s:
                 # call hinv and update vertex/cond-set iteratively to walk towards target vertex (top lv)
-                v_next, s_next = visit_hinv(v_down=v, s_down=s)
-                while len(s_next):
-                    v_next, s_next = visit_hinv(v_down=v_next, s_down=s_next)
+                v_next, s_next = _visit_hinv(v_down=v, s_down=s)
+                while s_next:
+                    v_next, s_next = _visit_hinv(v_down=v_next, s_down=s_next)
         # * sort pseudo obs by key
         return torch.hstack([val for _, val in sorted(dct_obs.items(), key=itemgetter(0))])
 
     def cdf(
         self,
         obs_mvcp: torch.Tensor,
-        num_sim: int = 10000,
+        num_sim: int = 50000,
         seed: int = 0,
     ) -> torch.Tensor:
         """cumulative distribution function (CDF) of the multivariate copula given observations, by Monte Carlo.
@@ -807,7 +798,7 @@ class DataVineCop(ABC):
         :param self: an instance of the DataVineCop dataclass
         :param obs_mvcp: observations of the multivariate copula, of shape (num_obs, num_dim)
         :type obs_mvcp: torch.Tensor
-        :param num_sim: number of simulations, defaults to 10000
+        :param num_sim: number of simulations, defaults to 50000
         :type num_sim: int, optional
         :param seed: random seed for torch.manual_seed(), defaults to 0
         :type seed: int, optional
@@ -825,4 +816,4 @@ class DataVineCop(ABC):
         ).sum(
             axis=0,
             keepdim=False,
-        ) / obs_sim.shape[0]
+        ) / num_sim
