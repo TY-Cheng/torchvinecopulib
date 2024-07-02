@@ -13,7 +13,7 @@
 
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
-- C/D/R-Vine full simulation/ quantile-regression/ conditoinal-simulation, all in one package
+- C/D/R-Vine full simulation/ quantile-regression/ conditional-simulation, all in one package
   - Flexible simulation workflow for experienced users
 - Vectorized tensor computation with GPU (`device='cuda'`) support
 - Shorter runtimes for higher dimension simulations
@@ -58,9 +58,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.6.1-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.7.0-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.6.1.tar.gz
+pip install ./dist/torchvinecopulib-2024.7.0.tar.gz
 ```
 
 ## Examples
@@ -88,6 +88,8 @@ sphinx-apidoc -o ./docs ./torchvinecopulib && cd ./docs && make html && cd ..
 ```python
 # inside project root folder
 python -m pytest ./tests
+# coverage report
+coverage run -m pytest ./tests && coverage html
 ```
 
 ## Contributing

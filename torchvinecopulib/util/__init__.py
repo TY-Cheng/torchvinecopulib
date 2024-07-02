@@ -8,14 +8,15 @@ from scipy.stats import kendalltau, t
 
 __all__ = [
     "ENUM_FUNC_BIDEP",
+    "cdf_func_kernel",
+    "chatterjee_xi",
+    "debye1",
+    "ferreira_tail_dep_coeff",
     "kendall_tau",
     "mutual_info",
-    "ferreira_tail_dep_coeff",
-    "chatterjee_xi",
-    "wasserstein_dist_ind",
-    "cdf_func_kernel",
-    "debye1",
+    "ref_count_hfunc",
     "solve_ITP",
+    "wasserstein_dist_ind",
 ]
 
 _CDF_MIN, _CDF_MAX = 0.0, 1.0
@@ -787,3 +788,83 @@ def solve_ITP(
         x_wid = b - a
 
     return (a + b) / 2.0
+
+
+def ref_count_hfunc(
+    dct_tree: dict,
+    tpl_first_vs: tuple[tuple[int, frozenset]] = tuple(),
+    tpl_sim: tuple[int] = tuple(),
+) -> tuple[dict, tuple[int], int]:
+    """reference counting for each vertex during cond-sim workflow,
+    for garbage collection (memory release) and source vertices selection;
+    1. when len(tpl_sim) < num_dim: vertices not in tpl_sim are set on the top lv, vertices in tpl_sim are set at deepest lvs
+    2. when len(tpl_sim) == num_dim: check dct_first_vs to move vertices up
+
+    :param dct_tree: dct_tree inside a DataVineCop object, of the form {lv: {(v_l, v_r, s): bidep_func}}
+    :type dct_tree: dict
+    :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)
+        that are taken as known at the beginning of a simulation workflow, defaults to tuple()
+    :type tpl_first_vs: tuple[tuple[int, frozenset]], optional
+    :param tpl_sim: tuple of vertices in a full simulation workflow,
+        gives flexibility to experienced users, defaults to tuple()
+    :type tpl_sim: tuple[int], optional
+    :return: number of visits for each vertex; tuple of source vertices in this simulation workflow
+        from shallowest to deepest; number of hfunc calls
+    :rtype: tuple[dict, tuple[int], int]
+    """
+
+    def _visit(v_down: int, s_down: frozenset, is_hinv: bool = False):
+        """recursively visits vertices and update their reference counts"""
+        # * locate the bicop on upper level that generates this pseudo obs
+        lv_up = len(s_down) - 1
+        s_bcp = {v_down} | s_down
+        for (v_l, v_r, s_up), _ in dct_tree[lv_up].items():
+            if ({v_l, v_r} | s_up) == s_bcp:
+                break
+        # * all three vertices, increment the reference count
+        l_visit = [(v_l, s_up), (v_r, s_up), (v_down, s_down)]
+        for v, s in l_visit:
+            if not dct_ref_count.get((v, s), None):
+                dct_ref_count[v, s] = 1
+            else:
+                dct_ref_count[v, s] += 1
+        # * check missing parents
+        if is_hinv:
+            l_visit = [(v_r if v_down == v_l else v_l, s_up)]
+        else:
+            l_visit = [(v_l, s_up), (v_r, s_up)]
+        for v, s in l_visit:
+            if dct_ref_count[v, s] == 1:
+                _visit(v_down=v, s_down=s, is_hinv=False)
+                # ! call hfunc only when parent missing
+                num_hfunc[0] += 1
+        if is_hinv:
+            return v_down, s_up
+
+    if not len(tpl_sim):
+        raise ValueError("tpl_sim must be a non-empty tuple")
+    num_dim = max(dct_tree) + 2
+    if len(tpl_sim) < num_dim:
+        # ! when len(tpl_sim) < num_dim: vertices not in tpl_sim are set on the top lv, vertices in tpl_sim are set at deepest lv
+        s_cond = frozenset(range(num_dim)) - frozenset(tpl_sim)
+        tpl_sim = tuple(
+            (v, s_cond | frozenset(tpl_sim[idx + 1 :])) for idx, v in enumerate(tpl_sim)
+        ) + tuple((v, frozenset()) for v in s_cond)
+    else:
+        # ! when len(tpl_sim) == num_dim: check dct_first_vs to move vertices up
+        dct_first_vs = {v_s_cond[0]: v_s_cond for v_s_cond in tpl_first_vs}
+        tpl_sim = tuple(
+            dct_first_vs.get(v, (v, frozenset(tpl_sim[(idx + 1) :])))
+            for idx, v in enumerate(tpl_sim)
+        )
+    tpl_sim = tpl_sim[::-1]
+    # ! count in initial sim (pseudo obs that are given at the beginning of each sim path)
+    dct_ref_count = {_: 1 for _ in tpl_sim}
+    # * mutable
+    num_hfunc = [0]
+    # * process each source vertex from the shallowest to the deepest
+    for v, s in tpl_sim:
+        while s:
+            v, s = _visit(v_down=v, s_down=s, is_hinv=True)
+
+    return dct_ref_count, tpl_sim, num_hfunc[0]

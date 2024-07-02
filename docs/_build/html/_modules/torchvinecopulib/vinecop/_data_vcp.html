@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.05.06 -->
-        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.6.1 documentation</title>
+        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=387cc868" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -178,7 +178,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.6.1 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.7.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -202,7 +202,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.6.1 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.7.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -261,6 +261,8 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 
+<span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="n">ref_count_hfunc</span>
+
 
 <div class="viewcode-block" id="DataVineCop">
 <a class="viewcode-back" href="../../../torchvinecopulib.vinecop.html#torchvinecopulib.vinecop.DataVineCop">[docs]</a>
@@ -317,21 +319,16 @@
         <span class="n">lst_diag</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="c1"># * levels in reverse order</span>
         <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">lv</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
-            <span class="n">v_diag</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="n">lst_nebr</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">idx</span>
+            <span class="n">v_diag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">lst_nebr</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">idx</span> <span class="o">+</span> <span class="p">[</span><span class="n">v_diag</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">i_lv</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lv</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
                 <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">[</span><span class="n">i_lv</span><span class="p">]:</span>
-                    <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_diag</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_diag</span><span class="p">):</span>
-                        <span class="k">if</span> <span class="n">v_diag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                            <span class="c1"># ! pick the node with smaller index (v_l &lt; v_r), then mat &lt;-&gt; structure is bijection</span>
-                            <span class="n">v_diag</span> <span class="o">=</span> <span class="n">v_l</span>
-                            <span class="n">lst_nebr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_diag</span><span class="p">)</span>
-                        <span class="k">if</span> <span class="n">v_diag</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span>
-                            <span class="n">lst_nebr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span> <span class="k">if</span> <span class="n">v_diag</span> <span class="o">==</span> <span class="n">v_r</span> <span class="k">else</span> <span class="n">v_r</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_diag</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_diag</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_diag</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">)):</span>
+                        <span class="n">lst_nebr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span> <span class="k">if</span> <span class="n">v_diag</span> <span class="o">==</span> <span class="n">v_r</span> <span class="k">else</span> <span class="n">v_r</span><span class="p">)</span>
             <span class="n">lst_diag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_diag</span><span class="p">)</span>
             <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lst_nebr</span><span class="p">)</span>
         <span class="c1"># ! append the last node</span>
-        <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">mat</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -373,65 +370,6 @@
         <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="n">bcp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv_up</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="p">({</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_up</span><span class="p">)</span> <span class="o">==</span> <span class="n">s_bcp</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">,</span> <span class="n">bcp</span>
-
-    <span class="k">def</span> <span class="nf">_ref_count</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">tpl_first_vs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
-        <span class="n">tpl_sim</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;reference counting for each vertex during simulation (quant-reg/cond-sim) workflow,</span>
-<span class="sd">        for garbage collection (memory release)</span>
-
-<span class="sd">        :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)</span>
-<span class="sd">            that are taken as known at the beginning of a simulation workflow, defaults to tuple()</span>
-<span class="sd">        :type tpl_first_vs: tuple[tuple[int, frozenset]], optional</span>
-<span class="sd">        :param tpl_sim: tuple of vertices in a full simulation workflow,</span>
-<span class="sd">            gives flexibility to experienced users, defaults to tuple()</span>
-<span class="sd">        :type tpl_sim: tuple[int], optional</span>
-<span class="sd">        :return: reference counting for each vertex; list of source vertices in this simulation workflow from shallow to deep</span>
-<span class="sd">        :rtype: tuple[dict, list[int]]</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># * v for vertex, s for condition (frozen)set, read from right to left</span>
-        <span class="n">dct_first_vs</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tpl_first_vs</span><span class="p">}</span>
-        <span class="n">lst_source</span> <span class="o">=</span> <span class="n">tpl_sim</span> <span class="k">if</span> <span class="n">tpl_sim</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span>
-        <span class="n">lst_source</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">(</span><span class="n">dct_first_vs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">lst_source</span><span class="p">[(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):]))))</span>
-            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lst_source</span><span class="p">)</span>
-        <span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="c1"># ! count in initial sim (pseudo obs that are given at the beginning of each sim path)</span>
-        <span class="n">dct_ref_count</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s_cond</span><span class="p">:</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">}</span>
-
-        <span class="k">def</span> <span class="nf">_ref_count_increment</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;increment the reference count for a given vertex and condition set&quot;&quot;&quot;</span>
-            <span class="k">if</span> <span class="n">dct_ref_count</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-
-        <span class="k">def</span> <span class="nf">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s_down</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">,</span> <span class="n">is_hinv</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;recursively visits vertices and update their reference counts&quot;&quot;&quot;</span>
-            <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loc_bcp</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_down</span><span class="p">)</span>
-            <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">)]</span>
-            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">l_visit</span><span class="p">:</span>
-                <span class="n">_ref_count_increment</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">is_hinv</span><span class="p">:</span>
-                <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_r</span> <span class="k">if</span> <span class="n">v_down</span> <span class="o">==</span> <span class="n">v_l</span> <span class="k">else</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)]</span>
-            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">l_visit</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="n">_visit</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">is_hinv</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span>
-
-        <span class="c1"># * process each source vertex from the shallowest to the deepest</span>
-        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">s</span><span class="p">:</span>
-                <span class="n">v_next</span><span class="p">,</span> <span class="n">s_next</span> <span class="o">=</span> <span class="n">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="k">while</span> <span class="n">s_next</span><span class="p">:</span>
-                    <span class="n">v_next</span><span class="p">,</span> <span class="n">s_next</span> <span class="o">=</span> <span class="n">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_next</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_next</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">lst_source</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">pformat</span><span class="p">(</span>
@@ -663,7 +601,11 @@
             <span class="n">G</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">lst_edge</span><span class="p">)</span>
         <span class="n">pos</span> <span class="o">=</span> <span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span>
         <span class="c1"># highlight source nodes, given tpl_first</span>
-        <span class="n">lst_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_count</span><span class="p">(</span><span class="n">tpl_first_vs</span><span class="o">=</span><span class="n">tpl_first_vs</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="o">=</span><span class="n">tpl_sim</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">lst_source</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
+            <span class="n">dct_tree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">,</span>
+            <span class="n">tpl_first_vs</span><span class="o">=</span><span class="n">tpl_first_vs</span><span class="p">,</span>
+            <span class="n">tpl_sim</span><span class="o">=</span><span class="n">tpl_sim</span> <span class="k">if</span> <span class="n">tpl_sim</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">,</span>
+        <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="c1"># pseudo obs nodes</span>
         <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">]</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
@@ -867,7 +809,7 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">tpl_sim</span><span class="p">:</span>
             <span class="n">tpl_sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span>
         <span class="n">tpl_sim_v_s_cond</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
-            <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]))</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">)</span>
+            <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]))</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{</span><span class="n">_</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">)}</span>
         <span class="n">dct_obs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">{(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()):</span> <span class="n">obs_mvcp</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">)}</span>
@@ -898,18 +840,18 @@
 
         <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">:</span>
             <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="c1"># * update the pseudo observations</span>
-                <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">idx</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">})</span> <span class="ow">in</span> <span class="n">tpl_sim_v_s_cond</span><span class="p">:</span>
-                    <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">})</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">})</span> <span class="ow">in</span> <span class="n">tpl_sim_v_s_cond</span><span class="p">:</span>
-                    <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">})</span>
+                <span class="c1"># * update parents</span>
+                <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="kc">None</span><span class="p">):</span>
+                        <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
+                <span class="c1"># * update children when necessary</span>
+                <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">}),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">})):</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tpl_sim_v_s_cond</span><span class="p">:</span>
+                        <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">lv</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">tpl_sim_v_s_cond</span>
-                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tpl_sim_v_s_cond</span><span class="p">:</span>
+                        <span class="k">del</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">k</span><span class="p">]</span>
         <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{</span>
             <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
             <span class="k">for</span> <span class="n">dct_lv</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
@@ -953,84 +895,79 @@
 <span class="sd">        :return: simulated observations of the vine copula, of shape (num_sim, num_dim)</span>
 <span class="sd">        :rtype: torch.Tensor</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;countdown and release memory for non-top vertices if necessary&quot;&quot;&quot;</span>
+            <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+                <span class="k">del</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="nf">_visit</span><span class="p">(</span>
+            <span class="n">v_down</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">s_down</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">,</span>
+            <span class="n">is_hinv</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">]:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;recursively visits vertices and update their reference counts&quot;&quot;&quot;</span>
+            <span class="c1"># * locate the bicop at upper level that connects the three vertices</span>
+            <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">,</span> <span class="n">bcp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loc_bcp</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_down</span><span class="p">)</span>
+            <span class="n">is_down_right</span> <span class="o">=</span> <span class="n">v_down</span> <span class="o">==</span> <span class="n">v_r</span>
+            <span class="c1"># * check missing parents, call hfunc from even upper to visit</span>
+            <span class="k">if</span> <span class="n">is_hinv</span><span class="p">:</span>
+                <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span> <span class="k">if</span> <span class="n">is_down_right</span> <span class="k">else</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)]</span>
+            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">l_visit</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">:</span>
+                    <span class="n">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="c1"># * update the pseudo observations</span>
+            <span class="k">if</span> <span class="n">is_hinv</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">bcp</span><span class="o">.</span><span class="n">fam</span> <span class="o">==</span> <span class="s2">&quot;Independent&quot;</span><span class="p">:</span>
+                    <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]</span> <span class="o">=</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">is_down_right</span><span class="p">:</span>
+                    <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]</span> <span class="o">=</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hinv1</span><span class="p">(</span>
+                        <span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+                            <span class="p">[</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">],</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">],</span>
+                            <span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]</span> <span class="o">=</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hinv2</span><span class="p">(</span>
+                        <span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+                            <span class="p">[</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">],</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">],</span>
+                            <span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">bcp</span><span class="o">.</span><span class="n">fam</span> <span class="o">==</span> <span class="s2">&quot;Independent&quot;</span><span class="p">:</span>
+                    <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">]</span> <span class="o">=</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">bcp</span><span class="o">.</span><span class="n">hfunc1</span> <span class="k">if</span> <span class="n">is_down_right</span> <span class="k">else</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hfunc2</span><span class="p">)(</span>
+                        <span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+                            <span class="p">[</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">],</span>
+                                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">],</span>
+                            <span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+            <span class="c1"># * garbage collection check</span>
+            <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">)]</span>
+            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">l_visit</span><span class="p">:</span>
+                <span class="n">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">is_hinv</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span>
+
         <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
         <span class="n">dct_obs</span> <span class="o">=</span> <span class="n">dct_first_vs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="c1"># * source vertices in each path; reference counting for whole DAG</span>
-        <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">lst_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_count</span><span class="p">(</span>
-            <span class="n">tpl_first_vs</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">dct_first_vs</span><span class="p">),</span> <span class="n">tpl_sim</span><span class="o">=</span><span class="n">tpl_sim</span>
+        <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">lst_source</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
+            <span class="n">dct_tree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">,</span>
+            <span class="n">tpl_first_vs</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">dct_first_vs</span><span class="p">),</span>
+            <span class="n">tpl_sim</span><span class="o">=</span><span class="n">tpl_sim</span> <span class="k">if</span> <span class="n">tpl_sim</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">,</span>
         <span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># * countdown and release memory if necessary</span>
-            <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
-            <span class="k">if</span> <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="k">del</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span>
-
-        <span class="k">def</span> <span class="nf">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s_down</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">            hfunc from (v_l,s_up) and (v_r,s_up) (both may not exist yet and recursively call visit_hfunc if necessary)</span>
-<span class="sd">            to (v_down,s_down); then update dct_obs and dct_ref_count and do garbage collection</span>
-<span class="sd">            &quot;&quot;&quot;</span>
-            <span class="c1"># * locate the bicop on upper level that connects the 3 vertices</span>
-            <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">,</span> <span class="n">bcp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loc_bcp</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_down</span><span class="p">)</span>
-            <span class="c1"># ! hfunc from even upper, to visit this vertex on upper level</span>
-            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">:</span>
-                    <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_up</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">bcp</span><span class="o">.</span><span class="n">fam</span> <span class="o">==</span> <span class="s2">&quot;Independent&quot;</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">]</span> <span class="o">=</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">bcp</span><span class="o">.</span><span class="n">hfunc1</span> <span class="k">if</span> <span class="n">v_down</span> <span class="o">==</span> <span class="n">v_r</span> <span class="k">else</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hfunc2</span><span class="p">)(</span>
-                    <span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">],</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]])</span>
-                <span class="p">)</span>
-            <span class="c1"># * garbage collection check</span>
-            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">),</span>
-            <span class="p">):</span>
-                <span class="n">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">_visit_hinv</span><span class="p">(</span><span class="n">v_down</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s_down</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">            hinv from (v_down,s_down) (surely exist) and (v_up,s_up)</span>
-<span class="sd">            (may not exist yet and recursively call visit_hfunc if necessary)</span>
-<span class="sd">            to (v_down,s_up); then update dct_obs and dct_ref_count and do garbage collection</span>
-<span class="sd">            &quot;&quot;&quot;</span>
-            <span class="c1"># * locate the bicop on upper level that connects the 3 vertices</span>
-            <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">,</span> <span class="n">bcp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loc_bcp</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_down</span><span class="p">)</span>
-            <span class="c1"># ! if v_down==v_r then go hinv1([(v_l,s_up), (v_r,s_down)])</span>
-            <span class="n">is_down_right</span> <span class="o">=</span> <span class="n">v_down</span> <span class="o">==</span> <span class="n">v_r</span>
-            <span class="p">(</span><span class="n">v_oppo</span><span class="p">,</span> <span class="n">hinv</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hinv1</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_down_right</span> <span class="k">else</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">bcp</span><span class="o">.</span><span class="n">hinv2</span><span class="p">)</span>
-            <span class="c1"># ! hfunc from even upper, to visit this vertex on upper level</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">v_oppo</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">:</span>
-                <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_oppo</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_up</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">bcp</span><span class="o">.</span><span class="n">fam</span> <span class="o">==</span> <span class="s2">&quot;Independent&quot;</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]</span> <span class="o">=</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">]</span> <span class="o">=</span> <span class="n">hinv</span><span class="p">(</span>
-                    <span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
-                        <span class="p">[</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_oppo</span><span class="p">,</span> <span class="n">s_up</span><span class="p">],</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">],</span>
-                        <span class="p">]</span>
-                        <span class="k">if</span> <span class="n">is_down_right</span>
-                        <span class="k">else</span> <span class="p">[</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">],</span>
-                            <span class="n">dct_obs</span><span class="p">[</span><span class="n">v_oppo</span><span class="p">,</span> <span class="n">s_up</span><span class="p">],</span>
-                        <span class="p">]</span>
-                    <span class="p">)</span>
-                <span class="p">)</span>
-            <span class="c1"># * garbage collection check</span>
-            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">v_oppo</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span>
-            <span class="p">):</span>
-                <span class="n">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-            <span class="c1"># * return the next vertex</span>
-            <span class="k">return</span> <span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span>
-
         <span class="c1"># * init sim of U_mvcp (multivariate independent copula)</span>
         <span class="n">dim_sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_dim</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">dct_first_vs</span><span class="p">)</span>
         <span class="c1"># ! skip for quant-reg</span>
@@ -1039,25 +976,20 @@
             <span class="k">if</span> <span class="n">dim_sim</span> <span class="o">&gt;</span> <span class="mi">0</span>
             <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
-        <span class="c1"># * update dct_obs and dct_ref_count</span>
+        <span class="c1"># * update dct_obs and dct_ref_count (initialize source vertices)</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">:</span>
             <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">:</span>
                 <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">U_mvcp</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
                 <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="c1"># ! let the top level obs (target vertices) escape garbage collection</span>
-            <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()]</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="c1"># update ref count</span>
             <span class="n">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-        <span class="k">del</span> <span class="n">seed</span><span class="p">,</span> <span class="n">dct_first_vs</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">U_mvcp</span>
+        <span class="k">del</span> <span class="n">dct_first_vs</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">U_mvcp</span>
         <span class="c1"># * process each source vertex from the shallowest to the deepest</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">:</span>
-            <span class="c1"># walk the path if cond set is not empty</span>
-            <span class="k">if</span> <span class="n">s</span><span class="p">:</span>
-                <span class="c1"># call hinv and update vertex/cond-set iteratively to walk towards target vertex (top lv)</span>
-                <span class="n">v_next</span><span class="p">,</span> <span class="n">s_next</span> <span class="o">=</span> <span class="n">_visit_hinv</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-                <span class="k">while</span> <span class="n">s_next</span><span class="p">:</span>
-                    <span class="n">v_next</span><span class="p">,</span> <span class="n">s_next</span> <span class="o">=</span> <span class="n">_visit_hinv</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_next</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_next</span><span class="p">)</span>
+            <span class="c1"># walk the path from source to target while cond set is not empty</span>
+            <span class="k">while</span> <span class="n">s</span><span class="p">:</span>
+                <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="c1"># * sort pseudo obs by key</span>
         <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">val</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_obs</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">0</span><span class="p">))])</span></div>
 
@@ -1082,12 +1014,13 @@
 <span class="sd">        :return: cumulative distribution function (CDF) of shape (num_obs, 1), given observations</span>
 <span class="sd">        :rtype: torch.Tensor</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># * both obs_mvcp and obs_sim are of 2 dimensions</span>
-        <span class="n">obs_sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim</span><span class="p">(</span>
-            <span class="n">num_sim</span><span class="o">=</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">dtype</span>
-        <span class="p">)</span>
         <span class="c1"># * unsqueeze for broadcasting (num_sim, obs_mvcp.shape[0], num_dim) -&gt; (obs_mvcp.shape[0], 1)</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">obs_sim</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">obs_mvcp</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sim</span><span class="p">(</span>
+                <span class="n">num_sim</span><span class="o">=</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="o">&lt;=</span> <span class="n">obs_mvcp</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span>
             <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
@@ -1128,7 +1061,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=b2a49d55"></script>
+</div><script src="../../../_static/documentation_options.js?v=67095315"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>
