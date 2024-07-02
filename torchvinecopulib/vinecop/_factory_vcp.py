@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from ..bicop import DataBiCop, bcp_from_obs
-from ..util import ENUM_FUNC_BIDEP
+from ..util import ENUM_FUNC_BIDEP, ref_count_hfunc
 from ._data_vcp import DataVineCop
 
 
@@ -52,14 +52,13 @@ def _mst_from_edge_rvine(
         """union by rank"""
         root_a, root_b = find(a), find(b)
         if rank[root_a] < rank[root_b]:
-            parent[root_a] = root_b
-        else:
-            parent[root_b] = root_a
-            if rank[root_b] == rank[root_a]:
-                rank[root_a] += 1
+            root_a, root_b = root_b, root_a
+        parent[root_b] = root_a
+        rank[root_a] += rank[root_a] == rank[root_b]
 
     def kruskal(dct_edge: dict, num_mst: int) -> None:
         if dct_edge:
+            num_edge = len(mst)
             # * notice we sort edges by ABS(bidep) in DESCENDING order
             for (v_l, v_r, s_cond), _ in sorted(
                 dct_edge.items(), key=lambda x: abs(x[1]), reverse=True
@@ -67,22 +66,23 @@ def _mst_from_edge_rvine(
                 if find((v_l, s_cond)) != find((v_r, s_cond)):
                     mst.append((v_l, v_r, s_cond))
                     union((v_l, s_cond), (v_r, s_cond))
-                if len(mst) == num_mst:
+                    num_edge += 1
+                if num_edge == num_mst:
                     break
 
     # ! filter for edges
-    s_sum = set()
+    s_sub = set()
     dct_edge = dict()
     for i_s in (s_first, set(range(num_dim))):
-        s_sum |= i_s
+        s_sub |= i_s
         dct_edge = {
             (v_l, v_r, s_cond): bidep
             for (v_l, v_r, s_cond), bidep in dct_edge_lv.items()
-            if ((v_l in s_sum) and (v_r in s_sum)) and ((v_l, v_r, s_cond) not in dct_edge)
+            if ((v_l in s_sub) and (v_r in s_sub))
         }
-        num_mst = max(0, len(s_sum) - lv - 1)
+        dct_edge_lv = {k: v for k, v in dct_edge_lv.items() if k not in dct_edge}
+        num_mst = max(0, len(s_sub) - lv - 1)
         kruskal(dct_edge, num_mst=num_mst)
-
     return mst
 
 
@@ -139,7 +139,7 @@ def _mst_from_edge_cvine(
     return mst, deq_sim, s_first
 
 
-def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) -> tuple:
+def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) -> list:
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine.
     For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
 
@@ -149,8 +149,8 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
     :type dct_edge_lv: dict
     :param s_first: set of vertices that are kept shallower in the simulation workflow
     :type s_first: set
-    :return: list of edges (vertex_l, vertex_r, cond set) in the MST (lv0); updated deq_sim; emptied s_first
-    :rtype: tuple
+    :return: list of edges (vertex_l, vertex_r, cond set) in the MST (lv0)
+    :rtype: list
     """
     # * edge2tree, dvine (MST, restricted to dvine)
     # * at lv0, s_cond is known to be empty
@@ -270,22 +270,7 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
                     v_l, v_r = sorted((v, tsp_rest[idx + 1]))
                     if {v_l, v_r} != {v_body, v_tail}:
                         mst.append((v_l, v_r, frozenset()))
-    # * sim workflow, chain the vertices in deq_sim
-    deq_sim = deque([v_head])
-    s_edge = set(mst)
-    while deq_sim[-1] != v_tail:
-        for v_l, v_r, s_cond in set(s_edge):
-            if v_l == deq_sim[-1]:
-                deq_sim.append(v_r)
-                s_edge.remove((v_l, v_r, s_cond))
-            elif v_r == deq_sim[-1]:
-                deq_sim.append(v_l)
-                s_edge.remove((v_l, v_r, s_cond))
-    # ! let those sim first (s_first) be last in the tpl_sim
-    if deq_sim[0] in s_first:
-        deq_sim.reverse()
-    # * mst(dvine), deq_sim, s_first
-    return mst, deq_sim, {}
+    return mst
 
 
 def vcp_from_obs(
@@ -354,6 +339,7 @@ def vcp_from_obs(
     f_bidep = ENUM_FUNC_BIDEP[mtd_bidep].value
     num_dim = obs_mvcp.shape[1]
     s_first = set(tpl_first)
+    s_rest = set(range(num_dim)) - s_first
     # ! an object to record the order of sim (read from right to left,
     # ! as simulated pseudo-obs vertices from shallowest to deepest level)
     deq_sim = deque()
@@ -420,9 +406,9 @@ def vcp_from_obs(
                             )
             if mtd_vine == "dvine":
                 # * edge2tree, dvine
-                # ! for dvine, the whole struct (and deq_sim) is known after lv0
+                # ! for dvine, the whole struct is known after lv0
                 if lv == 0:
-                    mst, deq_sim, s_first = _mst_from_edge_dvine(
+                    mst = _mst_from_edge_dvine(
                         tpl_key_obs=tpl_key_obs,
                         dct_edge_lv=dct_edge[lv],
                         s_first=s_first,
@@ -457,7 +443,7 @@ def vcp_from_obs(
             for idx in range(num_dim - lv - 1):
                 # ! sorted !
                 v_l, v_r = sorted((matrix[idx, idx], matrix[idx, num_dim - lv - 1]))
-                s_cond = frozenset(matrix[idx, (num_dim - lv):])
+                s_cond = frozenset(matrix[idx, (num_dim - lv) :])
                 if dct_obs[lv][v_l, s_cond] is None:
                     _visit_hfunc(v_down=v_l, s_down=s_cond)
                 if dct_obs[lv][v_r, s_cond] is None:
@@ -495,23 +481,37 @@ def vcp_from_obs(
             del dct_edge[lv]
         if lv > 0:
             del dct_obs[lv - 1]
-    # * for cvine/dvine, deq_sim is known and s_first is empty now
-    # * for rvine, deq_sim is empty and to be arranged
+    # * for cvine, deq_sim is known and s_first is empty now
+    # * for dvine/rvine, deq_sim is empty and to be arranged
     if not deq_sim:
-        for lv in sorted(dct_tree, reverse=True):
-            for v_l, v_r, s_cond in dct_tree[lv]:
-                # ! if this bcp vertex is not yet in the paths of existing deq_sim elements
+        # ! sequentially "peel off" paths from the vine
+        # the deepest lv, symmetric
+        deq_sim = [*dct_tree[num_dim - 2]][0][:2]
+        deq_sim = deque(v for v in deq_sim if v in s_rest)
+        while (lv := num_dim - 2 - len(deq_sim)) > -1:
+            for v_l, v_r, _ in [*dct_tree[lv]]:
+                # * locate the virgin bicop vertex at this lv
                 if (v_l not in deq_sim) and (v_r not in deq_sim):
-                    # ! obs in set_rest but not yet arranged in deq_sim
-                    s_tmp = set(range(num_dim)) - s_first - set(deq_sim)
-                    if s_tmp:
-                        deq_sim.append(v_l if v_l in s_tmp else v_r)
+                    # * those in s_rest are prioritized
+                    if (is_v_l_deeper := v_l in s_rest) ^ (v_r in s_rest):
+                        deq_sim.append(v_l if is_v_l_deeper else v_r)
                     else:
-                        # ! pick the node with smaller index (v_l < v_r), then sim paths <-> structure is bijection
-                        deq_sim.append(v_l)
-                    if lv == 0:
-                        deq_sim.append(v_r if v_l in deq_sim else v_l)
+                        # ! select the one with less hfunc calls
+                        deq_sim.append(
+                            v_l
+                            if ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_l,))[
+                                -1
+                            ]
+                            <= ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_r,))[
+                                -1
+                            ]
+                            else v_r
+                        )
                     break
+            if not lv:
+                # the top lv
+                deq_sim.extend({v_l, v_r} - {*deq_sim})
+                break
 
     return DataVineCop(
         dct_bcp=dct_bcp,

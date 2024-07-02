@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.05.06 -->
-        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.6.1 documentation</title>
+        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=387cc868" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -178,7 +178,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.6.1 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.7.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -202,7 +202,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.6.1 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.7.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -262,7 +262,7 @@
 <span class="kn">import</span> <span class="nn">torch</span>
 
 <span class="kn">from</span> <span class="nn">..bicop</span> <span class="kn">import</span> <span class="n">DataBiCop</span><span class="p">,</span> <span class="n">bcp_from_obs</span>
-<span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="n">ENUM_FUNC_BIDEP</span>
+<span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="n">ENUM_FUNC_BIDEP</span><span class="p">,</span> <span class="n">ref_count_hfunc</span>
 <span class="kn">from</span> <span class="nn">._data_vcp</span> <span class="kn">import</span> <span class="n">DataVineCop</span>
 
 
@@ -304,14 +304,13 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;union by rank&quot;&quot;&quot;</span>
         <span class="n">root_a</span><span class="p">,</span> <span class="n">root_b</span> <span class="o">=</span> <span class="n">find</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">find</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_a</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_b</span><span class="p">]:</span>
-            <span class="n">parent</span><span class="p">[</span><span class="n">root_a</span><span class="p">]</span> <span class="o">=</span> <span class="n">root_b</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">parent</span><span class="p">[</span><span class="n">root_b</span><span class="p">]</span> <span class="o">=</span> <span class="n">root_a</span>
-            <span class="k">if</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_b</span><span class="p">]</span> <span class="o">==</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_a</span><span class="p">]:</span>
-                <span class="n">rank</span><span class="p">[</span><span class="n">root_a</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">root_a</span><span class="p">,</span> <span class="n">root_b</span> <span class="o">=</span> <span class="n">root_b</span><span class="p">,</span> <span class="n">root_a</span>
+        <span class="n">parent</span><span class="p">[</span><span class="n">root_b</span><span class="p">]</span> <span class="o">=</span> <span class="n">root_a</span>
+        <span class="n">rank</span><span class="p">[</span><span class="n">root_a</span><span class="p">]</span> <span class="o">+=</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_a</span><span class="p">]</span> <span class="o">==</span> <span class="n">rank</span><span class="p">[</span><span class="n">root_b</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">kruskal</span><span class="p">(</span><span class="n">dct_edge</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">num_mst</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">dct_edge</span><span class="p">:</span>
+            <span class="n">num_edge</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mst</span><span class="p">)</span>
             <span class="c1"># * notice we sort edges by ABS(bidep) in DESCENDING order</span>
             <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
                 <span class="n">dct_edge</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
@@ -319,22 +318,23 @@
                 <span class="k">if</span> <span class="n">find</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span> <span class="o">!=</span> <span class="n">find</span><span class="p">((</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)):</span>
                     <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
                     <span class="n">union</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mst</span><span class="p">)</span> <span class="o">==</span> <span class="n">num_mst</span><span class="p">:</span>
+                    <span class="n">num_edge</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">num_edge</span> <span class="o">==</span> <span class="n">num_mst</span><span class="p">:</span>
                     <span class="k">break</span>
 
     <span class="c1"># ! filter for edges</span>
-    <span class="n">s_sum</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">s_sub</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
     <span class="n">dct_edge</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">i_s</span> <span class="ow">in</span> <span class="p">(</span><span class="n">s_first</span><span class="p">,</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">))):</span>
-        <span class="n">s_sum</span> <span class="o">|=</span> <span class="n">i_s</span>
+        <span class="n">s_sub</span> <span class="o">|=</span> <span class="n">i_s</span>
         <span class="n">dct_edge</span> <span class="o">=</span> <span class="p">{</span>
             <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">):</span> <span class="n">bidep</span>
             <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bidep</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-            <span class="k">if</span> <span class="p">((</span><span class="n">v_l</span> <span class="ow">in</span> <span class="n">s_sum</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">in</span> <span class="n">s_sum</span><span class="p">))</span> <span class="ow">and</span> <span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_edge</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">v_l</span> <span class="ow">in</span> <span class="n">s_sub</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">in</span> <span class="n">s_sub</span><span class="p">))</span>
         <span class="p">}</span>
-        <span class="n">num_mst</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_sum</span><span class="p">)</span> <span class="o">-</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">dct_edge_lv</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dct_edge_lv</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_edge</span><span class="p">}</span>
+        <span class="n">num_mst</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_sub</span><span class="p">)</span> <span class="o">-</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">kruskal</span><span class="p">(</span><span class="n">dct_edge</span><span class="p">,</span> <span class="n">num_mst</span><span class="o">=</span><span class="n">num_mst</span><span class="p">)</span>
-
     <span class="k">return</span> <span class="n">mst</span>
 
 
@@ -391,7 +391,7 @@
     <span class="k">return</span> <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="n">s_first</span>
 
 
-<span class="k">def</span> <span class="nf">_mst_from_edge_dvine</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">_mst_from_edge_dvine</span><span class="p">(</span><span class="n">tpl_key_obs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dct_edge_lv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_first</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct Kruskal&#39;s MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine.</span>
 <span class="sd">    For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.</span>
 
@@ -401,8 +401,8 @@
 <span class="sd">    :type dct_edge_lv: dict</span>
 <span class="sd">    :param s_first: set of vertices that are kept shallower in the simulation workflow</span>
 <span class="sd">    :type s_first: set</span>
-<span class="sd">    :return: list of edges (vertex_l, vertex_r, cond set) in the MST (lv0); updated deq_sim; emptied s_first</span>
-<span class="sd">    :rtype: tuple</span>
+<span class="sd">    :return: list of edges (vertex_l, vertex_r, cond set) in the MST (lv0)</span>
+<span class="sd">    :rtype: list</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># * edge2tree, dvine (MST, restricted to dvine)</span>
     <span class="c1"># * at lv0, s_cond is known to be empty</span>
@@ -522,22 +522,7 @@
                     <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">tsp_rest</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]))</span>
                     <span class="k">if</span> <span class="p">{</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">!=</span> <span class="p">{</span><span class="n">v_body</span><span class="p">,</span> <span class="n">v_tail</span><span class="p">}:</span>
                         <span class="n">mst</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()))</span>
-    <span class="c1"># * sim workflow, chain the vertices in deq_sim</span>
-    <span class="n">deq_sim</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([</span><span class="n">v_head</span><span class="p">])</span>
-    <span class="n">s_edge</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">mst</span><span class="p">)</span>
-    <span class="k">while</span> <span class="n">deq_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">v_tail</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">s_edge</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">v_l</span> <span class="o">==</span> <span class="n">deq_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
-                <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span><span class="p">)</span>
-                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
-            <span class="k">elif</span> <span class="n">v_r</span> <span class="o">==</span> <span class="n">deq_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
-                <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
-                <span class="n">s_edge</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span>
-    <span class="c1"># ! let those sim first (s_first) be last in the tpl_sim</span>
-    <span class="k">if</span> <span class="n">deq_sim</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">s_first</span><span class="p">:</span>
-        <span class="n">deq_sim</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
-    <span class="c1"># * mst(dvine), deq_sim, s_first</span>
-    <span class="k">return</span> <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="n">mst</span>
 
 
 <div class="viewcode-block" id="vcp_from_obs">
@@ -608,6 +593,7 @@
     <span class="n">f_bidep</span> <span class="o">=</span> <span class="n">ENUM_FUNC_BIDEP</span><span class="p">[</span><span class="n">mtd_bidep</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
     <span class="n">num_dim</span> <span class="o">=</span> <span class="n">obs_mvcp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">s_first</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">tpl_first</span><span class="p">)</span>
+    <span class="n">s_rest</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">))</span> <span class="o">-</span> <span class="n">s_first</span>
     <span class="c1"># ! an object to record the order of sim (read from right to left,</span>
     <span class="c1"># ! as simulated pseudo-obs vertices from shallowest to deepest level)</span>
     <span class="n">deq_sim</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
@@ -674,9 +660,9 @@
                             <span class="p">)</span>
             <span class="k">if</span> <span class="n">mtd_vine</span> <span class="o">==</span> <span class="s2">&quot;dvine&quot;</span><span class="p">:</span>
                 <span class="c1"># * edge2tree, dvine</span>
-                <span class="c1"># ! for dvine, the whole struct (and deq_sim) is known after lv0</span>
+                <span class="c1"># ! for dvine, the whole struct is known after lv0</span>
                 <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">mst</span><span class="p">,</span> <span class="n">deq_sim</span><span class="p">,</span> <span class="n">s_first</span> <span class="o">=</span> <span class="n">_mst_from_edge_dvine</span><span class="p">(</span>
+                    <span class="n">mst</span> <span class="o">=</span> <span class="n">_mst_from_edge_dvine</span><span class="p">(</span>
                         <span class="n">tpl_key_obs</span><span class="o">=</span><span class="n">tpl_key_obs</span><span class="p">,</span>
                         <span class="n">dct_edge_lv</span><span class="o">=</span><span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">],</span>
                         <span class="n">s_first</span><span class="o">=</span><span class="n">s_first</span><span class="p">,</span>
@@ -711,7 +697,7 @@
             <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
                 <span class="c1"># ! sorted !</span>
                 <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">idx</span><span class="p">],</span> <span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]))</span>
-                <span class="n">s_cond</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span><span class="p">):])</span>
+                <span class="n">s_cond</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">num_dim</span> <span class="o">-</span> <span class="n">lv</span><span class="p">)</span> <span class="p">:])</span>
                 <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">][</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -749,23 +735,37 @@
             <span class="k">del</span> <span class="n">dct_edge</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">lv</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">del</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-    <span class="c1"># * for cvine/dvine, deq_sim is known and s_first is empty now</span>
-    <span class="c1"># * for rvine, deq_sim is empty and to be arranged</span>
+    <span class="c1"># * for cvine, deq_sim is known and s_first is empty now</span>
+    <span class="c1"># * for dvine/rvine, deq_sim is empty and to be arranged</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">deq_sim</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dct_tree</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]:</span>
-                <span class="c1"># ! if this bcp vertex is not yet in the paths of existing deq_sim elements</span>
+        <span class="c1"># ! sequentially &quot;peel off&quot; paths from the vine</span>
+        <span class="c1"># the deepest lv, symmetric</span>
+        <span class="n">deq_sim</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">dct_tree</span><span class="p">[</span><span class="n">num_dim</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]][</span><span class="mi">0</span><span class="p">][:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">deq_sim</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">deq_sim</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">s_rest</span><span class="p">)</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">lv</span> <span class="o">:=</span> <span class="n">num_dim</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">))</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="p">[</span><span class="o">*</span><span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]]:</span>
+                <span class="c1"># * locate the virgin bicop vertex at this lv</span>
                 <span class="k">if</span> <span class="p">(</span><span class="n">v_l</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deq_sim</span><span class="p">):</span>
-                    <span class="c1"># ! obs in set_rest but not yet arranged in deq_sim</span>
-                    <span class="n">s_tmp</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">))</span> <span class="o">-</span> <span class="n">s_first</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">s_tmp</span><span class="p">:</span>
-                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span> <span class="k">if</span> <span class="n">v_l</span> <span class="ow">in</span> <span class="n">s_tmp</span> <span class="k">else</span> <span class="n">v_r</span><span class="p">)</span>
+                    <span class="c1"># * those in s_rest are prioritized</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">is_v_l_deeper</span> <span class="o">:=</span> <span class="n">v_l</span> <span class="ow">in</span> <span class="n">s_rest</span><span class="p">)</span> <span class="o">^</span> <span class="p">(</span><span class="n">v_r</span> <span class="ow">in</span> <span class="n">s_rest</span><span class="p">):</span>
+                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span> <span class="k">if</span> <span class="n">is_v_l_deeper</span> <span class="k">else</span> <span class="n">v_r</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># ! pick the node with smaller index (v_l &lt; v_r), then sim paths &lt;-&gt; structure is bijection</span>
-                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_l</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_r</span> <span class="k">if</span> <span class="n">v_l</span> <span class="ow">in</span> <span class="n">deq_sim</span> <span class="k">else</span> <span class="n">v_l</span><span class="p">)</span>
+                        <span class="c1"># ! select the one with less hfunc calls</span>
+                        <span class="n">deq_sim</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="n">v_l</span>
+                            <span class="k">if</span> <span class="n">ref_count_hfunc</span><span class="p">(</span><span class="n">dct_tree</span><span class="o">=</span><span class="n">dct_tree</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,))[</span>
+                                <span class="o">-</span><span class="mi">1</span>
+                            <span class="p">]</span>
+                            <span class="o">&lt;=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span><span class="n">dct_tree</span><span class="o">=</span><span class="n">dct_tree</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,))[</span>
+                                <span class="o">-</span><span class="mi">1</span>
+                            <span class="p">]</span>
+                            <span class="k">else</span> <span class="n">v_r</span>
+                        <span class="p">)</span>
                     <span class="k">break</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">lv</span><span class="p">:</span>
+                <span class="c1"># the top lv</span>
+                <span class="n">deq_sim</span><span class="o">.</span><span class="n">extend</span><span class="p">({</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">-</span> <span class="p">{</span><span class="o">*</span><span class="n">deq_sim</span><span class="p">})</span>
+                <span class="k">break</span>
 
     <span class="k">return</span> <span class="n">DataVineCop</span><span class="p">(</span>
         <span class="n">dct_bcp</span><span class="o">=</span><span class="n">dct_bcp</span><span class="p">,</span>
@@ -858,7 +858,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=b2a49d55"></script>
+</div><script src="../../../_static/documentation_options.js?v=67095315"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>

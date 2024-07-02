@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.05.06 -->
-        <title>torchvinecopulib.util - torchvinecopulib 2024.6.1 documentation</title>
+        <title>torchvinecopulib.util - torchvinecopulib 2024.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=387cc868" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -178,7 +178,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">torchvinecopulib 2024.6.1 documentation</div></a>
+      <a href="../../index.html"><div class="brand">torchvinecopulib 2024.7.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -202,7 +202,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.6.1 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.7.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -260,14 +260,15 @@
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;ENUM_FUNC_BIDEP&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;cdf_func_kernel&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chatterjee_xi&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;debye1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ferreira_tail_dep_coeff&quot;</span><span class="p">,</span>
     <span class="s2">&quot;kendall_tau&quot;</span><span class="p">,</span>
     <span class="s2">&quot;mutual_info&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;ferreira_tail_dep_coeff&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;chatterjee_xi&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;wasserstein_dist_ind&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;cdf_func_kernel&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;debye1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ref_count_hfunc&quot;</span><span class="p">,</span>
     <span class="s2">&quot;solve_ITP&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;wasserstein_dist_ind&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
 <span class="n">_CDF_MIN</span><span class="p">,</span> <span class="n">_CDF_MAX</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span>
@@ -1066,6 +1067,89 @@
 
     <span class="k">return</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span></div>
 
+
+
+<div class="viewcode-block" id="ref_count_hfunc">
+<a class="viewcode-back" href="../../torchvinecopulib.util.html#torchvinecopulib.util.ref_count_hfunc">[docs]</a>
+<span class="k">def</span> <span class="nf">ref_count_hfunc</span><span class="p">(</span>
+    <span class="n">dct_tree</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">tpl_first_vs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
+    <span class="n">tpl_sim</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;reference counting for each vertex during cond-sim workflow,</span>
+<span class="sd">    for garbage collection (memory release) and source vertices selection;</span>
+<span class="sd">    1. when len(tpl_sim) &lt; num_dim: vertices not in tpl_sim are set on the top lv, vertices in tpl_sim are set at deepest lvs</span>
+<span class="sd">    2. when len(tpl_sim) == num_dim: check dct_first_vs to move vertices up</span>
+
+<span class="sd">    :param dct_tree: dct_tree inside a DataVineCop object, of the form {lv: {(v_l, v_r, s): bidep_func}}</span>
+<span class="sd">    :type dct_tree: dict</span>
+<span class="sd">    :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)</span>
+<span class="sd">        that are taken as known at the beginning of a simulation workflow, defaults to tuple()</span>
+<span class="sd">    :type tpl_first_vs: tuple[tuple[int, frozenset]], optional</span>
+<span class="sd">    :param tpl_sim: tuple of vertices in a full simulation workflow,</span>
+<span class="sd">        gives flexibility to experienced users, defaults to tuple()</span>
+<span class="sd">    :type tpl_sim: tuple[int], optional</span>
+<span class="sd">    :return: number of visits for each vertex; tuple of source vertices in this simulation workflow</span>
+<span class="sd">        from shallowest to deepest; number of hfunc calls</span>
+<span class="sd">    :rtype: tuple[dict, tuple[int], int]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">s_down</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">,</span> <span class="n">is_hinv</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;recursively visits vertices and update their reference counts&quot;&quot;&quot;</span>
+        <span class="c1"># * locate the bicop on upper level that generates this pseudo obs</span>
+        <span class="n">lv_up</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_down</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">s_bcp</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_down</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_down</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dct_tree</span><span class="p">[</span><span class="n">lv_up</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="p">({</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">}</span> <span class="o">|</span> <span class="n">s_up</span><span class="p">)</span> <span class="o">==</span> <span class="n">s_bcp</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="c1"># * all three vertices, increment the reference count</span>
+        <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_down</span><span class="p">,</span> <span class="n">s_down</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">l_visit</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dct_ref_count</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># * check missing parents</span>
+        <span class="k">if</span> <span class="n">is_hinv</span><span class="p">:</span>
+            <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_r</span> <span class="k">if</span> <span class="n">v_down</span> <span class="o">==</span> <span class="n">v_l</span> <span class="k">else</span> <span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">l_visit</span> <span class="o">=</span> <span class="p">[(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_up</span><span class="p">),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_up</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">l_visit</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">dct_ref_count</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="c1"># ! call hfunc only when parent missing</span>
+                <span class="n">num_hfunc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">is_hinv</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;tpl_sim must be a non-empty tuple&quot;</span><span class="p">)</span>
+    <span class="n">num_dim</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">dct_tree</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num_dim</span><span class="p">:</span>
+        <span class="c1"># ! when len(tpl_sim) &lt; num_dim: vertices not in tpl_sim are set on the top lv, vertices in tpl_sim are set at deepest lv</span>
+        <span class="n">s_cond</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">))</span> <span class="o">-</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">)</span>
+        <span class="n">tpl_sim</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]))</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">)</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">s_cond</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># ! when len(tpl_sim) == num_dim: check dct_first_vs to move vertices up</span>
+        <span class="n">dct_first_vs</span> <span class="o">=</span> <span class="p">{</span><span class="n">v_s_cond</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">v_s_cond</span> <span class="k">for</span> <span class="n">v_s_cond</span> <span class="ow">in</span> <span class="n">tpl_first_vs</span><span class="p">}</span>
+        <span class="n">tpl_sim</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">dct_first_vs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">[(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="p">:])))</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tpl_sim</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="n">tpl_sim</span> <span class="o">=</span> <span class="n">tpl_sim</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># ! count in initial sim (pseudo obs that are given at the beginning of each sim path)</span>
+    <span class="n">dct_ref_count</span> <span class="o">=</span> <span class="p">{</span><span class="n">_</span><span class="p">:</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">tpl_sim</span><span class="p">}</span>
+    <span class="c1"># * mutable</span>
+    <span class="n">num_hfunc</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># * process each source vertex from the shallowest to the deepest</span>
+    <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tpl_sim</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">s</span><span class="p">:</span>
+            <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="p">,</span> <span class="n">num_hfunc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
 </pre></div>
         </article>
       </div>
@@ -1098,7 +1182,7 @@
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=b2a49d55"></script>
+</div><script src="../../_static/documentation_options.js?v=67095315"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=4e2eecee"></script>
