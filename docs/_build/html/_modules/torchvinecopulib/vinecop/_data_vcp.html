@@ -4,8 +4,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 7.3.7 and Furo 2024.05.06 -->
-        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.7.0 documentation</title>
+    <!-- Generated with Sphinx 7.4.4 and Furo 2024.05.06 -->
+        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.7.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=387cc868" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -178,7 +178,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.7.0 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.7.1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -202,7 +202,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.7.0 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.7.1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -601,13 +601,13 @@
             <span class="n">G</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">lst_edge</span><span class="p">)</span>
         <span class="n">pos</span> <span class="o">=</span> <span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span>
         <span class="c1"># highlight source nodes, given tpl_first</span>
-        <span class="n">lst_source</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
+        <span class="n">tpl_source</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
             <span class="n">dct_tree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">,</span>
             <span class="n">tpl_first_vs</span><span class="o">=</span><span class="n">tpl_first_vs</span><span class="p">,</span>
             <span class="n">tpl_sim</span><span class="o">=</span><span class="n">tpl_sim</span> <span class="k">if</span> <span class="n">tpl_sim</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">,</span>
         <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="c1"># pseudo obs nodes</span>
-        <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">]</span>
+        <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tpl_source</span><span class="p">]</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
             <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
@@ -623,7 +623,7 @@
             <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-            <span class="n">nodelist</span><span class="o">=</span><span class="n">lst_source</span><span class="p">,</span>
+            <span class="n">nodelist</span><span class="o">=</span><span class="n">tpl_source</span><span class="p">,</span>
             <span class="n">node_color</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
             <span class="n">node_shape</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span>
             <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
@@ -873,6 +873,7 @@
         <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;full simulation/ quantile-regression/ conditional-simulation using the vine copula.</span>
+<span class="sd">        modified from depth-first search (DFS) on binary tree.</span>
 <span class="sd">        Sequentially for each beginning vertex in the tpl_sim</span>
 <span class="sd">        (from right to left, as from shallower lv to deeper lv in the DAG),</span>
 <span class="sd">        walk upward by calling hinv until the top vertex (whose cond set is empty) is reached.</span>
@@ -963,7 +964,7 @@
         <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
         <span class="n">dct_obs</span> <span class="o">=</span> <span class="n">dct_first_vs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="c1"># * source vertices in each path; reference counting for whole DAG</span>
-        <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">lst_source</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
+        <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">tpl_source</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
             <span class="n">dct_tree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">,</span>
             <span class="n">tpl_first_vs</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">dct_first_vs</span><span class="p">),</span>
             <span class="n">tpl_sim</span><span class="o">=</span><span class="n">tpl_sim</span> <span class="k">if</span> <span class="n">tpl_sim</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">,</span>
@@ -978,7 +979,7 @@
         <span class="p">)</span>
         <span class="c1"># * update dct_obs and dct_ref_count (initialize source vertices)</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tpl_source</span><span class="p">:</span>
             <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">:</span>
                 <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">U_mvcp</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
                 <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -986,7 +987,7 @@
             <span class="n">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
         <span class="k">del</span> <span class="n">dct_first_vs</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">U_mvcp</span>
         <span class="c1"># * process each source vertex from the shallowest to the deepest</span>
-        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lst_source</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tpl_source</span><span class="p">:</span>
             <span class="c1"># walk the path from source to target while cond set is not empty</span>
             <span class="k">while</span> <span class="n">s</span><span class="p">:</span>
                 <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">_visit</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">is_hinv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1061,7 +1062,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=67095315"></script>
+</div><script src="../../../_static/documentation_options.js?v=c371d70c"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>

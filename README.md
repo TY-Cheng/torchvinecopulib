@@ -13,7 +13,7 @@
 
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
-- C/D/R-Vine full simulation/ quantile-regression/ conditional-simulation, all in one package
+- C/D/R-Vine full-simulation/ quantile-regression/ conditional-simulation, all in one package
   - Flexible simulation workflow for experienced users
 - Vectorized tensor computation with GPU (`device='cuda'`) support
 - Shorter runtimes for higher dimension simulations
@@ -24,16 +24,20 @@ Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started
 ## Dependencies
 
 ```toml
-# inside the `./pyproject.toml` file
+# inside the `./pyproject.toml` file;
+numpy = "<2"
 python = "^3.10"
 scipy = "*"
-torch = "^2"
+# optional to facilitate customization
+torch = { version = "^2", optional = true }
 ```
 
 For [PyTorch](https://pytorch.org/get-started/locally/) with `cuda` support on Windows:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
+# check cuda availability
+python -c "import torch; print(torch.cuda.is_available())"
 ```
 
 > [!TIP]
@@ -41,37 +45,47 @@ pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-rei
 
 ## Installation
 
-By `pip` from `PyPI`:
+- By `pip` from [`PyPI`](https://pypi.org/project/torchvinecopulib/):
+```bash
+pip install torchvinecopulib torch
+```
+- Or with full drawing and bivariate dependency metric support:
 
 ```bash
-pip install torchvinecopulib
+pip install torchvinecopulib torch matplotlib pot scikit-learn
 ```
 
-with full drawing and bivariate dependency metric support:
-
-```bash
-pip install torchvinecopulib matplotlib pot scikit-learn
-```
-
-By `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
+- Or `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
 Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.7.0-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.7.1-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.7.0.tar.gz
+pip install ./dist/torchvinecopulib-2024.7.1.tar.gz
+```
+
+### (Optional) [Poetry](https://python-poetry.org/docs/) for Dependency Management and Packaging
+After `git clone https://github.com/TY-Cheng/torchvinecopulib.git`, `cd` into the project root where [`pyproject.toml`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/pyproject.toml) exists,
+
+```bash
+# inside project root folder
+poetry lock && poetry install -E dev_cpu --with dev_cpu --sync
+# or 
+poetry lock && poetry install -E dev_cuda --with dev_cuda --sync
 ```
 
 ## Examples
 
-Visit the `./examples/` folder for `.ipynb` Jupyter notebooks.
+Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main/examples) folder for `.ipynb` Jupyter notebooks.
 
 ## Documentation
 
 - Visit [GitHub Pages website](https://ty-cheng.github.io/torchvinecopulib/)
 
-- Or visit the `./docs/_build/html` subfolder for static `html` made with `Sphinx`
+- Or visit [html-preview.github.io](https://html-preview.github.io/?url=https%3A%2F%2Fgithub.com%2FTY-Cheng%2Ftorchvinecopulib%2Fblob%2Fmain%2Fdocs%2F_build%2Fhtml%2Findex.html)
+
+- Or (locally) visit the `./docs/_build/html` subfolder for static `html` made with `Sphinx`
 
 - Or build by yourself (need [`Sphinx`](https://github.com/sphinx-doc/sphinx), theme [`furo`](https://github.com/pradyunsg/furo) and [the GNU `make`](https://www.gnu.org/software/make/))
 
@@ -91,6 +105,10 @@ python -m pytest ./tests
 # coverage report
 coverage run -m pytest ./tests && coverage html
 ```
+
+## TODO
+- more (non-parametric) `bicop` class in `torch`
+- port to TensorFlow Probability for `cuda`-compatible [Student's t cdf/ppf](https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/StudentT)
 
 ## Contributing
 
@@ -115,9 +133,6 @@ We welcome contributions, whether it's a bug report, feature suggestion, code co
 - [in-place ops can be slower](https://discuss.pytorch.org/t/are-inplace-operations-faster/61209/4)
 - [torch.jit.script can be slower](https://discuss.pytorch.org/t/why-is-torch-jit-script-slower/120131/6)
 
-### TODO
-1. more (non-parametric) `bicop` class in `torch`
-2. potentially deprecating `'mle'` from `mtd_fit`
 
 ## License
 

@@ -29,7 +29,8 @@ def bcp_from_obs(
     :type obs_bcp: torch.Tensor
     :param tau: Kendall's tau of the observations, defaults to None for the function to estimate
     :type tau: float, optional
-    :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop, defaults to 0.05
+    :param thresh_trunc: threshold of Kendall's tau independence test, below which we reject independent bicop,
+        defaults to 0.05
     :type thresh_trunc: float, optional
     :param mtd_fit: parameter estimation method, either 'itau' (inverse of tau) or
         'mle' (maximum likelihood estimation); defaults to "itau"

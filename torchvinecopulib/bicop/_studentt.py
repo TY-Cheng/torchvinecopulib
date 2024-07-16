@@ -3,17 +3,7 @@ from math import ceil, floor, lgamma, log, log1p
 import torch
 from scipy.optimize import minimize
 
-from ..util import (
-    _NU_MAX,
-    _NU_MIN,
-    _RHO_MAX,
-    _RHO_MIN,
-    l_dt,
-    pbvt,
-    pt,
-    qt,
-    kendall_tau,
-)
+from ..util import _NU_MAX, _NU_MIN, _RHO_MAX, _RHO_MIN, kendall_tau, l_dt, pbvt, pt, qt
 from ._elliptical import BiCopElliptical
 
 
