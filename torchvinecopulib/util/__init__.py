@@ -4,7 +4,8 @@ from functools import partial
 from itertools import product
 
 import torch
-from scipy.stats import kendalltau, t
+from scipy.special import stdtr, stdtrit
+from scipy.stats import kendalltau
 
 __all__ = [
     "ENUM_FUNC_BIDEP",
@@ -53,9 +54,10 @@ def kendall_tau(
 
 
 def mutual_info(x: torch.Tensor, y: torch.Tensor, is_sklearn: bool = True) -> float:
-    """https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html
-
+    """mutual information, need scikit-learn or fastkde installed.
     x,y are both of shape (n, 1)
+
+    https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html
 
     Purkayastha, S., & Song, P. X. K. (2024).
     fastMI: A fast and consistent copula-based nonparametric estimator of mutual information.
@@ -164,6 +166,7 @@ def wasserstein_dist_ind(
     seed: int = 0,
 ) -> float:
     """Wasserstein distance from bicop obs to indep bicop, by ot.sinkhorn2 (averaged for each observation).
+        Need pot installed.
 
     :param x: copula obs of shape (n,1)
     :type x: torch.Tensor
@@ -486,16 +489,16 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
 
 def pt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
     if vec.device.type == "cpu":
-        return torch.from_numpy(t.cdf(x=vec, df=nu))
+        return stdtr(nu, vec)
     else:
-        return torch.from_numpy(t.cdf(x=vec.cpu(), df=nu)).cuda()
+        return stdtr(nu, vec.cpu()).cuda()
 
 
 def qt_scipy(vec: torch.Tensor, nu: float) -> torch.Tensor:
     if vec.device.type == "cpu":
-        return torch.from_numpy(t.ppf(q=vec, df=nu))
+        return stdtrit(nu, vec)
     else:
-        return torch.from_numpy(t.ppf(q=vec.cpu(), df=nu)).cuda()
+        return stdtrit(nu, vec.cpu()).cuda()
 
 
 pt = pt_scipy
@@ -795,7 +798,7 @@ def ref_count_hfunc(
     tpl_first_vs: tuple[tuple[int, frozenset]] = tuple(),
     tpl_sim: tuple[int] = tuple(),
 ) -> tuple[dict, tuple[int], int]:
-    """reference counting for each vertex during cond-sim workflow,
+    """reference counting for each data vertex during cond-sim workflow,
     for garbage collection (memory release) and source vertices selection;
     1. when len(tpl_sim) < num_dim: vertices not in tpl_sim are set on the top lv, vertices in tpl_sim are set at deepest lvs
     2. when len(tpl_sim) == num_dim: check dct_first_vs to move vertices up
@@ -803,7 +806,8 @@ def ref_count_hfunc(
     :param dct_tree: dct_tree inside a DataVineCop object, of the form {lv: {(v_l, v_r, s): bidep_func}}
     :type dct_tree: dict
     :param tpl_first_vs: tuple of vertices (explicitly arranged in conditioned - conditioning set)
-        that are taken as known at the beginning of a simulation workflow, defaults to tuple()
+        that are taken as known at the beginning of a simulation workflow,
+        only used when len(tpl_sim)==num_dim, defaults to tuple()
     :type tpl_first_vs: tuple[tuple[int, frozenset]], optional
     :param tpl_sim: tuple of vertices in a full simulation workflow,
         gives flexibility to experienced users, defaults to tuple()
@@ -821,23 +825,20 @@ def ref_count_hfunc(
         for (v_l, v_r, s_up), _ in dct_tree[lv_up].items():
             if ({v_l, v_r} | s_up) == s_bcp:
                 break
-        # * all three vertices, increment the reference count
-        l_visit = [(v_l, s_up), (v_r, s_up), (v_down, s_down)]
-        for v, s in l_visit:
-            if not dct_ref_count.get((v, s), None):
-                dct_ref_count[v, s] = 1
-            else:
-                dct_ref_count[v, s] += 1
         # * check missing parents
         if is_hinv:
-            l_visit = [(v_r if v_down == v_l else v_l, s_up)]
+            l_visit = [(v_l if v_down == v_r else v_r, s_up)]
         else:
             l_visit = [(v_l, s_up), (v_r, s_up)]
         for v, s in l_visit:
-            if dct_ref_count[v, s] == 1:
+            if not dct_ref_count.get((v, s), None):
                 _visit(v_down=v, s_down=s, is_hinv=False)
                 # ! call hfunc only when parent missing
                 num_hfunc[0] += 1
+        # * increment reference counts for all three vertices
+        l_visit = [(v_l, s_up), (v_r, s_up), (v_down, s_down)]
+        for v, s in l_visit:
+            dct_ref_count[v, s] = dct_ref_count.get((v, s), 0) + 1
         if is_hinv:
             return v_down, s_up
 
@@ -845,13 +846,15 @@ def ref_count_hfunc(
         raise ValueError("tpl_sim must be a non-empty tuple")
     num_dim = max(dct_tree) + 2
     if len(tpl_sim) < num_dim:
-        # ! when len(tpl_sim) < num_dim: vertices not in tpl_sim are set on the top lv, vertices in tpl_sim are set at deepest lv
+        # ! when len(tpl_sim) < num_dim:
+        # ! vertices not in tpl_sim are set on the top lv, vertices in tpl_sim are set at deepest lv
         s_cond = frozenset(range(num_dim)) - frozenset(tpl_sim)
         tpl_sim = tuple(
             (v, s_cond | frozenset(tpl_sim[idx + 1 :])) for idx, v in enumerate(tpl_sim)
         ) + tuple((v, frozenset()) for v in s_cond)
     else:
-        # ! when len(tpl_sim) == num_dim: check dct_first_vs to move vertices up
+        # ! when len(tpl_sim) == num_dim:
+        # ! check dct_first_vs to move vertices up
         dct_first_vs = {v_s_cond[0]: v_s_cond for v_s_cond in tpl_first_vs}
         tpl_sim = tuple(
             dct_first_vs.get(v, (v, frozenset(tpl_sim[(idx + 1) :])))

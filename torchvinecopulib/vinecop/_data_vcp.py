@@ -342,13 +342,13 @@ class DataVineCop(ABC):
             G.add_edges_from(lst_edge)
         pos = pos_obs | pos_bcp
         # highlight source nodes, given tpl_first
-        lst_source = ref_count_hfunc(
+        tpl_source = ref_count_hfunc(
             dct_tree=self.dct_tree,
             tpl_first_vs=tpl_first_vs,
             tpl_sim=tpl_sim if tpl_sim else self.tpl_sim,
         )[1]
         # pseudo obs nodes
-        lst_node = [_ for _ in G.nodes if len(_) == 2 and _ not in lst_source]
+        lst_node = [_ for _ in G.nodes if len(_) == 2 and _ not in tpl_source]
         nx.draw_networkx_nodes(
             G=G,
             pos=pos,
@@ -364,7 +364,7 @@ class DataVineCop(ABC):
             G=G,
             pos=pos,
             ax=ax,
-            nodelist=lst_source,
+            nodelist=tpl_source,
             node_color="yellow",
             node_shape="o",
             alpha=0.8,
@@ -599,6 +599,7 @@ class DataVineCop(ABC):
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
         """full simulation/ quantile-regression/ conditional-simulation using the vine copula.
+        modified from depth-first search (DFS) on binary tree.
         Sequentially for each beginning vertex in the tpl_sim
         (from right to left, as from shallower lv to deeper lv in the DAG),
         walk upward by calling hinv until the top vertex (whose cond set is empty) is reached.
@@ -689,7 +690,7 @@ class DataVineCop(ABC):
         torch.manual_seed(seed=seed)
         dct_obs = dct_first_vs.copy()
         # * source vertices in each path; reference counting for whole DAG
-        dct_ref_count, lst_source, _ = ref_count_hfunc(
+        dct_ref_count, tpl_source, _ = ref_count_hfunc(
             dct_tree=self.dct_tree,
             tpl_first_vs=tuple(dct_first_vs),
             tpl_sim=tpl_sim if tpl_sim else self.tpl_sim,
@@ -704,7 +705,7 @@ class DataVineCop(ABC):
         )
         # * update dct_obs and dct_ref_count (initialize source vertices)
         idx = 0
-        for v, s in lst_source:
+        for v, s in tpl_source:
             if (v, s) not in dct_obs:
                 dct_obs[v, s] = U_mvcp[:, [idx]]
                 idx += 1
@@ -712,7 +713,7 @@ class DataVineCop(ABC):
             _ref_count_decrement(v=v, s=s)
         del dct_first_vs, tpl_sim, seed, idx, U_mvcp
         # * process each source vertex from the shallowest to the deepest
-        for v, s in lst_source:
+        for v, s in tpl_source:
             # walk the path from source to target while cond set is not empty
             while s:
                 v, s = _visit(v_down=v, s_down=s, is_hinv=True)

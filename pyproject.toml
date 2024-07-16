@@ -2,7 +2,7 @@
 package-mode = true
 license = "GNU GPLv3"
 name = "torchvinecopulib"
-version = "2024.7.0"
+version = "2024.7.1"
 description = "yet another vine copula library for PyTorch."
 authors = ["Tuoyuan Cheng <cty120120@gmail.com>"]
 maintainers = ["Xiaosheng You <e1204754@u.nus.edu>"]
@@ -21,45 +21,105 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
-[[tool.poetry.source]]
-name = "pytorch_cu"
-url = "https://download.pytorch.org/whl/cu121"
-priority = "explicit"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-numpy = "<2"
-scipy = "*"
-torch = { version = "^2", source = "pytorch_cu" }
-
-
-[tool.poetry.group.all.dependencies]
-matplotlib = "*"
-pot = "*"
-scikit-learn = "*"
-fastkde = "*"
-
-
-[tool.poetry.group.dev.dependencies]
-black = { version = "*", extras = ["jupyter"] }
-coverage = "*"
-flake8 = "*"
-furo = "*"
-ipykernel = "*"
-matplotlib = "*"
-pandas = "*"
-pot = "*"
-pytest = "*"
-pyvinecopulib = "0.6.6"
-scikit-learn = "*"
-sphinx = "*"
-tokenize-rt = "*"
-
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/TY-Cheng/torchvinecopulib/issues/new"
 
+[[tool.poetry.source]]
+name = "torch_cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[[tool.poetry.source]]
+name = "torch_cuda"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
+
+[tool.poetry.dependencies]
+numpy = "<2"
+python = "^3.10"
+scipy = "*"
+torch = { version = "^2", optional = true }
+# 
+[tool.poetry.group.dev_cpu]
+optional = true
+[tool.poetry.group.dev_cpu.dependencies]
+torch = { version = "^2", source = "torch_cpu", markers = "extra=='dev_cpu' and extra!='dev_cuda'" }
+# 
+black = { version = "*", extras = ["jupyter"] }
+coverage = { version = "*" }
+fastkde = { version = "*" }
+flake8 = { version = "*" }
+furo = { version = "*" }
+ipykernel = { version = "*" }
+matplotlib = { version = "*" }
+pandas = { version = "*" }
+pot = { version = "*" }
+pytest = { version = "*" }
+pyvinecopulib = { version = "0.6.6" }
+scikit-learn = { version = "*" }
+sphinx = { version = "*" }
+tokenize-rt = { version = "*" }
+yfinance = { version = "*" }
+# 
+[tool.poetry.group.dev_cuda]
+optional = true
+[tool.poetry.group.dev_cuda.dependencies]
+torch = { version = "^2", source = "torch_cuda", markers = "extra=='dev_cuda' and extra!='dev_cpu'" }
+# 
+black = { version = "*", extras = ["jupyter"] }
+coverage = { version = "*" }
+fastkde = { version = "*" }
+flake8 = { version = "*" }
+furo = { version = "*" }
+ipykernel = { version = "*" }
+matplotlib = { version = "*" }
+pandas = { version = "*" }
+pot = { version = "*" }
+pytest = { version = "*" }
+pyvinecopulib = { version = "0.6.6" }
+scikit-learn = { version = "*" }
+sphinx = { version = "*" }
+tokenize-rt = { version = "*" }
+yfinance = { version = "*" }
+
+[tool.poetry.extras]
+dev_cpu = [
+    "torch",
+    "black",
+    "coverage",
+    "fastkde",
+    "flake8",
+    "furo",
+    "ipykernel",
+    "matplotlib",
+    "pandas",
+    "pot",
+    "pytest",
+    "pyvinecopulib",
+    "scikit-learn",
+    "sphinx",
+    "tokenize-rt",
+    "yfinance",
+]
+dev_cuda = [
+    "torch",
+    "black",
+    "coverage",
+    "fastkde",
+    "flake8",
+    "furo",
+    "ipykernel",
+    "matplotlib",
+    "pandas",
+    "pot",
+    "pytest",
+    "pyvinecopulib",
+    "scikit-learn",
+    "sphinx",
+    "tokenize-rt",
+    "yfinance",
+]
