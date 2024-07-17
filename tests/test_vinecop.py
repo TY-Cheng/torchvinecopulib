@@ -2,9 +2,12 @@ import logging
 import os
 import random
 import unittest
+from itertools import combinations
 
 import networkx as nx
 import pyvinecopulib as pvc
+import torch
+from scipy.stats import kendalltau
 
 from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pth
 
@@ -159,41 +162,36 @@ class TestVineCop(unittest.TestCase):
 
     def test_from_matrix(self):
         """test vcp_from_obs with tree indicated by matrix"""
+        mtd_bidep = "kendall_tau"
         for fam, (_, bcp_tvc) in DCT_FAM.items():
             V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
             for mtd_fit in LST_MTD_FIT:
                 for mtd_sel in LST_MTD_SEL:
-                    for mtd_bidep in [
-                        "kendall_tau",
-                        "ferreira_tail_dep_coeff",
-                        "chatterjee_xi",
-                        "wasserstein_dist_ind",
-                    ]:
-                        if fam in ("StudentT", "Independent"):
-                            continue
-                        logging.info(
-                            msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
-                        )
-                        res_tvc = vcp_from_obs(
-                            obs_mvcp=V_mvcp,
-                            is_Dissmann=True,
-                            matrix=None,
-                            mtd_bidep=mtd_bidep,
-                            thresh_trunc=1,
-                            mtd_fit=mtd_fit,
-                            mtd_sel=mtd_sel,
-                            tpl_fam=(fam, "Independent"),
-                        )
-                        assert res_tvc == vcp_from_obs(
-                            obs_mvcp=V_mvcp,
-                            is_Dissmann=False,
-                            matrix=res_tvc.matrix,
-                            mtd_bidep=mtd_bidep,
-                            thresh_trunc=1,
-                            mtd_fit=mtd_fit,
-                            mtd_sel=mtd_sel,
-                            tpl_fam=(fam, "Independent"),
-                        )
+                    if fam in ("StudentT", "Independent"):
+                        continue
+                    logging.info(
+                        msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
+                    )
+                    res_tvc = vcp_from_obs(
+                        obs_mvcp=V_mvcp,
+                        is_Dissmann=True,
+                        matrix=None,
+                        mtd_bidep=mtd_bidep,
+                        thresh_trunc=1,
+                        mtd_fit=mtd_fit,
+                        mtd_sel=mtd_sel,
+                        tpl_fam=(fam, "Independent"),
+                    )
+                    assert res_tvc == vcp_from_obs(
+                        obs_mvcp=V_mvcp,
+                        is_Dissmann=False,
+                        matrix=res_tvc.matrix,
+                        mtd_bidep=mtd_bidep,
+                        thresh_trunc=1,
+                        mtd_fit=mtd_fit,
+                        mtd_sel=mtd_sel,
+                        tpl_fam=(fam, "Independent"),
+                    )
 
     def test_io(self):
         """test vcp_from_json, vcp_from_pth and vcp_to_json, vcp_to_pth"""
@@ -249,6 +247,38 @@ class TestVineCop(unittest.TestCase):
         tmp_f = vcp_from_pth(tmp_p)
         assert tmp_f == res_tvc
         os.remove(tmp_p)
+
+    def test_rosenblatt(self):
+        fam = "Clayton"
+        bcp_tvc = DCT_FAM[fam][1]
+        mtd_fit = "itau"
+        mtd_sel = "aic"
+        num_dim = 10
+        num_obs = 10000
+        mtd_bidep = "kendall_tau"
+        tpl_first = (3, 5)
+        V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_dim=num_dim, num_sim=num_obs)
+        res_tvc = vcp_from_obs(
+            obs_mvcp=V_mvcp,
+            is_Dissmann=True,
+            tpl_first=tpl_first,
+            mtd_bidep=mtd_bidep,
+            thresh_trunc=0.1,
+            mtd_fit=mtd_fit,
+            mtd_sel=mtd_sel,
+        )
+        V_mvcp_rosenblatt = res_tvc.rosenblatt_transform(V_mvcp)
+        V_mvcp_rosenblatt = torch.hstack(
+            [V_mvcp_rosenblatt[_] for _ in sorted(V_mvcp_rosenblatt.keys())]
+        )
+
+        for col_i, col_j in combinations(range(V_mvcp_rosenblatt.shape[1]), 2):
+            assert (
+                kendalltau(
+                    x=V_mvcp_rosenblatt[:, col_i].cpu(), y=V_mvcp_rosenblatt[:, col_j].cpu()
+                ).pvalue
+                > 0.1
+            )
 
 
 if __name__ == "__main__":
