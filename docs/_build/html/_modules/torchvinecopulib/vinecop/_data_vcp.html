@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 7.4.4 and Furo 2024.05.06 -->
-        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.7.1 documentation</title>
+        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.7.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=387cc868" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -178,7 +178,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.7.1 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.7.2 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -202,7 +202,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.7.1 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.7.2 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -770,6 +770,7 @@
             <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">bcp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="c1"># * update the pseudo observations</span>
                 <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span>
+                    <span class="c1"># can be tensor or None</span>
                     <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">idx</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
                 <span class="n">res</span> <span class="o">+=</span> <span class="n">bcp</span><span class="o">.</span><span class="n">l_pdf</span><span class="p">(</span>
@@ -842,14 +843,16 @@
             <span class="k">for</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_bcp</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="c1"># * update parents</span>
                 <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v_l</span><span class="p">,</span> <span class="n">v_r</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="kc">None</span><span class="p">):</span>
+                    <span class="c1"># can be tensor or None</span>
+                    <span class="k">if</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s_cond</span><span class="p">)</span>
                 <span class="c1"># * update children when necessary</span>
                 <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">((</span><span class="n">v_l</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_r</span><span class="p">}),</span> <span class="p">(</span><span class="n">v_r</span><span class="p">,</span> <span class="n">s_cond</span> <span class="o">|</span> <span class="p">{</span><span class="n">v_l</span><span class="p">})):</span>
                     <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tpl_sim_v_s_cond</span><span class="p">:</span>
                         <span class="n">_visit_hfunc</span><span class="p">(</span><span class="n">v_down</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s_down</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">lv</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]:</span>
+                <span class="c1"># ! iteration safety</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]):</span>
                     <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tpl_sim_v_s_cond</span><span class="p">:</span>
                         <span class="k">del</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">k</span><span class="p">]</span>
         <span class="n">dct_obs</span> <span class="o">=</span> <span class="p">{</span>
@@ -1062,7 +1065,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=c371d70c"></script>
+</div><script src="../../../_static/documentation_options.js?v=f4895d66"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>

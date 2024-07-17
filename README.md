@@ -2,12 +2,15 @@
 
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e8a7a7448b2043d9bbefafc5a3ec14f7)](https://app.codacy.com/gh/TY-Cheng/torchvinecopulib/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/e8a7a7448b2043d9bbefafc5a3ec14f7)](https://app.codacy.com?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
-[![Python package](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
+[![Lint Pytest](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
 [![Deploy Docs](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml)
 
-![Static Badge](https://img.shields.io/badge/Python-%203.10%7C3.11%7C3.12-blue)
+[![Python Version](https://img.shields.io/badge/Python-%203.10%7C3.11%7C3.12-blue)](https://devguide.python.org/versions/#versions)
+[![OS](https://img.shields.io/badge/OS-Windows%7CmacOS%7CUbuntu-blue
+)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib?style=flat)
+[![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib?style=flat)](https://pypi.org/project/torchvinecopulib/)
 [![DOI](https://zenodo.org/badge/768037665.svg)](https://zenodo.org/doi/10.5281/zenodo.10836953)
 
 
@@ -60,9 +63,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.7.1-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.7.2-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.7.1.tar.gz
+pip install ./dist/torchvinecopulib-2024.7.2.tar.gz
 ```
 
 ### (Optional) [Poetry](https://python-poetry.org/docs/) for Dependency Management and Packaging

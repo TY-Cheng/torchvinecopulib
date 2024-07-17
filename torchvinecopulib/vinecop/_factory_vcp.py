@@ -390,8 +390,10 @@ def vcp_from_obs(
                     for v_l, v_r in combinations(lst_v, 2):
                         # ! sorted !
                         v_l, v_r = sorted((v_l, v_r))
+                        # can be tensor or None
                         if dct_obs[lv][v_l, s_cond] is None:
                             _visit_hfunc(v_l, s_cond)
+                        # can be tensor or None
                         if dct_obs[lv][v_r, s_cond] is None:
                             _visit_hfunc(v_r, s_cond)
                         if is_kendall_tau:
@@ -444,8 +446,10 @@ def vcp_from_obs(
                 # ! sorted !
                 v_l, v_r = sorted((matrix[idx, idx], matrix[idx, num_dim - lv - 1]))
                 s_cond = frozenset(matrix[idx, (num_dim - lv) :])
+                # can be tensor or None
                 if dct_obs[lv][v_l, s_cond] is None:
                     _visit_hfunc(v_down=v_l, s_down=s_cond)
+                # can be tensor or None
                 if dct_obs[lv][v_r, s_cond] is None:
                     _visit_hfunc(v_down=v_r, s_down=s_cond)
                 if is_kendall_tau:

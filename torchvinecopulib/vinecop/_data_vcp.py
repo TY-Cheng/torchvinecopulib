@@ -502,6 +502,7 @@ class DataVineCop(ABC):
             for (v_l, v_r, s_cond), bcp in self.dct_bcp[lv].items():
                 # * update the pseudo observations
                 for idx in (v_l, v_r):
+                    # can be tensor or None
                     if dct_obs[lv].get((idx, s_cond)) is None:
                         _visit_hfunc(v_down=idx, s_down=s_cond)
                 res += bcp.l_pdf(
@@ -571,14 +572,16 @@ class DataVineCop(ABC):
             for (v_l, v_r, s_cond), _ in self.dct_bcp[lv].items():
                 # * update parents
                 for v in (v_l, v_r):
-                    if not dct_obs[lv].get((v, s_cond), None):
+                    # can be tensor or None
+                    if dct_obs[lv].get((v, s_cond), None) is None:
                         _visit_hfunc(v_down=v, s_down=s_cond)
                 # * update children when necessary
                 for v, s in ((v_l, s_cond | {v_r}), (v_r, s_cond | {v_l})):
                     if (v, s) in tpl_sim_v_s_cond:
                         _visit_hfunc(v_down=v, s_down=s)
             if lv > 0:
-                for k in dct_obs[lv - 1]:
+                # ! iteration safety
+                for k in tuple(dct_obs[lv - 1]):
                     if k not in tpl_sim_v_s_cond:
                         del dct_obs[lv - 1][k]
         dct_obs = {

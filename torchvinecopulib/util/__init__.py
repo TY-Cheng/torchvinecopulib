@@ -831,7 +831,8 @@ def ref_count_hfunc(
         else:
             l_visit = [(v_l, s_up), (v_r, s_up)]
         for v, s in l_visit:
-            if not dct_ref_count.get((v, s), None):
+            # can be tensor or None
+            if dct_ref_count.get((v, s), None) is None:
                 _visit(v_down=v, s_down=s, is_hinv=False)
                 # ! call hfunc only when parent missing
                 num_hfunc[0] += 1
