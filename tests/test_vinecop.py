@@ -9,7 +9,7 @@ import pyvinecopulib as pvc
 import torch
 from scipy.stats import kendalltau
 
-from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pth
+from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pth, vcp_from_sim
 
 from . import DCT_FAM, DEVICE, LST_MTD_FIT, LST_MTD_SEL, compare_chart_vec, sim_vcp_from_bcp
 
@@ -25,7 +25,7 @@ class TestVineCop(unittest.TestCase):
         num_dim = 10
         for len_first in (1, 3):
             for fam, (_, bcp_tvc) in DCT_FAM.items():
-                V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000, num_dim=num_dim)
+                V_mvcp = vcp_from_sim(num_dim=num_dim, seed=0).sim(num_sim=1000, device=DEVICE)
                 for mtd_bidep in [
                     "kendall_tau",
                     "ferreira_tail_dep_coeff",
