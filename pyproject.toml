@@ -2,7 +2,7 @@
 package-mode = true
 license = "GNU GPLv3"
 name = "torchvinecopulib"
-version = "2024.7.2"
+version = "2024.8.0"
 description = "yet another vine copula library for PyTorch."
 authors = ["Tuoyuan Cheng <cty120120@gmail.com>"]
 maintainers = ["Xiaosheng You <e1204754@u.nus.edu>"]
@@ -47,7 +47,7 @@ torch = { version = "^2", optional = true }
 [tool.poetry.group.dev_cpu]
 optional = true
 [tool.poetry.group.dev_cpu.dependencies]
-torch = { version = "^2", source = "torch_cpu", markers = "extra=='dev_cpu' and extra!='dev_cuda'" }
+torch = { version = "~2.3", source = "torch_cpu", markers = "extra=='dev_cpu' and extra!='dev_cuda'" }
 # 
 black = { version = "*", extras = ["jupyter"] }
 coverage = { version = "*" }
@@ -68,7 +68,7 @@ yfinance = { version = "*" }
 [tool.poetry.group.dev_cuda]
 optional = true
 [tool.poetry.group.dev_cuda.dependencies]
-torch = { version = "^2", source = "torch_cuda", markers = "extra=='dev_cuda' and extra!='dev_cpu'" }
+torch = { version = "~2.3", source = "torch_cuda", markers = "extra=='dev_cuda' and extra!='dev_cpu'" }
 # 
 black = { version = "*", extras = ["jupyter"] }
 coverage = { version = "*" }

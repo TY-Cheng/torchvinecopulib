@@ -5,4 +5,4 @@ __all__ = [
     "util",
     "vinecop",
 ]
-__version__ = "2024.7.2"
+__version__ = "2024.8.0"

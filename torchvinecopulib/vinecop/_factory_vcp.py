@@ -4,12 +4,13 @@ from collections import defaultdict, deque
 from itertools import combinations
 from operator import itemgetter
 from pathlib import Path
+from random import seed as r_seed
 from typing import Deque
 
 import numpy as np
 import torch
 
-from ..bicop import DataBiCop, bcp_from_obs
+from ..bicop import ENUM_FAM_BICOP, DataBiCop, SET_FAMnROT, bcp_from_obs
 from ..util import ENUM_FUNC_BIDEP, ref_count_hfunc
 from ._data_vcp import DataVineCop
 
@@ -273,6 +274,47 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
     return mst
 
 
+def _tpl_sim(deq_sim: deque, dct_tree: dict, s_rest: set) -> tuple:
+    """arrange the sampling order tuple, which from right to left 
+        indicates source vertices from shallowest to deepest level during simulation.
+
+    :param deq_sim: should be full for cvine, empty for dvine/rvine
+    :type deq_sim: deque
+    :param dct_tree: tree
+    :type dct_tree: dict
+    :param s_rest: set of indices to rest in the deepest levels
+    :type s_rest: set
+    :return: a sampling order tuple
+    :rtype: tuple
+    """
+    if not deq_sim:
+        lv_max = max(dct_tree)
+        # ! sequentially "peel off" paths from the vine
+        while (lv := lv_max - len(deq_sim)) > -1:
+            for v_l, v_r, _ in [*dct_tree[lv]]:
+                # * locate the virgin bicop vertex at this lv
+                if (v_l not in deq_sim) and (v_r not in deq_sim):
+                    # * those in s_rest are prioritized
+                    if (is_v_l_deeper := v_l in s_rest) ^ (v_r in s_rest):
+                        deq_sim.append(v_l if is_v_l_deeper else v_r)
+                    else:
+                        # ! select the one with less hfunc calls
+                        deq_sim.append(
+                            v_l
+                            if ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_l,))[
+                                -1
+                            ]
+                            <= ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_r,))[
+                                -1
+                            ]
+                            else v_r
+                        )
+                    break
+        # * the top lv
+        deq_sim.extend({v_l, v_r} - {*deq_sim})
+    return tuple(deq_sim)
+
+
 def vcp_from_obs(
     obs_mvcp: torch.Tensor,
     is_Dissmann: bool = True,
@@ -390,12 +432,10 @@ def vcp_from_obs(
                     for v_l, v_r in combinations(lst_v, 2):
                         # ! sorted !
                         v_l, v_r = sorted((v_l, v_r))
-                        # can be tensor or None
-                        if dct_obs[lv][v_l, s_cond] is None:
-                            _visit_hfunc(v_l, s_cond)
-                        # can be tensor or None
-                        if dct_obs[lv][v_r, s_cond] is None:
-                            _visit_hfunc(v_r, s_cond)
+                        for v in (v_l, v_r):
+                            # can be tensor or None
+                            if dct_obs[lv][v, s_cond] is None:
+                                _visit_hfunc(v_down=v, s_down=s_cond)
                         if is_kendall_tau:
                             dct_edge[lv][(v_l, v_r, s_cond)] = f_bidep(
                                 x=dct_obs[lv][v_l, s_cond],
@@ -487,40 +527,11 @@ def vcp_from_obs(
             del dct_obs[lv - 1]
     # * for cvine, deq_sim is known and s_first is empty now
     # * for dvine/rvine, deq_sim is empty and to be arranged
-    if not deq_sim:
-        # ! sequentially "peel off" paths from the vine
-        # the deepest lv, symmetric
-        deq_sim = [*dct_tree[num_dim - 2]][0][:2]
-        deq_sim = deque(v for v in deq_sim if v in s_rest)
-        while (lv := num_dim - 2 - len(deq_sim)) > -1:
-            for v_l, v_r, _ in [*dct_tree[lv]]:
-                # * locate the virgin bicop vertex at this lv
-                if (v_l not in deq_sim) and (v_r not in deq_sim):
-                    # * those in s_rest are prioritized
-                    if (is_v_l_deeper := v_l in s_rest) ^ (v_r in s_rest):
-                        deq_sim.append(v_l if is_v_l_deeper else v_r)
-                    else:
-                        # ! select the one with less hfunc calls
-                        deq_sim.append(
-                            v_l
-                            if ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_l,))[
-                                -1
-                            ]
-                            <= ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_r,))[
-                                -1
-                            ]
-                            else v_r
-                        )
-                    break
-            if not lv:
-                # the top lv
-                deq_sim.extend({v_l, v_r} - {*deq_sim})
-                break
-
+    tpl_sim = _tpl_sim(deq_sim=deq_sim, dct_tree=dct_tree, s_rest=s_rest)
     return DataVineCop(
         dct_bcp=dct_bcp,
         dct_tree=dct_tree,
-        tpl_sim=tuple(deq_sim),
+        tpl_sim=tpl_sim,
         mtd_bidep=mtd_bidep,
     )
 
@@ -569,3 +580,102 @@ def vcp_from_pth(f_path: Path = Path("./vcp.pth")) -> DataVineCop:
     with open(f_path, "rb") as file:
         obj = torch.load(file)
     return obj
+
+
+def vcp_from_sim(num_dim: int, seed: int):
+    """simulate a vine copula model
+
+    :param num_dim: number of dimensions
+    :type num_dim: int
+    :param seed: random seed
+    :type seed: int
+    :return: a DataVineCop object
+    :rtype: _type_
+    """
+
+    def _corr_from_sim(num_dim: int, seed: int):
+        r_seed(seed)
+        np.random.seed(seed)
+        mat = np.random.uniform(-1, 1, size=(num_dim, num_dim))
+        mat = mat @ mat.T
+        mat_scale = np.diag(1 / np.sqrt(mat.diagonal()))
+        return mat_scale @ mat @ mat_scale
+
+    r_seed(seed)
+    np.random.seed(seed)
+    lst_famrot = [famrot for famrot in SET_FAMnROT if famrot[0] != "StudentT"]
+    r_D1 = range(num_dim - 1)
+    dct_obs = {_: {} for _ in r_D1}
+    dct_edge = {_: {} for _ in r_D1}
+    dct_tree = {_: {} for _ in r_D1}
+    dct_bcp = {_: {} for _ in r_D1}
+    deq_sim = deque()
+    for lv in r_D1:
+        # * lv_0 obs, preprocess to append an empty frozenset (s_cond)
+        if lv == 0:
+            dct_obs[0] = {(idx, frozenset()): None for idx in range(num_dim)}
+            mat_corr = _corr_from_sim(num_dim, seed=seed + lv)
+        else:
+            mat_corr = _corr_from_sim(num_dim, seed=seed + lv) * np.clip(
+                max(mat_corr.max() ** 2, mat_corr.min() ** 2), 0.1, 0.999
+            )
+        # * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep
+        tpl_key_obs = dct_obs[lv].keys()
+        dct_s_cond_v = defaultdict(list)
+        for v, s_cond in tpl_key_obs:
+            dct_s_cond_v[s_cond].append(v)
+        # ! proximity condition: only those obs with same 'cond set' (the frozen set) can have edges
+        for s_cond, lst_v in dct_s_cond_v.items():
+            if len(lst_v) > 1:
+                for v_l, v_r in combinations(lst_v, 2):
+                    v_l, v_r = sorted((v_l, v_r))
+                    for v in (v_l, v_r):
+                        dct_edge[lv][(v_l, v_r, s_cond)] = mat_corr[v_l, v_r]
+        # * edge2tree, rvine
+        mst = _mst_from_edge_rvine(
+            tpl_key_obs=tpl_key_obs,
+            dct_edge_lv=dct_edge[lv],
+            s_first=set(),
+            lv=lv,
+            num_dim=num_dim,
+        )
+        dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
+        # * tree2bicop, fit bicop & record key of potential pseudo obs for next lv (lazy hfunc later)
+        for (v_l, v_r, s_cond), bidep in dct_tree[lv].items():
+            fam, rot = lst_famrot[np.random.choice(len(lst_famrot))]
+            if bidep <= 0.05:
+                dct_bcp[lv][(v_l, v_r, s_cond)] = DataBiCop(
+                    fam="Independent",
+                    par=tuple(),
+                    rot=0,
+                )
+            elif fam == "StudentT":
+                dct_bcp[lv][(v_l, v_r, s_cond)] = DataBiCop(
+                    fam=fam,
+                    par=(
+                        ENUM_FAM_BICOP["Gaussian"].value.tau2par(bidep, rot=rot)
+                        + (np.random.uniform(1, 50),)
+                    ),
+                    rot=rot,
+                )
+            else:
+                dct_bcp[lv][(v_l, v_r, s_cond)] = DataBiCop(
+                    fam=fam,
+                    par=ENUM_FAM_BICOP[fam].value.tau2par(bidep, rot=rot),
+                    rot=rot,
+                )
+            lv_next = lv + 1
+            if lv_next < num_dim - 1:
+                dct_obs[lv_next][(v_l, s_cond | {v_r})] = None
+                dct_obs[lv_next][(v_r, s_cond | {v_l})] = None
+    tpl_sim = _tpl_sim(deq_sim=deq_sim, dct_tree=dct_tree, s_rest=set())
+    return vcp_from_obs(
+        obs_mvcp=DataVineCop(
+            dct_bcp=dct_bcp,
+            dct_tree=dct_tree,
+            tpl_sim=tpl_sim,
+            mtd_bidep="kendall_tau",
+        ).sim(num_sim=5000, seed=seed),
+        tpl_first=tuple(deq_sim)[-(num_dim // 2) :],
+        mtd_bidep="kendall_tau",
+    )
