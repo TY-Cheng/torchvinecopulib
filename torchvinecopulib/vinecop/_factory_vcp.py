@@ -275,7 +275,7 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
 
 
 def _tpl_sim(deq_sim: deque, dct_tree: dict, s_rest: set) -> tuple:
-    """arrange the sampling order tuple, which from right to left 
+    """arrange the sampling order tuple, which from right to left
         indicates source vertices from shallowest to deepest level during simulation.
 
     :param deq_sim: should be full for cvine, empty for dvine/rvine
@@ -614,11 +614,7 @@ def vcp_from_sim(num_dim: int, seed: int):
         # * lv_0 obs, preprocess to append an empty frozenset (s_cond)
         if lv == 0:
             dct_obs[0] = {(idx, frozenset()): None for idx in range(num_dim)}
-            mat_corr = _corr_from_sim(num_dim, seed=seed + lv)
-        else:
-            mat_corr = _corr_from_sim(num_dim, seed=seed + lv) * np.clip(
-                max(mat_corr.max() ** 2, mat_corr.min() ** 2), 0.1, 0.999
-            )
+        mat_corr = _corr_from_sim(num_dim, seed=seed + lv)
         # * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep
         tpl_key_obs = dct_obs[lv].keys()
         dct_s_cond_v = defaultdict(list)

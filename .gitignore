@@ -5,6 +5,7 @@
 /docs/Makefile
 /docs/_build/doctrees/
 /docs/conf.py
+/scratch
 scratch*.ipynb
 
 # Byte-compiled / optimized / DLL files

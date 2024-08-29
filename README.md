@@ -63,9 +63,9 @@ Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.8.0-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.8.1-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.8.0.tar.gz
+pip install ./dist/torchvinecopulib-2024.8.1.tar.gz
 ```
 
 ### (Optional) [Poetry](https://python-poetry.org/docs/) for Dependency Management and Packaging

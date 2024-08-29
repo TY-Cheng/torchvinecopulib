@@ -600,6 +600,7 @@ class DataVineCop(ABC):
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
+        is_antithetic: bool = False,
     ) -> torch.Tensor:
         """full simulation/ quantile-regression/ conditional-simulation using the vine copula.
         modified from depth-first search (DFS) on binary tree.
@@ -622,6 +623,8 @@ class DataVineCop(ABC):
         :type device: str, optional
         :param dtype: dtype for torch.rand(), defaults to torch.float64
         :type dtype: torch.dtype, optional
+        :param is_antithetic: whether to use antithetic variates, defaults to False
+        :type is_antithetic: bool, optional
         :return: simulated observations of the vine copula, of shape (num_sim, num_dim)
         :rtype: torch.Tensor
         """
@@ -701,11 +704,11 @@ class DataVineCop(ABC):
         # * init sim of U_mvcp (multivariate independent copula)
         dim_sim = self.num_dim - len(dct_first_vs)
         # ! skip for quant-reg
-        U_mvcp = (
-            torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
-            if dim_sim > 0
-            else None
-        )
+        # * antithetic variates
+        if dim_sim > 0:
+            U_mvcp = torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
+        if is_antithetic:
+            U_mvcp = torch.vstack([U_mvcp, 1 - U_mvcp])
         # * update dct_obs and dct_ref_count (initialize source vertices)
         idx = 0
         for v, s in tpl_source:
