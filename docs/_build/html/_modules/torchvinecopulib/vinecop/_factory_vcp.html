@@ -4,11 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 7.4.4 and Furo 2024.05.06 -->
-        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.8.0 documentation</title>
+    <!-- Generated with Sphinx 8.0.2 and Furo 2024.08.06 -->
+        <title>torchvinecopulib.vinecop._factory_vcp - torchvinecopulib 2024.9.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=387cc868" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
     
     
 
@@ -87,19 +87,6 @@
       <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
     </svg>
   </symbol>
-  <symbol id="svg-sun-half" viewBox="0 0 24 24">
-    <title>Auto light/dark mode</title>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
-      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M13 12h5" />
-      <path d="M13 15h4" />
-      <path d="M13 18h1" />
-      <path d="M13 9h4" />
-      <path d="M13 6h1" />
-    </svg>
-  </symbol>
   <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
     <title>Auto light/dark, in light mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -140,7 +127,7 @@
       <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
       <path d="M13.5 6.5l4 4" />
       <path d="M20 21l2 -2l-2 -2" />
-      <path d="M17 17l-2 2l2 2" /
+      <path d="M17 17l-2 2l2 2" />
     </svg>
   </symbol>
   <symbol id="svg-eye" viewBox="0 0 24 24">
@@ -178,7 +165,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.8.0 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.9.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -202,7 +189,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.8.0 documentation</span>
+  <span class="sidebar-brand-text">torchvinecopulib 2024.9.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -527,7 +514,7 @@
 
 
 <span class="k">def</span> <span class="nf">_tpl_sim</span><span class="p">(</span><span class="n">deq_sim</span><span class="p">:</span> <span class="n">deque</span><span class="p">,</span> <span class="n">dct_tree</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">s_rest</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;arrange the sampling order tuple, which from right to left </span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;arrange the sampling order tuple, which from right to left</span>
 <span class="sd">        indicates source vertices from shallowest to deepest level during simulation.</span>
 
 <span class="sd">    :param deq_sim: should be full for cvine, empty for dvine/rvine</span>
@@ -877,11 +864,7 @@
         <span class="c1"># * lv_0 obs, preprocess to append an empty frozenset (s_cond)</span>
         <span class="k">if</span> <span class="n">lv</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">dct_obs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">{(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()):</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_dim</span><span class="p">)}</span>
-            <span class="n">mat_corr</span> <span class="o">=</span> <span class="n">_corr_from_sim</span><span class="p">(</span><span class="n">num_dim</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span> <span class="o">+</span> <span class="n">lv</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">mat_corr</span> <span class="o">=</span> <span class="n">_corr_from_sim</span><span class="p">(</span><span class="n">num_dim</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span> <span class="o">+</span> <span class="n">lv</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
-                <span class="nb">max</span><span class="p">(</span><span class="n">mat_corr</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">mat_corr</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.999</span>
-            <span class="p">)</span>
+        <span class="n">mat_corr</span> <span class="o">=</span> <span class="n">_corr_from_sim</span><span class="p">(</span><span class="n">num_dim</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span> <span class="o">+</span> <span class="n">lv</span><span class="p">)</span>
         <span class="c1"># * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep</span>
         <span class="n">tpl_key_obs</span> <span class="o">=</span> <span class="n">dct_obs</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
         <span class="n">dct_s_cond_v</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
@@ -975,9 +958,9 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=d11afc91"></script>
+</div><script src="../../../_static/documentation_options.js?v=a0cfb6c8"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../../../_static/scripts/furo.js?v=4e2eecee"></script>
+    <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
     </body>
 </html>
