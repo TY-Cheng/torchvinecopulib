@@ -1,14 +1,17 @@
+import heapq
 import json
+import math
 from ast import literal_eval
 from collections import defaultdict, deque
-from itertools import combinations
-from operator import itemgetter
+from itertools import combinations, product
 from pathlib import Path
 from random import seed as r_seed
 from typing import Deque
 
 import numpy as np
 import torch
+from networkx import Graph
+from networkx.algorithms.approximation import threshold_accepting_tsp
 
 from ..bicop import ENUM_FAM_BICOP, DataBiCop, SET_FAMnROT, bcp_from_obs
 from ..util import ENUM_FUNC_BIDEP, ref_count_hfunc
@@ -21,12 +24,14 @@ def _mst_from_edge_rvine(
     """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges,
     restricted to rvine, using modified disjoint set/ union find.
 
-    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
+    :param tpl_key_obs: tuple of keys of (pseudo) observations,
+        each key is a tuple of (vertex, cond set)
     :type tpl_key_obs: tuple
     :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond_set)
         and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
-    :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)
+    :param s_first: set of vertices that are kept shallower
+        in the simulation workflow (dynamically updated at each level)
     :type s_first: set
     :param lv: level, starting from 0
     :type lv: int
@@ -39,7 +44,7 @@ def _mst_from_edge_rvine(
     # ! modify 'parent' to let a pseudo obs vertex linked to its previous bicop vertex
     parent = {v_s_cond: frozenset((v_s_cond[0], *v_s_cond[1])) for v_s_cond in tpl_key_obs}
     # * and bicop vertices are linked to themselves
-    parent = {**parent, **{v: v for _, v in parent.items()}}
+    parent.update({v: v for _, v in parent.items()})
     rank = {k_obs: 0 for k_obs in parent}
     mst = []
 
@@ -58,30 +63,34 @@ def _mst_from_edge_rvine(
         rank[root_a] += rank[root_a] == rank[root_b]
 
     def kruskal(dct_edge: dict, num_mst: int) -> None:
+        # * those may form cycles will be dropped
         if dct_edge:
-            num_edge = len(mst)
-            # * notice we sort edges by ABS(bidep) in DESCENDING order
-            for (v_l, v_r, s_cond), _ in sorted(
-                dct_edge.items(), key=lambda x: abs(x[1]), reverse=True
-            ):
+            # ! min heap, by -ABS(bidep) in ASCENDING order
+            heap_bidep_abs = [
+                (-abs(bidep), v_l, v_r, s_cond) for (v_l, v_r, s_cond), bidep in dct_edge.items()
+            ]
+            heapq.heapify(heap_bidep_abs)
+            while len(mst) < num_mst:
+                _, v_l, v_r, s_cond = heapq.heappop(heap_bidep_abs)
                 if find((v_l, s_cond)) != find((v_r, s_cond)):
-                    mst.append((v_l, v_r, s_cond))
                     union((v_l, s_cond), (v_r, s_cond))
-                    num_edge += 1
-                if num_edge == num_mst:
-                    break
+                    mst.append((v_l, v_r, s_cond))
 
     # ! filter for edges
     s_sub = set()
-    dct_edge = dict()
+    dct_edge = {}
     for i_s in (s_first, set(range(num_dim))):
+        # * gradually grow the vine
         s_sub |= i_s
+        # * edges with both vertices in s_sub, from dct_edge_lv
         dct_edge = {
             (v_l, v_r, s_cond): bidep
             for (v_l, v_r, s_cond), bidep in dct_edge_lv.items()
             if ((v_l in s_sub) and (v_r in s_sub))
         }
+        # * update dct_edge_lv, those with at least one vertex not in s_sub
         dct_edge_lv = {k: v for k, v in dct_edge_lv.items() if k not in dct_edge}
+        # * number of edges in the MST, at this stage
         num_mst = max(0, len(s_sub) - lv - 1)
         kruskal(dct_edge, num_mst=num_mst)
     return mst
@@ -90,187 +99,161 @@ def _mst_from_edge_rvine(
 def _mst_from_edge_cvine(
     tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set, deq_sim: Deque
 ) -> tuple:
-    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to cvine
+    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges,
+        restricted to cvine
 
-    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
+    :param tpl_key_obs: tuple of keys of (pseudo) observations,
+        each key is a tuple of (vertex, cond set)
     :type tpl_key_obs: tuple
     :param dct_edge_lv: dictionary of edges (vertex_left, vertex_right, cond set)
         and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
-    :param s_first: set of vertices that are kept shallower in the simulation workflow (dynamically updated at each level)
+    :param s_first: set of vertices that are kept shallower
+        in the simulation workflow (dynamically updated at each level)
     :type s_first: set
-    :param deq_sim: deque of vertices, as simulation workflow (read from right to left,
-        as simulated pseudo-obs vertices from shallowest to deepest level) (dynamically updated at each level)
+    :param deq_sim: deque of vertices, as simulation workflow
+        (read from right to left, as simulated pseudo-obs vertices from
+        shallowest to deepest level) (dynamically updated at each level)
     :type deq_sim: Deque
-    :return: list of edges (vertex_left, vertex_right, cond set) in the MST; updated deq_sim; updated s_first
+    :return: list of edges (vertex_left, vertex_right, cond set) in the MST;
+        updated deq_sim; updated s_first
     :rtype: tuple
     """
     # * edge2tree, cvine (MST, restricted to cvine)
-    # init dict, the sum of abs bidep for each vertex
+    # * init dict, the sum of abs bidep for each vertex
     if s_first:
         # ! filter for edges that touch first set vertices
         dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in tpl_key_obs if v_s_cond[0] in s_first}
     else:
         dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in tpl_key_obs}
     for (v_l, v_r, s_cond), bidep in dct_edge_lv.items():
-        # cum sum of abs bidep for each vertex
+        # * cum sum of abs bidep for each vertex
         if (v_l, s_cond) in dct_bidep_abs_sum:
             dct_bidep_abs_sum[(v_l, s_cond)] += abs(bidep)
         if (v_r, s_cond) in dct_bidep_abs_sum:
             dct_bidep_abs_sum[(v_r, s_cond)] += abs(bidep)
-    # center vertex (and its cond set) for cvine at this level
-    for (v_c, s_cond_c), _ in sorted(dct_bidep_abs_sum.items(), key=itemgetter(1), reverse=True):
+    # * center vertex (and its cond set) for cvine at this level
+    # ! min heap, by -ABS(bidep) in ASCENDING order
+    heap_bidep_abs_sum = [
+        (-bidep_abs_sum, v_s_cond) for v_s_cond, bidep_abs_sum in dct_bidep_abs_sum.items()
+    ]
+    heapq.heapify(heap_bidep_abs_sum)
+    v_c = None
+    while v_c is None:
+        _, (v_c, s_cond_c) = heapq.heappop(heap_bidep_abs_sum)
         # ! exclude those already in deq_sim
-        if v_c not in deq_sim:
-            break
-    # record edges that touch the center vertex
+        if v_c in deq_sim:
+            v_c = None
+    # * record edges that touch the center vertex
     mst = [
         (v_l, v_r, s_cond)
         for (v_l, v_r, s_cond) in dct_edge_lv
         if ((s_cond == s_cond_c) and ((v_c == v_l) or (v_c == v_r)))
     ]
-    # update the deq_sim, let those sim first be last in the deq_sim
+    # * update the deq_sim, let those sim first be last in the deq_sim
     deq_sim.appendleft(v_c)
     if len(mst) == 1:
-        # for the last lv, only one edge left, appendleft the other vertex into deq_sim
-        deq_sim.appendleft(v_l if v_l != v_c else v_r)
-    # update the first set
+        # * for the last lv, only one edge left, appendleft the other vertex into deq_sim
+        deq_sim.appendleft(mst[0][0] if v_c != mst[0][0] else mst[0][1])
+    # * update the first set
     s_first -= {v_c}
     # * mst(cvine), deq_sim, s_first
     return mst, deq_sim, s_first
 
 
 def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) -> list:
-    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges, restricted to dvine.
-    For dvine the whole struct (and sim flow) is known after lv0, and this func is only called at lv0.
+    """Construct Kruskal's MAXIMUM spanning tree (MST) from bivariate copula edges,
+        restricted to dvine.
+    For dvine the whole struct (and sim flow) is known after lv0,
+        and this func is only called at lv0.
+    TSP with precedence constraints (clustered TSP).
 
-    :param tpl_key_obs: tuple of keys of (pseudo) observations, each key is a tuple of (vertex, cond set)
+    :param tpl_key_obs: tuple of keys of (pseudo) observations,
+        each key is a tuple of (vertex, cond set)
     :type tpl_key_obs: tuple
-    :param dct_edge_lv: dictionary of edges (vertex_l, vertex_r, cond set) and corresponding bivariate dependence metric value
+    :param dct_edge_lv: dictionary of edges (vertex_l, vertex_r, cond set)
+        and corresponding bivariate dependence metric value
     :type dct_edge_lv: dict
-    :param s_first: set of vertices that are kept shallower in the simulation workflow
+    :param s_first: set of vertices that are kept
+        shallower in the simulation workflow
     :type s_first: set
     :return: list of edges (vertex_l, vertex_r, cond set) in the MST (lv0)
     :rtype: list
     """
+
+    def _edges_from_tsp(tsp: list) -> set:
+        return {tuple(sorted((tsp[idx], tsp[idx - 1]))) for idx in range(1, len(tsp))}
+
     # * edge2tree, dvine (MST, restricted to dvine)
     # * at lv0, s_cond is known to be empty
     if len(tpl_key_obs) < 3:
         # ! only two vertices
-        v_head, v_tail = tpl_key_obs
-        v_head, v_tail = v_head[0], v_tail[0]
-        mst = [(v_head, v_tail, frozenset())]
+        return [(tpl_key_obs[0], tpl_key_obs[1], frozenset())]
+    dct_cost = {
+        (v_l, v_r): math.log1p(1 / max(abs(bidep), 1e-10))
+        for (v_l, v_r, s_cond), bidep in dct_edge_lv.items()
+    }
+    # * weighted undirected graph
+    graph_nx = Graph()
+    graph_nx.add_weighted_edges_from([(*k, v) for k, v in dct_cost.items()])
+    s_rest = set(graph_nx.nodes) - s_first
+    if len(s_first) <= 1 or len(s_rest) <= 1:
+        # ! one set is empty or singleton: global TSP
+        tsp = threshold_accepting_tsp(graph_nx, init_cycle="greedy")
+        mst = []
+        heap_cost_non_first = []
+        for idx in range(1, len(tsp)):
+            v_lr = tuple(sorted((tsp[idx], tsp[idx - 1])))
+            if set(v_lr) <= set(s_first):
+                # * an edge with both vertices in s_first
+                mst.append(v_lr)
+            else:
+                # * an edge with at least one vertex in s_rest
+                # ! min heap, by -cost in ASCENDING order
+                heapq.heappush(heap_cost_non_first, (-dct_cost[v_lr], v_lr))
+        # ! drop the edge with max cost and one vertex not in s_first
+        heapq.heappop(heap_cost_non_first)
+        # * append others
+        mst.extend([key for _, key in heap_cost_non_first])
     else:
-        # ! more than two vertices
-        import math
-
-        from networkx import Graph
-        from networkx.algorithms.approximation import threshold_accepting_tsp
-
-        dct_cost = {
-            (v_l, v_r): math.log1p(1 / max(abs(bidep), 1e-10))
-            for (v_l, v_r, s_cond), bidep in dct_edge_lv.items()
-        }
-        G = Graph()
-        G.add_weighted_edges_from([(*k, v) for k, v in dct_cost.items()])
-        s_rest = set(G.nodes) - s_first
-        if (not s_first) or (not s_rest):
-            # ! one set is empty: global TSP
-            tsp = threshold_accepting_tsp(G, init_cycle="greedy")
-            # * fetch the edges in the TSP, drop the one with max cost
-            mst = [
-                tuple(sorted((v, tsp[idx - 1]))) for idx, v in enumerate(tsp, start=0) if idx > 0
-            ]
-            s_l_r_cost = sorted(
-                [(v_l, v_r, dct_cost[(v_l, v_r)]) for v_l, v_r in mst],
-                key=lambda x: x[-1],
-                reverse=True,
-            )
-            mst = s_l_r_cost[1:]
-            mst = [(v_l, v_r, frozenset()) for (v_l, v_r, _) in mst]
-            v_head, v_tail, _ = s_l_r_cost[0]
-        elif len(s_first) in (1, len(tpl_key_obs) - 1):
-            # ! one set is a singleton (head-neck-...-tail: add head-neck, drop neck-tail)
-            tsp, v_head = (
-                (s_first, list(s_rest)[0]) if len(s_rest) == 1 else (s_rest, list(s_first)[0])
-            )
-            # * TSP on the subgraph without the singleton
-            tsp = threshold_accepting_tsp(G.subgraph(tsp), init_cycle="greedy")
-            # * loop over the TSP and pick the combination with min cost
-            tsp.append(tsp[1])
-            cost = math.inf
-            for idx, v in enumerate(tsp[1:-1], start=1):
-                v_prev, v_next = tsp[idx - 1], tsp[idx + 1]
-                # tail given neck
-                if (cost_next := dct_cost[tuple(sorted((v, v_next)))]) > (
-                    cost_prev := dct_cost[tuple(sorted((v, v_prev)))]
-                ):
-                    v_nebr, cost_nebr = v_next, cost_next
-                else:
-                    v_nebr, cost_nebr = v_prev, cost_prev
-                # neck
-                if (i_cost := dct_cost[tuple(sorted((v_head, v)))] - cost_nebr) < cost:
-                    v_tail, v_neck, cost = v_nebr, v, i_cost
-            mst = [(*sorted((v_head, v_neck)), frozenset())]
-            for idx, v in enumerate(tsp[1:-1], start=1):
-                v_l, v_r = sorted((v, tsp[idx + 1]))
-                if {v_l, v_r} != {v_neck, v_tail}:
-                    mst.append((v_l, v_r, frozenset()))
-        else:
-            # ! both sets have more than one vertex
-            # ! (head-...-neck-body-...-tail, drop head-neck, add neck-body, drop body-tail)
-            tsp_first = threshold_accepting_tsp(G.subgraph(s_first), init_cycle="greedy")
-            tsp_first.append(tsp_first[1])
-            tsp_rest = threshold_accepting_tsp(G.subgraph(s_rest), init_cycle="greedy")
-            tsp_rest.append(tsp_rest[1])
-            cost = math.inf
-            # * loop over two TSPs and pick the combination with min cost
-            for idx_neck, _v_neck in enumerate(tsp_first[1:-1], start=1):
-                # * for the first TSP, drop head-neck
-                v_prev, v_next = tsp_first[idx_neck - 1], tsp_first[idx_neck + 1]
-                if (cost_next := dct_cost[tuple(sorted((_v_neck, v_next)))]) > (
-                    cost_prev := dct_cost[tuple(sorted((_v_neck, v_prev)))]
-                ):
-                    v_nebr_neck, cost_nebr_neck = v_next, cost_next
-                else:
-                    v_nebr_neck, cost_nebr_neck = v_prev, cost_prev
-                for idx_body, _v_body in enumerate(tsp_rest[1:-1], start=1):
-                    # * for the second TSP, drop body-tail
-                    v_prev, v_next = tsp_rest[idx_body - 1], tsp_rest[idx_body + 1]
-                    if (cost_next := dct_cost[tuple(sorted((_v_body, v_next)))]) > (
-                        cost_prev := dct_cost[tuple(sorted((_v_body, v_prev)))]
-                    ):
-                        v_nebr_body, cost_nebr_body = v_next, cost_next
-                    else:
-                        v_nebr_body, cost_nebr_body = v_prev, cost_prev
-                    if (
-                        i_cost := dct_cost[tuple(sorted((_v_neck, _v_body)))]
-                        - cost_nebr_neck
-                        - cost_nebr_body
-                    ) < cost:
-                        # ! cost, drop head-neck, drop body-tail, add neck-body
-                        v_head, v_neck, v_body, v_tail, cost = (
-                            v_nebr_neck,
-                            _v_neck,
-                            _v_body,
-                            v_nebr_body,
-                            i_cost,
-                        )
-            mst = [(*sorted((v_neck, v_body)), frozenset())]
-            if len(tsp_first) == 4:
-                mst.append((*sorted((v_head, v_neck)), frozenset()))
-            else:
-                for idx, v in enumerate(tsp_first[1:-1], start=1):
-                    v_l, v_r = sorted((v, tsp_first[idx + 1]))
-                    if {v_l, v_r} != {v_head, v_neck}:
-                        mst.append((v_l, v_r, frozenset()))
-            if len(tsp_rest) == 4:
-                mst.append((*sorted((v_body, v_tail)), frozenset()))
-            else:
-                for idx, v in enumerate(tsp_rest[1:-1], start=1):
-                    v_l, v_r = sorted((v, tsp_rest[idx + 1]))
-                    if {v_l, v_r} != {v_body, v_tail}:
-                        mst.append((v_l, v_r, frozenset()))
+        # ! both sets have more than two vertices, TSP with precedence constraints (clustered TSP)
+        tsp_first = threshold_accepting_tsp(graph_nx.subgraph(s_first), init_cycle="greedy")
+        tsp_rest = threshold_accepting_tsp(graph_nx.subgraph(s_rest), init_cycle="greedy")
+        edge_first = _edges_from_tsp(tsp_first)
+        edge_rest = _edges_from_tsp(tsp_rest)
+        edge_2tsp = edge_first | edge_rest
+        cost_2tsp = sum(dct_cost[key] for key in edge_2tsp)
+        cost_mst = math.inf
+        # ! add, add, (drop, drop), drop
+        for drop_first, drop_rest in product(edge_first, edge_rest):
+            for edge_add_1, edge_add_2 in [*zip(drop_first, drop_rest)], [
+                *zip(drop_rest, drop_first[::-1])
+            ]:
+                # ! add two edges to chain the two TSPs
+                edge_add_1 = tuple(sorted(edge_add_1))
+                edge_add_2 = tuple(sorted(edge_add_2))
+                tmp_cost = cost_2tsp + dct_cost[edge_add_1] + dct_cost[edge_add_2]
+                tmp_mst = edge_2tsp | {edge_add_1, edge_add_2}
+                if len(edge_first) > 1:
+                    # ! drop one edge from a TSP if it has more than one edge
+                    tmp_cost -= dct_cost[drop_first]
+                    tmp_mst.remove(drop_first)
+                if len(edge_rest) > 1:
+                    # ! drop one edge from a TSP if it has more than one edge
+                    tmp_cost -= dct_cost[drop_rest]
+                    tmp_mst.remove(drop_rest)
+                # ! drop the edge with max cost and one vertex not in s_first
+                drop_non_first = max(
+                    (k for k in tmp_mst if (k[0] not in s_first) or (k[1] not in s_first)),
+                    key=lambda x: dct_cost[x],
+                )
+                tmp_cost -= dct_cost[drop_non_first]
+                tmp_mst.remove(drop_non_first)
+                if tmp_cost < cost_mst:
+                    cost_mst = tmp_cost
+                    mst = tmp_mst
+    # * s_cond is known empty at lv0
+    mst = [(v_l, v_r, frozenset()) for (v_l, v_r) in mst]
     return mst
 
 
@@ -309,9 +292,10 @@ def _tpl_sim(deq_sim: deque, dct_tree: dict, s_rest: set) -> tuple:
                             ]
                             else v_r
                         )
+                    if lv == 0:
+                        # * the top lv
+                        deq_sim.append(v_l if v_l not in deq_sim else v_r)
                     break
-        # * the top lv
-        deq_sim.extend({v_l, v_r} - {*deq_sim})
     return tuple(deq_sim)
 
 
@@ -385,13 +369,13 @@ def vcp_from_obs(
     # ! an object to record the order of sim (read from right to left,
     # ! as simulated pseudo-obs vertices from shallowest to deepest level)
     deq_sim = deque()
-    r_D1 = range(num_dim - 1)
-    dct_obs = {_: {} for _ in r_D1}
+    r_dim_1 = range(num_dim - 1)
+    dct_obs = {_: {} for _ in r_dim_1}
     # * tree is either from Dissmann (MST on edges, needs to record edges) or from matrix
     if is_Dissmann:
-        dct_edge = {_: {} for _ in r_D1}
-    dct_tree = {_: {} for _ in r_D1}
-    dct_bcp = {_: {} for _ in r_D1}
+        dct_edge = {_: {} for _ in r_dim_1}
+    dct_tree = {_: {} for _ in r_dim_1}
+    dct_bcp = {_: {} for _ in r_dim_1}
 
     def _visit_hfunc(v_down: int, s_down: frozenset) -> None:
         """calc hfunc for pseudo obs and update dct_obs, only when necessary (lazy hfunc)"""
@@ -416,7 +400,7 @@ def vcp_from_obs(
                         )
                     )
 
-    for lv in r_D1:
+    for lv in r_dim_1:
         # * lv_0 obs, preprocess to append an empty frozenset (s_cond)
         if lv == 0:
             dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
@@ -546,7 +530,6 @@ def vcp_from_json(f_path: Path = Path("./vcp.json")) -> DataVineCop:
     """
     with open(f_path, "r") as file:
         tmp_json = json.load(file)
-    #
     dct_bcp = defaultdict(dict)
     for lv, i_dct in tmp_json["dct_bcp"].items():
         for key, val in i_dct.items():
@@ -563,9 +546,7 @@ def vcp_from_json(f_path: Path = Path("./vcp.json")) -> DataVineCop:
             s_cond = frozenset(s_cond)
             dct_tree[int(lv)][(v_l, v_r, s_cond)] = val
     tmp_json["dct_tree"] = dict(dct_tree)
-    #
     tmp_json["tpl_sim"] = tuple(tmp_json["tpl_sim"])
-    #
     return DataVineCop(**tmp_json)
 
 
@@ -582,15 +563,18 @@ def vcp_from_pth(f_path: Path = Path("./vcp.pth")) -> DataVineCop:
     return obj
 
 
-def vcp_from_sim(num_dim: int, seed: int):
-    """simulate a vine copula model
+def vcp_from_sim(num_dim: int, seed: int) -> DataVineCop:
+    """
+    Simulate a DataVineCop object.
+    It constructs the vine copula by generating correlation matrices,
+    fitting bivariate copulas, and building the vine structure through a series of steps.
 
-    :param num_dim: number of dimensions
+    :param num_dim: The number of dimensions for the vine copula.
     :type num_dim: int
-    :param seed: random seed
+    :param seed: The random seed for reproducibility.
     :type seed: int
-    :return: a DataVineCop object
-    :rtype: _type_
+    :return: An object representing the simulated vine copula.
+    :rtype: DataVineCop
     """
 
     def _corr_from_sim(num_dim: int, seed: int):
@@ -604,13 +588,13 @@ def vcp_from_sim(num_dim: int, seed: int):
     r_seed(seed)
     np.random.seed(seed)
     lst_famrot = [famrot for famrot in SET_FAMnROT if famrot[0] != "StudentT"]
-    r_D1 = range(num_dim - 1)
-    dct_obs = {_: {} for _ in r_D1}
-    dct_edge = {_: {} for _ in r_D1}
-    dct_tree = {_: {} for _ in r_D1}
-    dct_bcp = {_: {} for _ in r_D1}
+    r_dim_1 = range(num_dim - 1)
+    dct_obs = {_: {} for _ in r_dim_1}
+    dct_edge = {_: {} for _ in r_dim_1}
+    dct_tree = {_: {} for _ in r_dim_1}
+    dct_bcp = {_: {} for _ in r_dim_1}
     deq_sim = deque()
-    for lv in r_D1:
+    for lv in r_dim_1:
         # * lv_0 obs, preprocess to append an empty frozenset (s_cond)
         if lv == 0:
             dct_obs[0] = {(idx, frozenset()): None for idx in range(num_dim)}

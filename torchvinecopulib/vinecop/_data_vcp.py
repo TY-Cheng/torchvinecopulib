@@ -74,7 +74,7 @@ class DataVineCop(ABC):
             lst_diag.append(v_diag)
             mat.append(lst_nebr)
         # ! append the last node
-        mat.append([-1] * (idx + 1) + [self.tpl_sim[-1]])
+        mat.append([-1] * (self.num_dim - 1) + [self.tpl_sim[-1]])
         return np.array(mat)
 
     @property
@@ -221,11 +221,12 @@ class DataVineCop(ABC):
                 )
                 for (u, v, s_cond), w in self.dct_tree[lv].items()
             )
-        G = nx.Graph()
-        G.add_weighted_edges_from(tpl_uvw)
-        pos = nx.planar_layout(G)
+        # * weighted undirected graph
+        graph_nx = nx.Graph()
+        graph_nx.add_weighted_edges_from(tpl_uvw)
+        pos = nx.planar_layout(graph_nx)
         nx.draw_networkx_nodes(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
             node_color="white",
@@ -234,30 +235,32 @@ class DataVineCop(ABC):
             linewidths=0.5,
             edgecolors="gray",
         )
-        nx.draw_networkx_labels(G=G, pos=pos, ax=ax, font_size=font_size_vertex, alpha=0.9)
+        nx.draw_networkx_labels(G=graph_nx, pos=pos, ax=ax, font_size=font_size_vertex, alpha=0.9)
         nx.draw_networkx_edges(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
-            edgelist=G.edges(),
-            width=[math.log1p(0.5 + 100 * abs(tpl[2]["weight"])) for tpl in G.edges(data=True)],
+            edgelist=graph_nx.edges(),
+            width=[
+                math.log1p(0.5 + 100 * abs(tpl[2]["weight"])) for tpl in graph_nx.edges(data=True)
+            ],
             style="--",
             alpha=0.9,
         )
         nx.draw_networkx_edge_labels(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
-            edge_labels=nx.get_edge_attributes(G, "weight"),
+            edge_labels=nx.get_edge_attributes(graph_nx, "weight"),
             font_size=font_size_edge,
         )
         fig.tight_layout()
         plt.draw_if_interactive()
         if f_path:
             fig.savefig(fname=f_path, bbox_inches="tight")
-            return fig, ax, G, f_path
+            return fig, ax, graph_nx, f_path
         else:
-            return fig, ax, G
+            return fig, ax, graph_nx
 
     def draw_dag(
         self,
@@ -295,7 +298,8 @@ class DataVineCop(ABC):
             label=title,
             fontsize=font_size_vertex + 1,
         )
-        G = nx.DiGraph()
+        # * DAG
+        graph_nx = nx.DiGraph()
         pos_obs = {}
         pos_bcp = {}
         dct_label = {}
@@ -339,7 +343,7 @@ class DataVineCop(ABC):
             for _ in lst_node_bcp:
                 __ = "\n" * min(lv, 1)
                 dct_label[_] = f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
-            G.add_edges_from(lst_edge)
+            graph_nx.add_edges_from(lst_edge)
         pos = pos_obs | pos_bcp
         # highlight source nodes, given tpl_first
         tpl_source = ref_count_hfunc(
@@ -348,9 +352,9 @@ class DataVineCop(ABC):
             tpl_sim=tpl_sim if tpl_sim else self.tpl_sim,
         )[1]
         # pseudo obs nodes
-        lst_node = [_ for _ in G.nodes if len(_) == 2 and _ not in tpl_source]
+        lst_node = [_ for _ in graph_nx.nodes if len(_) == 2 and _ not in tpl_source]
         nx.draw_networkx_nodes(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
             nodelist=lst_node,
@@ -361,7 +365,7 @@ class DataVineCop(ABC):
             edgecolors="gray",
         )
         nx.draw_networkx_nodes(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
             nodelist=tpl_source,
@@ -373,9 +377,9 @@ class DataVineCop(ABC):
         )
 
         # bicop nodes
-        lst_node = [_ for _ in G.nodes if len(_) == 3]
+        lst_node = [_ for _ in graph_nx.nodes if len(_) == 3]
         nx.draw_networkx_nodes(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
             nodelist=lst_node,
@@ -386,7 +390,7 @@ class DataVineCop(ABC):
             edgecolors="gray",
         )
         nx.draw_networkx_labels(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
             labels=dct_label,
@@ -394,7 +398,7 @@ class DataVineCop(ABC):
             font_color="black",
         )
         nx.draw_networkx_edges(
-            G=G,
+            G=graph_nx,
             pos=pos,
             ax=ax,
             edge_color="gray",
@@ -407,9 +411,9 @@ class DataVineCop(ABC):
         plt.draw_if_interactive()
         if f_path:
             fig.savefig(fname=f_path, bbox_inches="tight")
-            return fig, ax, G, f_path
+            return fig, ax, graph_nx, f_path
         else:
-            return fig, ax, G
+            return fig, ax, graph_nx
 
     def vcp_to_json(self, f_path: Path = "./vcp.json") -> Path:
         """save to a json file
@@ -595,12 +599,12 @@ class DataVineCop(ABC):
     def sim(
         self,
         num_sim: int = 1,
-        dct_first_vs: dict = {},
+        dct_first_vs: dict | None = None,
         tpl_sim: tuple = tuple(),
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
-        is_antithetic: bool = False,
+        is_sobol: bool = False,
     ) -> torch.Tensor:
         """full simulation/ quantile-regression/ conditional-simulation using the vine copula.
         modified from depth-first search (DFS) on binary tree.
@@ -609,22 +613,24 @@ class DataVineCop(ABC):
         walk upward by calling hinv until the top vertex (whose cond set is empty) is reached.
         (Recursively) call hfunc for the other upper vertex if necessary.
 
-        :param num_sim: number of simulations; ignored when dct_first_vs is not empty
+        :param num_sim: Number of samples to simulate, ignored when dct_first_vs is not empty,
+            defaults to 1.
         :type num_sim: int
         :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))}
-            in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}
+            in quantile regression/ conditional simulation,
+            where vertices are taken as given already; defaults to None
         :type dct_first_vs: dict, optional
         :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow,
             gives flexibility to experienced users, defaults to tuple()
         :type tpl_sim: tuple, optional
-        :param seed: random seed for torch.manual_seed(), defaults to 0
+        :param seed: random seed for torch.manual_seed(), ignored when is_sobol==True, defaults to 0.
         :type seed: int, optional
-        :param device: device for torch.rand(), defaults to 'cpu'
+        :param device: device for torch.rand(), defaults to "cpu"
         :type device: str, optional
-        :param dtype: dtype for torch.rand(), defaults to torch.float64
+        :param dtype: Data type for the simulated samples, defaults to torch.float64
         :type dtype: torch.dtype, optional
-        :param is_antithetic: whether to use antithetic variates, defaults to False
-        :type is_antithetic: bool, optional
+        :param is_sobol: use Sobol sequence for simulation, defaults to False.
+        :type is_sobol: bool, optional
         :return: simulated observations of the vine copula, of shape (num_sim, num_dim)
         :rtype: torch.Tensor
         """
@@ -694,6 +700,8 @@ class DataVineCop(ABC):
                 return v_down, s_up
 
         torch.manual_seed(seed=seed)
+        if dct_first_vs is None:
+            dct_first_vs = {}
         dct_obs = dct_first_vs.copy()
         # * source vertices in each path; reference counting for whole DAG
         dct_ref_count, tpl_source, _ = ref_count_hfunc(
@@ -706,18 +714,25 @@ class DataVineCop(ABC):
         # ! skip for quant-reg
         # * antithetic variates
         if dim_sim > 0:
-            U_mvcp = torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
-        if is_antithetic:
-            U_mvcp = torch.vstack([U_mvcp, 1 - U_mvcp])
+            if is_sobol:
+                obs_mvcp_indep = (
+                    torch.quasirandom.SobolEngine(dimension=dim_sim, scramble=True, seed=seed)
+                    .draw(n=num_sim, dtype=dtype)
+                    .to(device)
+                )
+            else:
+                obs_mvcp_indep = torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
+        else:
+            obs_mvcp_indep = None
         # * update dct_obs and dct_ref_count (initialize source vertices)
         idx = 0
         for v, s in tpl_source:
             if (v, s) not in dct_obs:
-                dct_obs[v, s] = U_mvcp[:, [idx]]
+                dct_obs[v, s] = obs_mvcp_indep[:, [idx]]
                 idx += 1
             # update ref count
             _ref_count_decrement(v=v, s=s)
-        del dct_first_vs, tpl_sim, seed, idx, U_mvcp
+        del dct_first_vs, tpl_sim, seed, idx, obs_mvcp_indep
         # * process each source vertex from the shallowest to the deepest
         for v, s in tpl_source:
             # walk the path from source to target while cond set is not empty
@@ -747,7 +762,11 @@ class DataVineCop(ABC):
         # * unsqueeze for broadcasting (num_sim, obs_mvcp.shape[0], num_dim) -> (obs_mvcp.shape[0], 1)
         return (
             self.sim(
-                num_sim=num_sim, seed=seed, device=obs_mvcp.device, dtype=obs_mvcp.dtype
+                num_sim=num_sim,
+                seed=seed,
+                device=obs_mvcp.device,
+                dtype=obs_mvcp.dtype,
+                is_sobol=True,
             ).unsqueeze(dim=1)
             <= obs_mvcp
         ).all(

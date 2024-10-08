@@ -50,7 +50,10 @@ def kendall_tau(
 ) -> float:
     """x,y are both of shape (n, 1)"""
     res = kendalltau(x.cpu().ravel(), y.cpu().ravel())
-    return (max(min(res[0], tau_max), tau_min), res[1])
+    return (
+        max(min(res.correlation.item(), tau_max), tau_min),
+        res.pvalue.item(),
+    )
 
 
 def mutual_info(x: torch.Tensor, y: torch.Tensor, is_sklearn: bool = True) -> float:
@@ -74,7 +77,7 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor, is_sklearn: bool = True) -> fl
             n_neighbors=3,
             copy=True,
             random_state=None,
-        )[0]
+        )[0].item()
     else:
         # Purkayastha, S., & Song, P. X. K. (2024).
         from fastkde.fastKDE import pdf_at_points

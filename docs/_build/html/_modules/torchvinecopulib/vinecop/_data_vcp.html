@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 8.0.2 and Furo 2024.08.06 -->
-        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.9.0 documentation</title>
+        <title>torchvinecopulib.vinecop._data_vcp - torchvinecopulib 2024.10.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
@@ -17,18 +17,24 @@
   body {
     --color-code-background: #f8f8f8;
   --color-code-foreground: black;
+  --color-brand-primary: #007acc;
+  --color-brand-content: #007acc;
   
   }
   @media not print {
     body[data-theme="dark"] {
       --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #007acc;
+  --color-brand-content: #007acc;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
         --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #007acc;
+  --color-brand-content: #007acc;
   
       }
     }
@@ -165,7 +171,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.9.0 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">torchvinecopulib 2024.10.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +195,6 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.9.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -315,7 +320,7 @@
             <span class="n">lst_diag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v_diag</span><span class="p">)</span>
             <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lst_nebr</span><span class="p">)</span>
         <span class="c1"># ! append the last node</span>
-        <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -464,11 +469,12 @@
                 <span class="p">)</span>
                 <span class="k">for</span> <span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">s_cond</span><span class="p">),</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dct_tree</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
             <span class="p">)</span>
-        <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
-        <span class="n">G</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span><span class="n">tpl_uvw</span><span class="p">)</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">planar_layout</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+        <span class="c1"># * weighted undirected graph</span>
+        <span class="n">graph_nx</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="n">graph_nx</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span><span class="n">tpl_uvw</span><span class="p">)</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">planar_layout</span><span class="p">(</span><span class="n">graph_nx</span><span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">node_color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
@@ -477,30 +483,32 @@
             <span class="n">linewidths</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
             <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_labels</span><span class="p">(</span><span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">font_size</span><span class="o">=</span><span class="n">font_size_vertex</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+        <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_labels</span><span class="p">(</span><span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">font_size</span><span class="o">=</span><span class="n">font_size_vertex</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_edges</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-            <span class="n">edgelist</span><span class="o">=</span><span class="n">G</span><span class="o">.</span><span class="n">edges</span><span class="p">(),</span>
-            <span class="n">width</span><span class="o">=</span><span class="p">[</span><span class="n">math</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">tpl</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">&quot;weight&quot;</span><span class="p">]))</span> <span class="k">for</span> <span class="n">tpl</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">edges</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">)],</span>
+            <span class="n">edgelist</span><span class="o">=</span><span class="n">graph_nx</span><span class="o">.</span><span class="n">edges</span><span class="p">(),</span>
+            <span class="n">width</span><span class="o">=</span><span class="p">[</span>
+                <span class="n">math</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">tpl</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">&quot;weight&quot;</span><span class="p">]))</span> <span class="k">for</span> <span class="n">tpl</span> <span class="ow">in</span> <span class="n">graph_nx</span><span class="o">.</span><span class="n">edges</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="p">],</span>
             <span class="n">style</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span>
             <span class="n">alpha</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_edge_labels</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-            <span class="n">edge_labels</span><span class="o">=</span><span class="n">nx</span><span class="o">.</span><span class="n">get_edge_attributes</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">),</span>
+            <span class="n">edge_labels</span><span class="o">=</span><span class="n">nx</span><span class="o">.</span><span class="n">get_edge_attributes</span><span class="p">(</span><span class="n">graph_nx</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">),</span>
             <span class="n">font_size</span><span class="o">=</span><span class="n">font_size_edge</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">draw_if_interactive</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">f_path</span><span class="p">:</span>
             <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="n">f_path</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">f_path</span>
+            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">graph_nx</span><span class="p">,</span> <span class="n">f_path</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">G</span></div>
+            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">graph_nx</span></div>
 
 
 <div class="viewcode-block" id="DataVineCop.draw_dag">
@@ -541,7 +549,8 @@
             <span class="n">label</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
             <span class="n">fontsize</span><span class="o">=</span><span class="n">font_size_vertex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
+        <span class="c1"># * DAG</span>
+        <span class="n">graph_nx</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
         <span class="n">pos_obs</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">pos_bcp</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">dct_label</span> <span class="o">=</span> <span class="p">{}</span>
@@ -585,7 +594,7 @@
             <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">lst_node_bcp</span><span class="p">:</span>
                 <span class="n">__</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">*</span> <span class="nb">min</span><span class="p">(</span><span class="n">lv</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
                 <span class="n">dct_label</span><span class="p">[</span><span class="n">_</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">;</span><span class="si">{</span><span class="n">__</span><span class="si">}{</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">__</span><span class="si">}</span><span class="s1">&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">__</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">sorted</span><span class="p">(</span><span class="n">_</span><span class="p">[</span><span class="mi">2</span><span class="p">])])</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="n">G</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">lst_edge</span><span class="p">)</span>
+            <span class="n">graph_nx</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">lst_edge</span><span class="p">)</span>
         <span class="n">pos</span> <span class="o">=</span> <span class="n">pos_obs</span> <span class="o">|</span> <span class="n">pos_bcp</span>
         <span class="c1"># highlight source nodes, given tpl_first</span>
         <span class="n">tpl_source</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
@@ -594,9 +603,9 @@
             <span class="n">tpl_sim</span><span class="o">=</span><span class="n">tpl_sim</span> <span class="k">if</span> <span class="n">tpl_sim</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">tpl_sim</span><span class="p">,</span>
         <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="c1"># pseudo obs nodes</span>
-        <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tpl_source</span><span class="p">]</span>
+        <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">graph_nx</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tpl_source</span><span class="p">]</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">nodelist</span><span class="o">=</span><span class="n">lst_node</span><span class="p">,</span>
@@ -607,7 +616,7 @@
             <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">nodelist</span><span class="o">=</span><span class="n">tpl_source</span><span class="p">,</span>
@@ -619,9 +628,9 @@
         <span class="p">)</span>
 
         <span class="c1"># bicop nodes</span>
-        <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">]</span>
+        <span class="n">lst_node</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">graph_nx</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">]</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">nodelist</span><span class="o">=</span><span class="n">lst_node</span><span class="p">,</span>
@@ -632,7 +641,7 @@
             <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_labels</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">labels</span><span class="o">=</span><span class="n">dct_label</span><span class="p">,</span>
@@ -640,7 +649,7 @@
             <span class="n">font_color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_edges</span><span class="p">(</span>
-            <span class="n">G</span><span class="o">=</span><span class="n">G</span><span class="p">,</span>
+            <span class="n">G</span><span class="o">=</span><span class="n">graph_nx</span><span class="p">,</span>
             <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
             <span class="n">edge_color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
@@ -653,9 +662,9 @@
         <span class="n">plt</span><span class="o">.</span><span class="n">draw_if_interactive</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">f_path</span><span class="p">:</span>
             <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="n">f_path</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">f_path</span>
+            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">graph_nx</span><span class="p">,</span> <span class="n">f_path</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">G</span></div>
+            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">graph_nx</span></div>
 
 
 <div class="viewcode-block" id="DataVineCop.vcp_to_json">
@@ -856,12 +865,12 @@
     <span class="k">def</span> <span class="nf">sim</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">num_sim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-        <span class="n">dct_first_vs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">dct_first_vs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">tpl_sim</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(),</span>
         <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
         <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
-        <span class="n">is_antithetic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">is_sobol</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;full simulation/ quantile-regression/ conditional-simulation using the vine copula.</span>
 <span class="sd">        modified from depth-first search (DFS) on binary tree.</span>
@@ -870,22 +879,24 @@
 <span class="sd">        walk upward by calling hinv until the top vertex (whose cond set is empty) is reached.</span>
 <span class="sd">        (Recursively) call hfunc for the other upper vertex if necessary.</span>
 
-<span class="sd">        :param num_sim: number of simulations; ignored when dct_first_vs is not empty</span>
+<span class="sd">        :param num_sim: Number of samples to simulate, ignored when dct_first_vs is not empty,</span>
+<span class="sd">            defaults to 1.</span>
 <span class="sd">        :type num_sim: int</span>
 <span class="sd">        :param dct_first_vs: dict of {(vertex,cond_set): torch.Tensor(size=(n,1))}</span>
-<span class="sd">            in quantile regression/ conditional simulation, where vertices are taken as given already; defaults to {}</span>
+<span class="sd">            in quantile regression/ conditional simulation,</span>
+<span class="sd">            where vertices are taken as given already; defaults to None</span>
 <span class="sd">        :type dct_first_vs: dict, optional</span>
 <span class="sd">        :param tpl_sim: tuple of vertices (read from right to left) in a full simulation workflow,</span>
 <span class="sd">            gives flexibility to experienced users, defaults to tuple()</span>
 <span class="sd">        :type tpl_sim: tuple, optional</span>
-<span class="sd">        :param seed: random seed for torch.manual_seed(), defaults to 0</span>
+<span class="sd">        :param seed: random seed for torch.manual_seed(), ignored when is_sobol==True, defaults to 0.</span>
 <span class="sd">        :type seed: int, optional</span>
-<span class="sd">        :param device: device for torch.rand(), defaults to &#39;cpu&#39;</span>
+<span class="sd">        :param device: device for torch.rand(), defaults to &quot;cpu&quot;</span>
 <span class="sd">        :type device: str, optional</span>
-<span class="sd">        :param dtype: dtype for torch.rand(), defaults to torch.float64</span>
+<span class="sd">        :param dtype: Data type for the simulated samples, defaults to torch.float64</span>
 <span class="sd">        :type dtype: torch.dtype, optional</span>
-<span class="sd">        :param is_antithetic: whether to use antithetic variates, defaults to False</span>
-<span class="sd">        :type is_antithetic: bool, optional</span>
+<span class="sd">        :param is_sobol: use Sobol sequence for simulation, defaults to False.</span>
+<span class="sd">        :type is_sobol: bool, optional</span>
 <span class="sd">        :return: simulated observations of the vine copula, of shape (num_sim, num_dim)</span>
 <span class="sd">        :rtype: torch.Tensor</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -955,6 +966,8 @@
                 <span class="k">return</span> <span class="n">v_down</span><span class="p">,</span> <span class="n">s_up</span>
 
         <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dct_first_vs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dct_first_vs</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">dct_obs</span> <span class="o">=</span> <span class="n">dct_first_vs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="c1"># * source vertices in each path; reference counting for whole DAG</span>
         <span class="n">dct_ref_count</span><span class="p">,</span> <span class="n">tpl_source</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ref_count_hfunc</span><span class="p">(</span>
@@ -967,18 +980,25 @@
         <span class="c1"># ! skip for quant-reg</span>
         <span class="c1"># * antithetic variates</span>
         <span class="k">if</span> <span class="n">dim_sim</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">U_mvcp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">dim_sim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">is_antithetic</span><span class="p">:</span>
-            <span class="n">U_mvcp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">U_mvcp</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">U_mvcp</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">is_sobol</span><span class="p">:</span>
+                <span class="n">obs_mvcp_indep</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">quasirandom</span><span class="o">.</span><span class="n">SobolEngine</span><span class="p">(</span><span class="n">dimension</span><span class="o">=</span><span class="n">dim_sim</span><span class="p">,</span> <span class="n">scramble</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+                    <span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+                    <span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">obs_mvcp_indep</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">dim_sim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obs_mvcp_indep</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="c1"># * update dct_obs and dct_ref_count (initialize source vertices)</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tpl_source</span><span class="p">:</span>
             <span class="k">if</span> <span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dct_obs</span><span class="p">:</span>
-                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">U_mvcp</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
+                <span class="n">dct_obs</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs_mvcp_indep</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
                 <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="c1"># update ref count</span>
             <span class="n">_ref_count_decrement</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-        <span class="k">del</span> <span class="n">dct_first_vs</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">U_mvcp</span>
+        <span class="k">del</span> <span class="n">dct_first_vs</span><span class="p">,</span> <span class="n">tpl_sim</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">obs_mvcp_indep</span>
         <span class="c1"># * process each source vertex from the shallowest to the deepest</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tpl_source</span><span class="p">:</span>
             <span class="c1"># walk the path from source to target while cond set is not empty</span>
@@ -1011,7 +1031,11 @@
         <span class="c1"># * unsqueeze for broadcasting (num_sim, obs_mvcp.shape[0], num_dim) -&gt; (obs_mvcp.shape[0], 1)</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sim</span><span class="p">(</span>
-                <span class="n">num_sim</span><span class="o">=</span><span class="n">num_sim</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">dtype</span>
+                <span class="n">num_sim</span><span class="o">=</span><span class="n">num_sim</span><span class="p">,</span>
+                <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">obs_mvcp</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">is_sobol</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="o">&lt;=</span> <span class="n">obs_mvcp</span>
         <span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span>
@@ -1055,7 +1079,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=a0cfb6c8"></script>
+</div><script src="../../../_static/documentation_options.js?v=2443068e"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>

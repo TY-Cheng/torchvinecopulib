@@ -5,14 +5,12 @@
 [![Lint Pytest](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
 [![Deploy Docs](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml)
 
-[![Python Version](https://img.shields.io/badge/Python-%203.10%7C3.11%7C3.12-blue)](https://devguide.python.org/versions/#versions)
-[![OS](https://img.shields.io/badge/OS-Windows%7CmacOS%7CUbuntu-blue
-)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/torchvinecopulib)
+[![OS](https://img.shields.io/badge/OS-Windows%7CmacOS%7CUbuntu-blue)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib?style=flat)](https://pypi.org/project/torchvinecopulib/)
+![GitHub License](https://img.shields.io/github/license/ty-cheng/torchvinecopulib)
+![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib)
 [![DOI](https://zenodo.org/badge/768037665.svg)](https://zenodo.org/doi/10.5281/zenodo.10836953)
-
 
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
@@ -28,7 +26,7 @@ Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started
 
 ```toml
 # inside the `./pyproject.toml` file;
-numpy = "<2"
+numpy = "*"
 python = "^3.10"
 scipy = "*"
 # optional to facilitate customization
@@ -49,9 +47,11 @@ python -c "import torch; print(torch.cuda.is_available())"
 ## Installation
 
 - By `pip` from [`PyPI`](https://pypi.org/project/torchvinecopulib/):
+
 ```bash
 pip install torchvinecopulib torch
 ```
+
 - Or with full drawing and bivariate dependency metric support:
 
 ```bash
@@ -59,22 +59,23 @@ pip install torchvinecopulib torch matplotlib pot scikit-learn
 ```
 
 - Or `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
-Need to use proper file name.
+  Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.9.0-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.10.0-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.9.0.tar.gz
+pip install ./dist/torchvinecopulib-2024.10.0.tar.gz
 ```
 
 ### (Optional) [Poetry](https://python-poetry.org/docs/) for Dependency Management and Packaging
+
 After `git clone https://github.com/TY-Cheng/torchvinecopulib.git`, `cd` into the project root where [`pyproject.toml`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/pyproject.toml) exists,
 
 ```bash
 # inside project root folder
 poetry lock && poetry install -E dev_cpu --with dev_cpu --sync
-# or 
+# or
 poetry lock && poetry install -E dev_cuda --with dev_cuda --sync
 ```
 
@@ -110,6 +111,7 @@ coverage run -m pytest ./tests && coverage html
 ```
 
 ## TODO
+
 - more (non-parametric) `bicop` class in `torch`
 - port to TensorFlow Probability for `cuda`-compatible [Student's t cdf/ppf](https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/StudentT)
 
@@ -136,10 +138,9 @@ We welcome contributions, whether it's a bug report, feature suggestion, code co
 - [in-place ops can be slower](https://discuss.pytorch.org/t/are-inplace-operations-faster/61209/4)
 - [torch.jit.script can be slower](https://discuss.pytorch.org/t/why-is-torch-jit-script-slower/120131/6)
 
-
 ## License
 
-> Copyright (C) 2024 Tuoyuan Cheng, Xiaosheng You, Kan Chen
+> Copyright (C) 2024- Tuoyuan Cheng, Kan Chen
 >
 > This file is part of torchvinecopulib.
 > torchvinecopulib is free software: you can redistribute it and/or modify
