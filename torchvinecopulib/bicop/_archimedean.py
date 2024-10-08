@@ -21,17 +21,17 @@ class BiCopArchimedean(BiCopAbstract):
 
     @staticmethod
     @abstractmethod
-    def generator(vec: torch.Tensor):
+    def generator(vec: torch.Tensor, par: tuple):
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
-    def generator_derivative(vec: torch.Tensor):
+    def generator_derivative(vec: torch.Tensor, par: tuple):
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
-    def generator_inv(vec: torch.Tensor):
+    def generator_inv(vec: torch.Tensor, par: tuple):
         raise NotImplementedError
 
     @classmethod

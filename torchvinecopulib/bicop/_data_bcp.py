@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from enum import Enum
 from pprint import pformat
 
-
 import torch
 
 from ._abc import BiCopAbstract
@@ -236,23 +235,32 @@ class DataBiCop(ABC):
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
+        is_sobol: bool = False,
     ) -> torch.Tensor:
-        """
+        """Simulates random samples from a bivariate copula model.
 
-        :param self: an instance of the DataBiCop dataclass
-        :param num_sim: number of simulations
+        :param num_sim: Number of samples to simulate.
         :type num_sim: int
-        :param seed: random seed for torch.manual_seed(), defaults to 0
+        :param seed: Random seed for reproducibility. Defaults to 0.
         :type seed: int, optional
-        :param device: device for torch.rand(), defaults to 'cpu'
+        :param device: Device to perform the computation ('cpu' or 'cuda'). Defaults to "cpu".
         :type device: str, optional
-        :param dtype: data type for torch.rand(), defaults to torch.float64
+        :param dtype: Data type of the generated samples. Defaults to torch.float64.
         :type dtype: torch.dtype, optional
-        :return: simulated observation of the bivariate copula, of shape (num_sim, 2)
+        :param is_sobol: If True, uses Sobol sequence for quasi-random number generation. Defaults to False.
+        :type is_sobol: bool, optional
+        :return: A tensor of shape (num_sim, 2) containing the simulated samples.
         :rtype: torch.Tensor
         """
-        torch.manual_seed(seed=seed)
-        obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
+        if is_sobol:
+            obs = (
+                torch.quasirandom.SobolEngine(dimension=2, scramble=True, seed=seed)
+                .draw(n=num_sim, dtype=dtype)
+                .to(device)
+            )
+        else:
+            torch.manual_seed(seed=seed)
+            obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
         if self.fam != "Independent":
             obs[:, [1]] = ENUM_FAM_BICOP[self.fam].value.hinv1(
                 obs=obs,

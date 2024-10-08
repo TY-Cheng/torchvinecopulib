@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="torchvinecopulib.util package" href="torchvinecopulib.util.html" /><link rel="prev" title="torchvinecopulib.vinecop package" href="torchvinecopulib.vinecop.html" />
 
     <!-- Generated with Sphinx 8.0.2 and Furo 2024.08.06 -->
-        <title>torchvinecopulib.bicop package - torchvinecopulib 2024.9.0 documentation</title>
+        <title>torchvinecopulib.bicop package - torchvinecopulib 2024.10.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
@@ -18,18 +18,24 @@
   body {
     --color-code-background: #f8f8f8;
   --color-code-foreground: black;
+  --color-brand-primary: #007acc;
+  --color-brand-content: #007acc;
   
   }
   @media not print {
     body[data-theme="dark"] {
       --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #007acc;
+  --color-brand-content: #007acc;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
         --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #007acc;
+  --color-brand-content: #007acc;
   
       }
     }
@@ -166,7 +172,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">torchvinecopulib 2024.9.0 documentation</div></a>
+      <a href="index.html"><div class="brand">torchvinecopulib 2024.10.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -190,7 +196,6 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">torchvinecopulib 2024.9.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -296,15 +301,12 @@ Can modify num_obs during instantiation, for accurate bic calculation</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="torchvinecopulib.bicop.DataBiCop.aic">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">aic</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#torchvinecopulib.bicop.DataBiCop.aic" title="Link to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>self</strong> – an instance of the DataBiCop dataclass</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Akaike information criterion (AIC)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
+<dd><p>an instance of the DataBiCop dataclass
+:return: Akaike information criterion (AIC)
+:rtype: float</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>param self</p>
 </dd>
 </dl>
 </dd></dl>
@@ -312,15 +314,12 @@ Can modify num_obs during instantiation, for accurate bic calculation</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="torchvinecopulib.bicop.DataBiCop.bic">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bic</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#torchvinecopulib.bicop.DataBiCop.bic" title="Link to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>self</strong> – an instance of the DataBiCop dataclass</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Bayesian information criterion (BIC)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
+<dd><p>an instance of the DataBiCop dataclass
+:return: Bayesian information criterion (BIC)
+:rtype: float</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>param self</p>
 </dd>
 </dl>
 </dd></dl>
@@ -488,19 +487,20 @@ Can modify num_obs during instantiation, for accurate bic calculation</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="torchvinecopulib.bicop.DataBiCop.sim">
-<span class="sig-name descname"><span class="pre">sim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dtype</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop/_data_bcp.html#DataBiCop.sim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.DataBiCop.sim" title="Link to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
+<span class="sig-name descname"><span class="pre">sim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dtype</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_sobol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop/_data_bcp.html#DataBiCop.sim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.DataBiCop.sim" title="Link to this definition">¶</a></dt>
+<dd><p>Simulates random samples from a bivariate copula model.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>self</strong> – an instance of the DataBiCop dataclass</p></li>
-<li><p><strong>num_sim</strong> (<em>int</em>) – number of simulations</p></li>
-<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – random seed for torch.manual_seed(), defaults to 0</p></li>
-<li><p><strong>device</strong> (<em>str</em><em>, </em><em>optional</em>) – device for torch.rand(), defaults to ‘cpu’</p></li>
-<li><p><strong>dtype</strong> (<em>torch.dtype</em><em>, </em><em>optional</em>) – data type for torch.rand(), defaults to torch.float64</p></li>
+<li><p><strong>num_sim</strong> (<em>int</em>) – Number of samples to simulate.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility. Defaults to 0.</p></li>
+<li><p><strong>device</strong> (<em>str</em><em>, </em><em>optional</em>) – Device to perform the computation (‘cpu’ or ‘cuda’). Defaults to “cpu”.</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em><em>, </em><em>optional</em>) – Data type of the generated samples. Defaults to torch.float64.</p></li>
+<li><p><strong>is_sobol</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, uses Sobol sequence for quasi-random number generation. Defaults to False.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>simulated observation of the bivariate copula, of shape (num_sim, 2)</p>
+<dd class="field-even"><p>A tensor of shape (num_sim, 2) containing the simulated samples.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>torch.Tensor</p>
@@ -511,15 +511,12 @@ Can modify num_obs during instantiation, for accurate bic calculation</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="torchvinecopulib.bicop.DataBiCop.tau">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tau</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#torchvinecopulib.bicop.DataBiCop.tau" title="Link to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>self</strong> – an instance of the DataBiCop dataclass</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Kendall’s tau</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
+<dd><p>an instance of the DataBiCop dataclass
+:return: Kendall’s tau
+:rtype: float</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>param self</p>
 </dd>
 </dl>
 </dd></dl>
@@ -528,7 +525,7 @@ Can modify num_obs during instantiation, for accurate bic calculation</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="torchvinecopulib.bicop.ENUM_FAM_BICOP">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">torchvinecopulib.bicop.</span></span><span class="sig-name descname"><span class="pre">ENUM_FAM_BICOP</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/torchvinecopulib/bicop/_data_bcp.html#ENUM_FAM_BICOP"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.ENUM_FAM_BICOP" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">torchvinecopulib.bicop.</span></span><span class="sig-name descname"><span class="pre">ENUM_FAM_BICOP</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/torchvinecopulib/bicop/_data_bcp.html#ENUM_FAM_BICOP"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.ENUM_FAM_BICOP" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
 <p>an Enum class to store bivariate copula family names and their corresponding class objects</p>
 <dl class="py attribute">
@@ -824,7 +821,7 @@ rotation ignored, for tau is symmetric.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="torchvinecopulib.bicop.StudentT.tau2par">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tau2par</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tau</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mtd_opt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'L-BFGS-B'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop/_studentt.html#StudentT.tau2par"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.StudentT.tau2par" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tau2par</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tau</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mtd_opt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'L-BFGS-B'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop/_studentt.html#StudentT.tau2par"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.StudentT.tau2par" title="Link to this definition">¶</a></dt>
 <dd><p>Convert Kendall’s tau to bicop parameters.
 rotation ignored, for tau is symmetric.</p>
 </dd></dl>
@@ -1034,7 +1031,7 @@ could be a subset of (‘Clayton’, ‘Frank’, ‘Gaussian’, ‘Gumbel’, 
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=a0cfb6c8"></script>
+</div><script src="_static/documentation_options.js?v=2443068e"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=5fa4622c"></script>
