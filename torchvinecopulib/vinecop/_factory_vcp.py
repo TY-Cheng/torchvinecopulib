@@ -201,20 +201,15 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
         # ! one set is empty or singleton: global TSP
         tsp = threshold_accepting_tsp(graph_nx, init_cycle="greedy")
         mst = []
-        heap_cost_non_first = []
+        tmp_cost, tmp_drop = -math.inf, None
         for idx in range(1, len(tsp)):
             v_lr = tuple(sorted((tsp[idx], tsp[idx - 1])))
-            if set(v_lr) <= set(s_first):
-                # * an edge with both vertices in s_first
-                mst.append(v_lr)
-            else:
-                # * an edge with at least one vertex in s_rest
-                # ! min heap, by -cost in ASCENDING order
-                heapq.heappush(heap_cost_non_first, (-dct_cost[v_lr], v_lr))
-        # ! drop the edge with max cost and one vertex not in s_first
-        heapq.heappop(heap_cost_non_first)
-        # * append others
-        mst.extend([key for _, key in heap_cost_non_first])
+            v_lr_cost = dct_cost[v_lr]
+            mst.append(v_lr)
+            # ! drop the edge with max cost and (at least) one vertex not in s_first
+            if (set(v_lr) - s_first) and (v_lr_cost > tmp_cost):
+                tmp_cost, tmp_drop = v_lr_cost, v_lr
+        mst.remove(tmp_drop)
     else:
         # ! both sets have more than two vertices, TSP with precedence constraints (clustered TSP)
         tsp_first = threshold_accepting_tsp(graph_nx.subgraph(s_first), init_cycle="greedy")

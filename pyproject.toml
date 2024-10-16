@@ -4,7 +4,7 @@ license = "GNU GPLv3"
 name = "torchvinecopulib"
 version = "2024.10.0"
 description = "yet another vine copula library for PyTorch."
-authors = ["Tuoyuan Cheng <cty120120@gmail.com>"]
+authors = ["Tuoyuan Cheng <tuoyuan.cheng@nus.edu.sg>"]
 maintainers = ["Xiaosheng You <e1204754@u.nus.edu>"]
 readme = "README.md"
 # homepage = ""
@@ -21,9 +21,41 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
+[tool.sphinx-pyproject]
+extensions = [
+    "sphinx.ext.githubpages",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.sphinx-pyproject.build]
+source-dir = "docs"
+build-dir = "docs/_build"
+all_files = true
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosectionlabel",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.coverage",
+    "sphinx.ext.doctest",
+    "sphinx.ext.extlinks",
+    "sphinx.ext.githubpages",
+    "sphinx.ext.graphviz",
+    "sphinx.ext.ifconfig",
+    "sphinx.ext.imgconverter",
+    "sphinx.ext.inheritance_diagram",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.todo",
+    "sphinx.ext.viewcode",
+]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+html_theme = "furo"
+
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/TY-Cheng/torchvinecopulib/issues/new"
@@ -62,6 +94,7 @@ pytest = { version = "*" }
 pyvinecopulib = { version = "0.6.6" }
 scikit-learn = { version = "*" }
 sphinx = { version = "*" }
+sphinx-pyproject = { version = "*" }
 tokenize-rt = { version = "*" }
 yfinance = { version = "*" }
 # 
@@ -83,6 +116,7 @@ pytest = { version = "*" }
 pyvinecopulib = { version = "0.6.6" }
 scikit-learn = { version = "*" }
 sphinx = { version = "*" }
+sphinx_pyproject = { version = "*" }
 tokenize-rt = { version = "*" }
 yfinance = { version = "*" }
 
@@ -102,6 +136,7 @@ dev_cpu = [
     "pyvinecopulib",
     "scikit-learn",
     "sphinx",
+    "sphinx_pyproject",
     "tokenize-rt",
     "yfinance",
 ]
@@ -120,6 +155,7 @@ dev_cuda = [
     "pyvinecopulib",
     "scikit-learn",
     "sphinx",
+    "sphinx_pyproject",
     "tokenize-rt",
     "yfinance",
 ]

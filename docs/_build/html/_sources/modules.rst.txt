@@ -1,7 +1,0 @@
-torchvinecopulib
-================
-
-.. toctree::
-   :maxdepth: 4
-
-   torchvinecopulib

@@ -1,10 +1,9 @@
 # manual
-!/docs/_build/html
 !/docs/index.rst
 /docs/*.rst
 /docs/Makefile
 /docs/_build/doctrees/
-/docs/conf.py
+/docs/_build/html
 /scratch
 scratch*.ipynb
 
