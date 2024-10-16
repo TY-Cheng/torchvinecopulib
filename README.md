@@ -63,9 +63,9 @@ pip install torchvinecopulib torch matplotlib pot scikit-learn
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.10.0-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.10.1-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.10.0.tar.gz
+pip install ./dist/torchvinecopulib-2024.10.1.tar.gz
 ```
 
 ### (Optional) [Poetry](https://python-poetry.org/docs/) for Dependency Management and Packaging
