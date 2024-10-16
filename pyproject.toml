@@ -21,6 +21,13 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
+[tool.sphinx-pyproject]
+extensions = [
+    "sphinx.ext.githubpages",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon"
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -62,6 +69,7 @@ pytest = { version = "*" }
 pyvinecopulib = { version = "0.6.6" }
 scikit-learn = { version = "*" }
 sphinx = { version = "*" }
+sphinx-pyproject = { version = "*" }
 tokenize-rt = { version = "*" }
 yfinance = { version = "*" }
 # 
