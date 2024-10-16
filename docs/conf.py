@@ -1,6 +1,7 @@
+import sys
 from sphinx_pyproject import SphinxConfig
 
-
+sys.path.append(".")
 # * load the pyproject.toml file using SphinxConfig
 # * using Path for better cross-platform compatibility
 try:
@@ -18,11 +19,11 @@ extensions = config.get("extensions", [])
 html_theme = config.get("html_theme", "furo")
 html_title = f"{project} v{version}"
 html_theme_options = {
-    "sidebar_hide_name": True,
+    "sidebar_hide_name": False,
     # "light_logo": "../torchvinecopulib.png",
     # "dark_logo": "../torchvinecopulib.png",
     # "sticky_navigation": True,
-    "navigation_with_keys": True,
+    # "navigation_with_keys": True,
     # "footer_text": f"© {copyright}",
     # "navigation_depth": 4,
     # "titles_only": False,

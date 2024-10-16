@@ -21,18 +21,11 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
-[tool.sphinx-pyproject]
-extensions = [
-    "sphinx.ext.githubpages",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",
-]
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.sphinx-pyproject.build]
+[tool.sphinx-pyproject]
 source-dir = "docs"
 build-dir = "docs/_build"
 all_files = true
