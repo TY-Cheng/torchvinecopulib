@@ -89,8 +89,6 @@ Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main
 
 - Or visit [html-preview.github.io](https://html-preview.github.io/?url=https%3A%2F%2Fgithub.com%2FTY-Cheng%2Ftorchvinecopulib%2Fblob%2Fmain%2Fdocs%2F_build%2Fhtml%2Findex.html)
 
-- Or (locally) visit the `./docs/_build/html` subfolder for static `html` made with `Sphinx`
-
 - Or build by yourself (need [`Sphinx`](https://github.com/sphinx-doc/sphinx), theme [`furo`](https://github.com/pradyunsg/furo) and [the GNU `make`](https://www.gnu.org/software/make/))
 
 ```bash

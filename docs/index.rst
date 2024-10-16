@@ -10,7 +10,7 @@ https://github.com/TY-Cheng/torchvinecopulib
 ============================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents
    
    torchvinecopulib.vinecop
