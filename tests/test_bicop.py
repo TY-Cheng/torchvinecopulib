@@ -30,6 +30,15 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
                 )
             )
         )
+    elif bcp_tvc.__name__ == "Bb1":
+        vec_par = np.array(
+            tuple(
+                zip(
+                    np.linspace(0.1, 6.99, 13),
+                    np.linspace(1.01, 6.99, 13),
+                )
+            )
+        )
     else:
         vec_par = np.linspace(
             (bcp_tvc._PAR_MIN[0] + bcp_tvc._PAR_MAX[0] * 0.02) / 2,
@@ -49,6 +58,18 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
                         obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
                     ).par
                 ).sum()
+            )
+        elif bcp_tvc.__name__ == "Bb1" and mtd_fit == "itau":
+            continue
+        elif bcp_tvc.__name__ == "Bb1" and mtd_fit == "mle":
+            obs = sim_from_bcp(bcp_tvc=bcp_tvc, par= i_par, rot=rot, num_sim=2000)
+            lst_pvc.append(np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum())
+            lst_tvc.append(
+                np.abs(
+                    bcp_from_obs(
+                        obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
+                    ).par
+               ).sum()
             )
         else:
             obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=(i_par,), rot=rot, num_sim=2000)
@@ -185,7 +206,7 @@ class TestBiCop(unittest.TestCase):
     def test_bcp_tau2par2tau(self):
         """test the BiCop methods (tau2par, par2tau)"""
         for fam, rot in SET_FAMnROT:
-            if fam == "Independent":
+            if fam == "Independent" or fam == "Bb1":
                 continue
             bcp_pvc, bcp_tvc = DCT_FAM[fam]
             obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)

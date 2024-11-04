@@ -1,5 +1,6 @@
 import torch
 from ._archimedean import BiCopArchimedean
+from scipy.optimize import fsolve
 
 class Bb1(BiCopArchimedean):
 
@@ -60,5 +61,18 @@ class Bb1(BiCopArchimedean):
         t59 = t43*t27*t29
         
         return t25 * t6 * t27 * t4 * t29 * t36 * t3 * t39 - t13 * t6 * t43 * t27 * t29 * t33 * t3 * t38 * t17 * t20 + t13 * t3 * t38 * t17 * t33 * t20 * t6 * delta * t59 + t25 * t3 * t39 * t36 * t6 * t59
+    
+    @staticmethod
+    def tau2par_0(tau: float, **kwargs) -> tuple[float]:
+        # par = [0, 0]
+        # par[1] = 1.5
+        # par[0] = float((2 /par[1]*(1 - tau)) - 2)
+        
+        
+        def func(par):
+            return [(1 - tau - 2 / (par[1] * (par[0] + 2))), par[0] - par[1] + 2 == 0 and par[0] > 0 and par[0] < 7 and par[1] > 1 and par[1] < 7 ]
+        
+        root = fsolve(func, [2.1, 0.1])
+        return root
     
 
