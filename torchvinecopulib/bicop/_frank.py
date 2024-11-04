@@ -84,10 +84,10 @@ class Frank(BiCopArchimedean):
             return Frank.par2tau_0(par=(delta,)) - tau_a
 
         delta = solve_ITP(
-            f=f,
-            a=Frank._PAR_MIN[0] + 1e-6,
-            b=Frank._PAR_MAX[0] - 1e-5,
-            eps_2=1e-6,
+            fun=f,
+            x_a=Frank._PAR_MIN[0] + 1e-6,
+            x_b=Frank._PAR_MAX[0] - 1e-5,
+            epsilon=1e-6,
             k_1=0.1,
         )
 

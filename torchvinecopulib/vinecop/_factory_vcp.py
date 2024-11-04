@@ -57,13 +57,16 @@ def _mst_from_edge_rvine(
     def union(a, b):
         """union by rank"""
         root_a, root_b = find(a), find(b)
+        if root_a == root_b:
+            return False
         if rank[root_a] < rank[root_b]:
             root_a, root_b = root_b, root_a
         parent[root_b] = root_a
         rank[root_a] += rank[root_a] == rank[root_b]
+        return True
 
     def kruskal(dct_edge: dict, num_mst: int) -> None:
-        # * those may form cycles will be dropped
+        # * skip those forming cycles
         if dct_edge:
             # ! min heap, by -ABS(bidep) in ASCENDING order
             heap_bidep_abs = [
@@ -72,8 +75,7 @@ def _mst_from_edge_rvine(
             heapq.heapify(heap_bidep_abs)
             while len(mst) < num_mst:
                 _, v_l, v_r, s_cond = heapq.heappop(heap_bidep_abs)
-                if find((v_l, s_cond)) != find((v_r, s_cond)):
-                    union((v_l, s_cond), (v_r, s_cond))
+                if union(find((v_l, s_cond)), find((v_r, s_cond))):
                     mst.append((v_l, v_r, s_cond))
 
     # ! filter for edges
@@ -237,7 +239,7 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
                     # ! drop one edge from a TSP if it has more than one edge
                     tmp_cost -= dct_cost[drop_rest]
                     tmp_mst.remove(drop_rest)
-                # ! drop the edge with max cost and one vertex not in s_first
+                # ! drop the edge with max cost and (at least) one vertex not in s_first
                 drop_non_first = max(
                     (k for k in tmp_mst if (k[0] not in s_first) or (k[1] not in s_first)),
                     key=lambda x: dct_cost[x],
@@ -558,11 +560,10 @@ def vcp_from_pth(f_path: Path = Path("./vcp.pth")) -> DataVineCop:
     return obj
 
 
-def vcp_from_sim(num_dim: int, seed: int) -> DataVineCop:
-    """
-    Simulate a DataVineCop object.
-    It constructs the vine copula by generating correlation matrices,
-    fitting bivariate copulas, and building the vine structure through a series of steps.
+def vcp_from_sim(num_dim: int, seed: int = 0) -> DataVineCop:
+    """Simulate a DataVineCop object.
+        It constructs the vine copula by generating correlation matrices,
+        fitting bivariate copulas, and building the vine structure through a series of steps.
 
     :param num_dim: The number of dimensions for the vine copula.
     :type num_dim: int

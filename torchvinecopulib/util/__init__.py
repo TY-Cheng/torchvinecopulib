@@ -354,7 +354,6 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
             * (asr / 6.283185307179586)
             + (pnorm(h) * pnorm(k))
         )
-        .nan_to_num()
         .clamp(min=_CDF_MIN, max=_CDF_MAX)
     )
 
@@ -730,70 +729,83 @@ def debye1(x: float) -> float:
 
 
 def solve_ITP(
-    f: callable,
-    a: float,
-    b: float,
-    eps_2: float = 1e-9,
-    n_0: int = 1,
+    fun: callable,
+    x_a: float,
+    x_b: float,
+    epsilon: float = 1e-9,
+    num_iter_min: int = 1,
+    num_iter_max: int = 31,
     k_1: float = 0.2,
-    k_2: float = 2.0,
-    j_max: int = 31,
 ) -> float:
-    """Solve an arbitrary function for a zero-crossing.
+    """Solve an arbitrary function for a zero-crossing, assuming f(x_a) < 0 and f(x_b) > 0.
+        This implementation hardwires k2 to 2.0, both because it avoids
+        an expensive floating point exponentiation,
+        and because this value has been tested to work well with curve fitting problems.
 
     Oliveira, I.F. and Takahashi, R.H., 2020.
-    An enhancement of the bisection method average performance preserving minmax optimality.
-    ACM Transactions on Mathematical Software (TOMS), 47(1), pp.1-24.
+        An enhancement of the bisection method average performance preserving minmax optimality.
+        ACM Transactions on Mathematical Software (TOMS), 47(1), pp.1-24.
 
-    https://docs.rs/kurbo/0.8.1/kurbo/common/fn.solve_itp.html
+    https://docs.rs/kurbo/latest/kurbo/common/fn.solve_itp.html
 
     https://en.wikipedia.org/wiki/ITP_method
 
-    ! It is assumed that f(a) < 0 and f(b) > 0, otherwise unexpected results may occur.
 
-    The ITP method has tuning parameters. This implementation hardwires k2 to 2.0,
-    both because it avoids an expensive floating point exponentiation,
-    and because this value has been tested to work well with curve fitting problems.
-
-    The n0 parameter controls the relative impact of the bisection and secant components.
-    When it is 0, the number of iterations is guaranteed to be no more than the number required by bisection
-    (thus, this method is strictly superior to bisection). However, when the function is smooth,
-    a value of 1 gives the secant method more of a chance to engage, so the average number of iterations is likely lower,
-    though there can be one more iteration than bisection in the worst case.
-
-    The k1 parameter is harder to characterize, and interested users are referred to the paper,
-    as well as encouraged to do empirical testing. To match the the paper, a value of 0.2 / (b - a) is suggested,
-    and this is confirmed to give good results. When the function is monotonic,
-    the returned result is guaranteed to be within epsilon of the zero crossing.
+    :param fun: function to solve for zero-crossing
+    :type fun: callable
+    :param x_a: the lower bound of the interval searched for a solution
+    :type x_a: float
+    :param x_b: the upper bound of the interval searched for a solution
+    :type x_b: float
+    :param epsilon: must be larger than 2^-63 times `x_b - x_a`, defaults to 1e-9
+    :type epsilon: float, optional
+    :param num_iter_min: controls the relative impact of the bisection and secant components.
+        When it is 0, the number of iterations is guaranteed to be no more than
+        the number required by bisection (thus, this method is strictly superior to bisection).
+        However, when the function is smooth, a value of 1 gives the secant method
+        more of a chance to engage, so the average number of iterations
+        is likely lower, though there can be one more iteration
+        than bisection in the worst case., defaults to 1
+    :type num_iter_min: int, optional
+    :param num_iter_max: max number of iterations, defaults to 31
+    :type num_iter_max: int, optional
+    :param k_1: a value of `0.2 / (x_b - x_a)` is suggested,
+        and this is confirmed to give good results., defaults to 0.2
+    :type k_1: float, optional
+    :return: a value of `x` within `epsilon` of the zero crossing.
+    :rtype: float
     """
-    y_a, y_b, x_wid = f(a), f(b), b - a
-    n_max = n_0 + math.ceil(math.log2(x_wid / eps_2))
-    for j in range(1, j_max + 1):
-        # Calculating Parameters
+    y_a, y_b, x_wid = fun(x_a), fun(x_b), x_b - x_a
+    eps_2 = epsilon * 2.0
+    n_max = num_iter_min + math.ceil(math.log2(max(1, x_wid / epsilon)))
+    eps_scale = epsilon * (1 << n_max)
+    for _ in range(num_iter_max):
         if x_wid < eps_2:
             break
-        x_half = (a + b) / 2.0
-        rho = eps_2 * 2.0 ** (n_max - j) - x_wid / 2.0
-        delta = k_1 * x_wid**k_2
-        # Interpolation
-        x_f = (y_b * a - y_a * b) / (y_b - y_a)
-        # Truncation
-        tmp = x_half - x_f
-        sign = tmp / abs(tmp)
-        x_t = x_half if delta > abs(tmp) else x_f + sign * delta
-        # Projection
-        x_ITP = x_t if (rho >= abs(x_t - x_half)) else x_half - sign * rho
-        # Updating interval
-        y_ITP = f(x_ITP)
+        # * update parameters
+        x_half = 0.5 * (x_a + x_b)
+        rho = eps_scale - 0.5 * x_wid
+        # * interpolation
+        x_f = (y_b * x_a - y_a * x_b) / (y_b - y_a)
+        sigma = x_half - x_f
+        # ! here k2 = 2 hardwired for efficiency.
+        delta = k_1 * x_wid**2
+        # * truncation
+        x_t = x_f + math.copysign(delta, sigma) if delta <= abs(sigma) else x_half
+        # * projection
+        x_ITP = x_t if (rho >= abs(x_t - x_half)) else x_half - math.copysign(rho, sigma)
+        # * update interval
+        y_ITP = fun(x_ITP)
         if y_ITP > 0.0:
-            b, y_b = x_ITP, y_ITP
+            x_b, y_b = x_ITP, y_ITP
         elif y_ITP < 0.0:
-            a, y_a = x_ITP, y_ITP
+            x_a, y_a = x_ITP, y_ITP
         else:
             return x_ITP
-        x_wid = b - a
+        x_wid = x_b - x_a
+        eps_scale *= 0.5
 
-    return (a + b) / 2.0
+    return 0.5 * (x_a + x_b)
 
 
 def ref_count_hfunc(

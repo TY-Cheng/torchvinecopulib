@@ -1,78 +1,94 @@
 import torch
-from ._archimedean import BiCopArchimedean
 from scipy.optimize import fsolve
 
-class Bb1(BiCopArchimedean):
+from ._archimedean import BiCopArchimedean
+from ..util import solve_ITP
 
-    _PAR_MIN, _PAR_MAX = (0, 1.01), (6.99, 6.99)
-    
+
+class BB1(BiCopArchimedean):
+    # Joe 2014 page 190
+    # * two par: theta, delta
+    _PAR_MIN, _PAR_MAX = (1e-6, 1.0 + 1e-6), (7, 7)
 
     @staticmethod
-    def generator(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        return pow(pow(obs[:,[0]], -par[0]) -1, par[1])
-        
+    def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        return (vec[:, [0]].pow(-par[0]) - 1.0).pow(par[1])
+
     @staticmethod
-    def generator_inv(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        return pow(pow(obs[:,[0]], 1 / par[1]) + 1, -1 / par[0])
-    
-    
+    def generator_inv(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        return (vec.pow(1.0 / par[1]) + 1.0).pow(-1.0 / par[0])
+
     @staticmethod
-    def generator_derivative(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta = par[0]
-        delta = par[1]
-        res = -delta * theta * pow(obs[:,[0]], -(1 + theta))
-        return res * pow(pow(obs[:,[0]], -theta) - 1, delta - 1)
-    
+    def generator_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        theta, delta = par
+        return (-delta * theta * vec.pow(-1.0 - theta)) * (vec.pow(-theta) - 1).pow(delta - 1)
+
     @staticmethod
-    def pars2tau(par: tuple[float]) -> torch.Tensor:
+    def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        theta, delta = par
+        return (
+            (
+                (obs[:, [0]].pow(-theta) - 1.0).pow(delta)
+                + (obs[:, [1]].pow(-theta) - 1.0).pow(delta)
+            ).pow(1.0 / delta)
+            + 1.0
+        ).pow(-1.0 / theta)
+
+    @staticmethod
+    def hfunc1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        """first h function, Prob(V1<=v1 | V0=v0)"""
+        theta, delta = par
+        detla_1 = 1 / delta
+        u, v = obs[:, [0]], obs[:, [1]]
+        x, y = (u.pow(-theta) - 1).pow(delta), (v.pow(-theta) - 1).pow(delta)
+        x_y = x + y
+        return (
+            (x_y.pow(detla_1) + 1).pow(-1 / theta - 1)
+            * x_y.pow(detla_1 - 1)
+            * x.pow(1 - detla_1)
+            * u.pow(-theta - 1)
+        )
+
+    @staticmethod
+    def par2tau_0(par: tuple[float]) -> torch.Tensor:
         return 1 - 2 / (par[1] * (par[0] + 2))
-    
+
     @staticmethod
-    def l_pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        
-        theta = par[0]
-        delta = par[1]
-        
-        t1 = pow(obs[:,[0]], -theta)
-        t2 = t1 - 1
-        t3 = pow(t2, delta)
-        t16 = 1/obs[:,[0]]
-        t17 = 1/t2
-        t38 = t1*t16
-        t39 = t38*t17
-        t4 = pow(obs[:,[1]], -theta)
-        t5 = t4 - 1
-        t6 = pow(t5, delta)
-        t7 = t3 + t6
-        t9 = pow(t7, 1/delta)
-        t10 = 1 + t9
-        t12 = pow(t10, -1/theta)
-        t13 = t12*t9
-        t20 = 1/t10
-        t24 = t9*t9
-        t25 = t12*t24
-        t27 = 1/obs[:,[1]]
-        t29 = 1/t5
-        t32 = t7*t7
-        t33 = 1/t32
-        t34 = t10*t10
-        t36 = t33/t34
-        t43 = t4*theta
-        t59 = t43*t27*t29
-        
-        return t25 * t6 * t27 * t4 * t29 * t36 * t3 * t39 - t13 * t6 * t43 * t27 * t29 * t33 * t3 * t38 * t17 * t20 + t13 * t3 * t38 * t17 * t33 * t20 * t6 * delta * t59 + t25 * t3 * t39 * t36 * t6 * t59
-    
+    def pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        theta, delta = par
+        delta_1 = 1 / delta
+        u, v = obs[:, [0]], obs[:, [1]]
+        s, p = (u.pow(-theta) - 1).pow(delta), (v.pow(-theta) - 1).pow(delta)
+        s, p = s + p, s * p
+        s_1_over_delta = s.pow(delta_1)
+        return (
+            (1 + s_1_over_delta).pow(-(1 / theta + 2))
+            * s.pow(delta_1 - 2)
+            * (theta * (delta - 1) + (theta * delta + 1) * s_1_over_delta)
+            * p.pow(1 - delta_1)
+            * (u * v).pow(-theta - 1)
+        )
+
+    @classmethod
+    def l_pdf_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
+        return cls.pdf_0(obs=obs, par=par).log()
+
     @staticmethod
     def tau2par_0(tau: float, **kwargs) -> tuple[float]:
+        # TODO
         # par = [0, 0]
         # par[1] = 1.5
         # par[0] = float((2 /par[1]*(1 - tau)) - 2)
-        
-        
+
         def func(par):
-            return [(1 - tau - 2 / (par[1] * (par[0] + 2))), par[0] - par[1] + 2 == 0 and par[0] > 0 and par[0] < 7 and par[1] > 1 and par[1] < 7 ]
-        
+            return [
+                (1 - tau - 2 / (par[1] * (par[0] + 2))),
+                par[0] - par[1] + 2 == 0
+                and par[0] > 0
+                and par[0] < 7
+                and par[1] > 1
+                and par[1] < 7,
+            ]
+
         root = fsolve(func, [2.1, 0.1])
         return root
-    
-

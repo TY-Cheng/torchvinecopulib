@@ -80,4 +80,4 @@ class Joe(BiCopArchimedean):
         def f(delta: float) -> float:
             return Joe.par2tau_0(par=(delta,)) - tau_a
 
-        return (solve_ITP(f=f, a=0.99, b=20600.0, eps_2=1e-6, k_1=0.1),)
+        return (solve_ITP(fun=f, x_a=0.99, x_b=20600.0, epsilon=1e-6, k_1=0.1),)

@@ -746,6 +746,7 @@ class DataVineCop(ABC):
         obs_mvcp: torch.Tensor,
         num_sim: int = 50000,
         seed: int = 0,
+        is_sobol: bool = True,
     ) -> torch.Tensor:
         """cumulative distribution function (CDF) of the multivariate copula given observations, by Monte Carlo.
 
@@ -756,6 +757,8 @@ class DataVineCop(ABC):
         :type num_sim: int, optional
         :param seed: random seed for torch.manual_seed(), defaults to 0
         :type seed: int, optional
+        :param is_sobol: use Sobol sequence for simulation, defaults to True
+        :type is_sobol: bool, optional
         :return: cumulative distribution function (CDF) of shape (num_obs, 1), given observations
         :rtype: torch.Tensor
         """
@@ -766,7 +769,7 @@ class DataVineCop(ABC):
                 seed=seed,
                 device=obs_mvcp.device,
                 dtype=obs_mvcp.dtype,
-                is_sobol=True,
+                is_sobol=is_sobol,
             ).unsqueeze(dim=1)
             <= obs_mvcp
         ).all(
