@@ -30,6 +30,7 @@ DCT_FAM = {
     "Independent": (BicopFamily.indep, bicop.Independent),
     "Joe": (BicopFamily.joe, bicop.Joe),
     "StudentT": (BicopFamily.student, bicop.StudentT),
+    "Bb1": (BicopFamily.bb1, bicop.Bb1)
 }
 
 

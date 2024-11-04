@@ -296,3 +296,56 @@ class BiCopAbstract(ABC):
     @abstractmethod
     def tau2par_0(tau: float, **kwargs) -> tuple:
         raise NotImplementedError
+    
+    @classmethod
+    def hinv1_num(cls, u: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        """First h inverse function using numerical inversion"""
+    
+        # Create a copy of the input matrix u
+        u_new = u.clone()
+
+        # Define the function h1
+        def h1(v: torch.Tensor) -> torch.Tensor:
+            u_new[:, [1]] = v  # Update the second column of u_new with v
+            return cls.hfunc1_0(u_new, par)  # Call hfunc1_0 with the updated u_new
+
+        # Numerically invert the function
+        return cls.invert_f(u[:, [1]], h1)
+
+    def invert_f(x: torch.Tensor, f):
+        """
+        Numerically invert a function using bisection method.
+        
+        Args:
+            x (torch.Tensor): Input tensor of target values for which we want to find the inverse.
+            f (callable): The function for which we want to compute the inverse.
+        
+        Returns:
+            torch.Tensor: Inverted values (the x that satisfies f(x) = target).
+        """
+        
+        lb = 1e-20
+        ub = 1 - 1e-20
+        n_iter = 35
+        
+        # Initialize bounds and temp variables
+        xl = torch.full_like(x, lb)
+        xh = torch.full_like(x, ub)
+        x_tmp = x.clone()
+        fm = torch.zeros_like(x)
+        
+        # Bisection method loop
+        for iter in range(n_iter):
+            x_tmp = (xh + xl) / 2.0  # Midpoint
+            fm = f(x_tmp) - x  # Evaluate function and compare with target x
+            
+            # Update bounds based on the sign of fm
+            xl = torch.where(fm < 0, x_tmp, xl)
+            xh = torch.where(fm >= 0, x_tmp, xh)
+        
+        # Handle NaN values by replacing them with NaN
+        if torch.isnan(fm).any():
+            nan_mask = torch.isnan(fm)
+            x_tmp[nan_mask] = float('nan')
+        
+        return x_tmp
