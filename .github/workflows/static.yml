@@ -20,6 +20,7 @@ concurrency:
 jobs:
   # Single deploy job since we're just deploying
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
         python-version: ["3.12"]
@@ -53,3 +54,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docs/_build/html
           force_orphan: true
+
+  deploy-ignore:
+    if: ${{ github.event.workflow_run.conclusion != 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip
+        run: echo "Skipping deployment as Lint Pytest workflow run was not successful."
