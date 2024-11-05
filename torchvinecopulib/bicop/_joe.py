@@ -26,13 +26,13 @@ class Joe(BiCopArchimedean):
     @staticmethod
     def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
-        # Newton, using x=(1-u)**delta, y=(1-v)**delta
+        # * Newton, using x=(1-u)**delta, y=(1-v)**delta
         delta = max(min(par[0], Joe._PAR_MAX[0]), Joe._PAR_MIN[0])
         x = obs[:, [0]].neg().log1p()
         p = obs[:, [1]]
         delta_1m = 1.0 - delta
         delta_frac = delta_1m / delta
-        # initial y as from initial v
+        # * initial y, from p and x
         y = (1.0 + (-1.0 + (1.0 - p).pow(delta_frac)) * (x * delta_1m).exp()).pow(1.0 / delta_frac)
         x = (x * delta).exp()
         delta_frac = 1.0 / delta
@@ -43,6 +43,7 @@ class Joe(BiCopArchimedean):
                 delta * (xy1 - y) * (x1y1delta.reciprocal()) * (p * (-xy1 + y) + xy1 * x1y1delta)
             ) / ((x - 1.0) * xy1 - delta * x)
             y.clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        # * y to v
         return 1.0 - y.pow(delta_frac)
 
     @classmethod

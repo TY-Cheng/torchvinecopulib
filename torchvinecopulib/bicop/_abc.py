@@ -189,7 +189,7 @@ class BiCopAbstract(ABC):
         par: tuple,
         rot: int,
     ) -> float:
-        return cls.l_pdf(obs=obs, par=par, rot=rot).sum().neg().item()
+        return cls.l_pdf(obs=obs, par=par, rot=rot).nan_to_num_().sum().neg().item()
 
     @classmethod
     def par2tau(
@@ -197,7 +197,7 @@ class BiCopAbstract(ABC):
         par: tuple,
         rot: int,
     ) -> float:
-        """Convert bicop parameters to Kendall's tau."""
+        """convert bicop parameters to Kendall's tau."""
         if rot in (0, 180):
             res = cls.par2tau_0(par=par)
         elif rot in (90, 270):
@@ -271,30 +271,13 @@ class BiCopAbstract(ABC):
         return obs
 
     @classmethod
-    def tau2par(cls, tau: float, **kwargs) -> tuple:
-        """
-        Convert Kendall's tau to bicop parameters.
-        rotation ignored, for tau is symmetric.
-        """
-        return (
-            (
-                *(
-                    max(min(val, cls._PAR_MAX[idx]), cls._PAR_MIN[idx])
-                    for idx, val in enumerate(cls.tau2par_0(tau=tau, **kwargs))
-                ),
-            )
-            if cls.__name__ != "Independent"
-            else tuple()
-        )
-
-    @staticmethod
     @abstractmethod
-    def tau2par_0(tau: float, **kwargs) -> tuple:
+    def tau2par(cls, tau: float, **kwargs) -> tuple:
         raise NotImplementedError
 
     @classmethod
     def hinv1_num(cls, u: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        # TODO
+        # TODO: vectorize solve_ITP
         """First h inverse function using numerical inversion"""
         # Create a copy of the input matrix u
         u_new = u.clone()
@@ -308,7 +291,7 @@ class BiCopAbstract(ABC):
         return cls.invert_f(u[:, [1]], h1)
 
     def invert_f(x: torch.Tensor, f):
-        # TODO
+        # TODO: vectorize solve_ITP
         """
         Numerically invert a function using bisection method.
         Args:

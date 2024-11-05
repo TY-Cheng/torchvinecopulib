@@ -51,7 +51,7 @@ class Clayton(BiCopArchimedean):
         return delta / (delta + 2.0)
 
     @staticmethod
-    def tau2par_0(tau: float, **kwargs) -> tuple:
+    def tau2par(tau: float, **kwargs) -> tuple:
         # ! par δ > 0 (not -1!)
         t_a = abs(tau)
         return ((2.0 * t_a / (1.0 - t_a)),)

@@ -21,5 +21,5 @@ __all__ = [
     "Joe",
     "SET_FAMnROT",
     "StudentT",
-    "Bb1",
+    "BB1",
 ]

@@ -73,13 +73,20 @@ class StudentT(BiCopElliptical):
     def tau2par(
         cls, tau: float = None, obs: torch.Tensor = None, mtd_opt: str = "L-BFGS-B", **kwargs
     ) -> tuple:
+        """quasi MLE for StudentT nu; rho from Kendall's tau"""
         if tau is None:
             tau, _ = kendall_tau(x=obs[:, [0]], y=obs[:, [1]])
         rho = cls.tau2rho_0(tau=tau)
-        nu = minimize(
-            fun=lambda nu: StudentT.l_pdf_0(obs=obs, par=(rho, nu.item())).sum().neg().item(),
-            x0=(2.0,),
-            bounds=((_NU_MIN, _NU_MAX),),
-            method=mtd_opt,
-        ).x[0]
-        return (rho, nu)
+        return (
+            rho,
+            minimize(
+                fun=lambda nu: StudentT.l_pdf_0(obs=obs, par=(rho, nu.item()))
+                .nan_to_num_()
+                .sum()
+                .neg()
+                .item(),
+                x0=(2.1,),
+                bounds=((_NU_MIN, _NU_MAX),),
+                method=mtd_opt,
+            ).x.item(),
+        )

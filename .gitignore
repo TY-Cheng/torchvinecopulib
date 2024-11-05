@@ -6,6 +6,7 @@
 /docs/_build/html
 /scratch
 scratch*.ipynb
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

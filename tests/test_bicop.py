@@ -30,7 +30,7 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
                 )
             )
         )
-    elif bcp_tvc.__name__ == "Bb1":
+    elif bcp_tvc.__name__ == "BB1":
         vec_par = np.array(
             tuple(
                 zip(
@@ -59,17 +59,17 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
                     ).par
                 ).sum()
             )
-        elif bcp_tvc.__name__ == "Bb1" and mtd_fit == "itau":
+        elif bcp_tvc.__name__ == "BB1" and mtd_fit == "itau":
             continue
-        elif bcp_tvc.__name__ == "Bb1" and mtd_fit == "mle":
-            obs = sim_from_bcp(bcp_tvc=bcp_tvc, par= i_par, rot=rot, num_sim=2000)
+        elif bcp_tvc.__name__ == "BB1" and mtd_fit == "mle":
+            obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=i_par, rot=rot, num_sim=2000)
             lst_pvc.append(np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum())
             lst_tvc.append(
                 np.abs(
                     bcp_from_obs(
                         obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
                     ).par
-               ).sum()
+                ).sum()
             )
         else:
             obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=(i_par,), rot=rot, num_sim=2000)

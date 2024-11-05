@@ -43,5 +43,5 @@ class Independent(BiCopAbstract):
         return torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
 
     @staticmethod
-    def tau2par_0(**kwargs) -> tuple:
+    def tau2par(**kwargs) -> tuple:
         return tuple()
