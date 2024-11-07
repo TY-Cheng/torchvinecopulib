@@ -45,3 +45,25 @@ class BiCopArchimedean(BiCopAbstract):
     def hinv1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """first h inverse function, Q(V1=v1 | V0=v0)"""
         return cls.hinv1_num(obs, par)
+
+    @classmethod
+    def par2tau_0(cls, par: tuple[float], num_step: float = 1000) -> float:
+        """
+        Kendall's tau for bivariate Archimedean copula,
+            numerical integration using Simpson's rule
+        """
+        vec_x = torch.linspace(0.0, 1.0, int(num_step))[1:-1]
+        # ! number of intervals is even for Simpson's rule
+        if len(vec_x) % 2 == 1:
+            vec_x = vec_x[:-1]
+        vec_y = cls.generator(vec=vec_x.reshape(-1, 1), par=par) / cls.generator_derivative(
+            vec=vec_x.reshape(-1, 1), par=par
+        )
+        return (
+            (
+                ((vec_x[1] - vec_x[0]) / 3)
+                * (vec_y[0] + 4 * vec_y[1::2].sum() + 2 * vec_y[2:-1:2].sum() + vec_y[-1])
+            )
+            * 4
+            + 1
+        ).item()

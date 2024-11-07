@@ -40,9 +40,9 @@ class Gaussian(BiCopElliptical):
         )
 
     @classmethod
-    def par2tau_0(cls, par: tuple[float]) -> torch.Tensor:
+    def par2tau_0(cls, par: tuple[float]) -> float:
         return cls.rho2tau_0(rho=par[0])
 
     @classmethod
-    def tau2par(cls, tau: float, **kwargs) -> torch.Tensor:
+    def tau2par(cls, tau: float, **kwargs) -> tuple[float]:
         return (cls.tau2rho_0(tau=tau),)

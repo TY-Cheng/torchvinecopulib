@@ -81,7 +81,7 @@ class BB1(BiCopArchimedean):
         return (y.pow(delta_1d) + 1).pow(-theta_1d)
 
     @staticmethod
-    def par2tau_0(par: tuple[float]) -> torch.Tensor:
+    def par2tau_0(par: tuple[float]) -> float:
         return 1 - 2 / (par[1] * (par[0] + 2))
 
     @staticmethod
