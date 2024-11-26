@@ -21,6 +21,9 @@ __all__ = [
 ]
 
 _CDF_MIN, _CDF_MAX = 0.0, 1.0
+_PICKANDS_MIN, _PICKANDS_MAX = 0.5, 1.0
+_PICKANDS_DERIV_MIN, _PICKANDS_DERIV_MAX = -1.0, 1.0
+_PICKANDS_DERIV_2_MIN = 0.0
 _NU_MIN, _NU_MAX = 1.001, 49.999
 _RHO_MIN, _RHO_MAX = -0.99, 0.99
 _TAU_MIN, _TAU_MAX = -0.999, 0.999
@@ -246,8 +249,8 @@ def cdf_func_kernel(obs: torch.Tensor, is_scott: bool = True) -> callable:
 
 
 # * Gaussian distribution CDF (p), PPF (q), density (d)
-pnorm = torch.special.ndtr
-qnorm = torch.special.ndtri
+pnorm: callable = torch.special.ndtr
+qnorm: callable = torch.special.ndtri
 
 
 def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
@@ -343,19 +346,16 @@ def pbvnorm(obs: torch.Tensor, rho: float) -> torch.Tensor:
     return (
         (
             (
-                (
-                    (h.square() + k.square()) / -2.0
-                    # ! broadcast: x,sn are rows; w,h,k are columns
-                    + sn * h * k
-                )
-                / (1.0 - sn.square())
-            ).exp()
-            @ w
-            * (asr / 6.283185307179586)
-            + (pnorm(h) * pnorm(k))
-        )
-        .clamp(min=_CDF_MIN, max=_CDF_MAX)
-    )
+                (h.square() + k.square()) / -2.0
+                # ! broadcast: x,sn are rows; w,h,k are columns
+                + sn * h * k
+            )
+            / (1.0 - sn.square())
+        ).exp()
+        @ w
+        * (asr / 6.283185307179586)
+        + (pnorm(h) * pnorm(k))
+    ).clamp(min=_CDF_MIN, max=_CDF_MAX)
 
 
 # # * Student's t distribution CDF (p), PPF (q), density (d)
@@ -747,9 +747,7 @@ def solve_ITP(
         ACM Transactions on Mathematical Software (TOMS), 47(1), pp.1-24.
 
     https://docs.rs/kurbo/latest/kurbo/common/fn.solve_itp.html
-
     https://en.wikipedia.org/wiki/ITP_method
-
 
     :param fun: function to solve for zero-crossing
     :type fun: callable
@@ -804,7 +802,53 @@ def solve_ITP(
             return x_ITP
         x_wid = x_b - x_a
         eps_scale *= 0.5
+    return 0.5 * (x_a + x_b)
 
+
+def solve_ITP_vectorize(
+    fun: callable,
+    x_a: torch.Tensor,
+    x_b: torch.Tensor,
+    epsilon: float = 1e-9,
+    num_iter_min: int = 1,
+    num_iter_max: int = 31,
+    k_1: float = 0.2,
+) -> torch.Tensor:
+    y_a, y_b, x_wid = fun(x_a), fun(x_b), x_b - x_a
+    eps_2 = epsilon * 2.0
+    n_max = num_iter_min + math.ceil(math.log2(max(1, (x_wid / epsilon).max().item())))
+    eps_scale = epsilon * (1 << n_max)
+    for _ in range(num_iter_max):
+        if (x_wid < eps_2).all():
+            break
+        # * update parameters
+        x_half = 0.5 * (x_a + x_b)
+        rho = eps_scale - 0.5 * x_wid
+        # * interpolation
+        x_f = (y_b * x_a - y_a * x_b) / (y_b - y_a)
+        sigma = x_half - x_f
+        # ! here k2 = 2 hardwired for efficiency.
+        delta = k_1 * x_wid.square()
+        # * truncation
+        x_t = torch.where(
+            condition=delta <= sigma.abs(),
+            input=x_f + torch.copysign(delta, sigma),
+            other=x_half,
+        )
+        # * projection
+        x_ITP = torch.where(
+            condition=rho >= (x_t - x_half).abs(),
+            input=x_t,
+            other=x_half - torch.copysign(rho, sigma),
+        )
+        # * update interval
+        y_ITP = fun(x_ITP)
+        idx = y_ITP > 0.0
+        x_b[idx], y_b[idx] = x_ITP[idx], y_ITP[idx]
+        idx = y_ITP < 0.0
+        x_a[idx], y_a[idx] = x_ITP[idx], y_ITP[idx]
+        x_wid = x_b - x_a
+        eps_scale *= 0.5
     return 0.5 * (x_a + x_b)
 
 

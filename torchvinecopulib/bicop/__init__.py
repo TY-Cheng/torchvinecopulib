@@ -8,6 +8,10 @@ from ._independent import Independent
 from ._joe import Joe
 from ._studentt import StudentT
 from ._bb1 import BB1
+from ._bb5 import BB5
+from ._bb6 import BB6
+from ._bb7 import BB7
+from ._bb8 import BB8
 
 __all__ = [
     "bcp_from_obs",
@@ -22,4 +26,8 @@ __all__ = [
     "SET_FAMnROT",
     "StudentT",
     "BB1",
+    "BB5",
+    "BB6",
+    "BB7",
+    "BB8",
 ]

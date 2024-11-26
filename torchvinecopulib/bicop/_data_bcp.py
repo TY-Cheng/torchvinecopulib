@@ -15,6 +15,10 @@ from ._independent import Independent
 from ._joe import Joe
 from ._studentt import StudentT
 from ._bb1 import BB1
+from ._bb5 import BB5
+from ._bb6 import BB6
+from ._bb7 import BB7
+from ._bb8 import BB8
 
 
 class ENUM_FAM_BICOP(Enum):
@@ -28,12 +32,24 @@ class ENUM_FAM_BICOP(Enum):
     Joe: BiCopAbstract = Joe
     StudentT: BiCopAbstract = StudentT
     BB1: BiCopAbstract = BB1
+    BB5: BiCopAbstract = BB5
+    BB6: BiCopAbstract = BB6
+    BB7: BiCopAbstract = BB7
+    BB8: BiCopAbstract = BB8
 
 
-_FAM_ALL: list[str] = ENUM_FAM_BICOP._member_names_
-# rotatable family
-_FAM_ROT: tuple[str] = ("Clayton", "Gumbel", "Joe", "BB1")
-
+_FAM_ALL: list[str] = list(ENUM_FAM_BICOP.__members__.keys())
+# * rotatable family
+_FAM_ROT: tuple[str] = (
+    "Clayton",
+    "Gumbel",
+    "Joe",
+    "BB1",
+    "BB5",
+    "BB6",
+    "BB7",
+    "BB8",
+)
 # * a set of tuples, each tuple contains a bivariate copula family name (str) and a rotation angle (int)
 # * counter-clockwise rotation
 SET_FAMnROT: set[tuple[str, int]] = {

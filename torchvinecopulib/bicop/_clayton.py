@@ -7,7 +7,10 @@ from ._archimedean import BiCopArchimedean
 
 class Clayton(BiCopArchimedean):
     # Joe 2014 page 168 4.6.1 Bivariate Mardia-Takahasi-Clayton-Cook-Johnson
+    # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.ClaytonCopula.html
+    # ! exchangeability
     # * suggest torch.float64 for |par|<61, torch.float32 for |par|<15
+    # delta
     _PAR_MIN, _PAR_MAX = (1e-4,), (61.0,)
 
     @staticmethod

@@ -6,7 +6,10 @@ from ._archimedean import BiCopArchimedean
 
 class Joe(BiCopArchimedean):
     # Joe 2014 page 170
+    # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.JoeCopula.html
+    # ! exchangeability
     # * suggest torch.float64 for |par|<88, torch.float32 for |par|<7
+    # delta
     _PAR_MIN, _PAR_MAX = (1.000001,), (88.0,)
 
     @staticmethod

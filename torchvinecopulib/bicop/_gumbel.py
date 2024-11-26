@@ -1,11 +1,15 @@
 import torch
 
 from ._archimedean import BiCopArchimedean
+from ._extremevalue import BiCopExtremeValue
 
 
-class Gumbel(BiCopArchimedean):
+class Gumbel(BiCopArchimedean, BiCopExtremeValue):
     # Joe 2014 page 172
+    # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.GumbelCopula.html
+    # ! exchangeability
     # * suggest torch.float64 for |par|<88, torch.float32 for |par|<12
+    # delta
     _PAR_MIN, _PAR_MAX = (1.000001,), (88.0,)
 
     @staticmethod

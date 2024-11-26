@@ -12,7 +12,10 @@ def _g(vec: torch.Tensor, delta: float) -> torch.Tensor:
 
 class Frank(BiCopArchimedean):
     # Joe 2014 page 165
+    # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.FrankCopula.html
+    # ! exchangeability
     # * suggest torch.float64 for |par|<35, torch.float32 for |par|<13
+    # delta
     _PAR_MIN, _PAR_MAX = (-35.0,), (35.0,)
 
     @staticmethod

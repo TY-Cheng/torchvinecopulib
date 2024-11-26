@@ -4,6 +4,9 @@ from ._abc import BiCopAbstract
 
 
 class Independent(BiCopAbstract):
+    # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.IndependentCopula.html
+    # ! exchangeability
+    # no parameter
     _PAR_MIN, _PAR_MAX = tuple(), tuple()
 
     @staticmethod
@@ -16,7 +19,7 @@ class Independent(BiCopAbstract):
 
     @staticmethod
     def hfunc1_0(obs: torch.Tensor, **kwargs) -> torch.Tensor:
-        """first h function, Prob(V2<=v2 | V1=v1)"""
+        """first h function, Prob(V1<=v1 | V0=v0)"""
         return obs[:, [1]]
 
     hinv1_0 = hfunc1_0
@@ -38,7 +41,7 @@ class Independent(BiCopAbstract):
         **kwargs,
     ) -> torch.Tensor:
         # inverse Rosenblatt transform
-        # * p1p2~Unif, hfunc1(v2|v1)=p2, hinv1(p2|v1)=v2
+        # * p1p2~Unif, hfunc1(v1|v0)=p, hinv1(p|v0)=v1
         torch.manual_seed(seed=seed)
         return torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
 

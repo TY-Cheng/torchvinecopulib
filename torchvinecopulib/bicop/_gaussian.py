@@ -8,6 +8,9 @@ from ._elliptical import BiCopElliptical
 
 class Gaussian(BiCopElliptical):
     # Joe 2014 page 163
+    # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.NormalCopula.html
+    # ! exchangeability
+    # rho
     _PAR_MIN, _PAR_MAX = (-0.9999,), (0.9999,)
 
     @staticmethod

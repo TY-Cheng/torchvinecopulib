@@ -4,23 +4,25 @@ Abstract bivariate copula from abstract base class (ABC):
 * data (par, rot as stored in DataBiCop) and functions (methods in children of BiCopAbstract) are decoupled
 * sorted alphabetically for maintainability
 * staticmethod by default, classmethod when reusing
-    by default, calculate pdf_0 by taking cls.l_pdf_0().exp()
-    where l_pdf_0() is staticmethod and pdf_0() is classmethod;
-    override when doing it in reverse order.
+    by default, pdf_0() is from cls.l_pdf_0().exp()
+        where l_pdf_0() is staticmethod and pdf_0() is classmethod
+        override when doing it in reverse order
+    by default, hfunc2_0() and hinv2_0() reuse hfunc1_0() and hinv1_0()
+        ! assuming exchangeability !
 
-! by default, we assume raw bicop observations (obs) is rotated COUNTER-CLOCKWISE, FROM an ideal un-rotated bicop obs:
+! by default, we assume raw bicop obs are already rotated COUNTER-CLOCKWISE, FROM an ideal un-rotated bicop obs
 ! to reuse the function written for un-rotated bicop with suffix `_0`,
-! as pretreatment, we do CLOCKWISE rotation FROM raw bicop obs to the ideal un-rotated bicop obs. (see rot_0 below)
-e.g.
+! as pretreatment, we do CLOCKWISE rotation FROM raw bicop obs to the ideal un-rotated bicop obs via rot_0()
+e.g. rot_0(obs, 90)
 
-RAW BICOP:
+raw bicop obs:
 A | B
   |
 --d---
   |
 C | D
 
-IDEAL UN-ROTATED BICOP:
+ideal un-rotated bicop obs:
 C'| A'
   |
 --d'--
@@ -32,13 +34,20 @@ the `cdf` of raw bicop obs is the area (C), as segmented by the obs point (d) in
 which corresponds to the area (C') as segmented by the obs point (d') in the ideal un-rotated bicop;
 suppose d=(v0,v1), then d'=(v1, 1-v0)
 thus cdf(d)=C'+D'-D'=v1-cdf(d')
+
+* reflection/radial symmetry: c(1-u,1-v)=c(u,v), C(u,v)=C(1-u,1-v)+u+v-1
+    copula's invariance under a 180-degree rotation about the center of the unit square.
+    cop is identical to its survival cop
+* exchange/permutation symmetry (exchangeability): C(u,v)=C(v,u)
+
+Mangold, B. (2017). New concepts of symmetry for copulas (No. 06/2017).
 """
 
 from abc import ABC, abstractmethod
 
 import torch
 
-from ..util import _CDF_MAX, _CDF_MIN, _TAU_MAX, _TAU_MIN
+from ..util import _CDF_MAX, _CDF_MIN, _TAU_MAX, _TAU_MIN, solve_ITP_vectorize
 
 
 class BiCopAbstract(ABC):
@@ -116,6 +125,7 @@ class BiCopAbstract(ABC):
 
     @classmethod
     def hfunc2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
+        # ! by default, assuming exchangeability
         return cls.hfunc1_0(obs=obs.fliplr(), par=par)
 
     @classmethod
@@ -138,10 +148,19 @@ class BiCopAbstract(ABC):
             raise NotImplementedError
         return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
 
-    @staticmethod
-    @abstractmethod
-    def hinv1_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
-        raise NotImplementedError
+    @classmethod
+    def hinv1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+        """inverse of the first h function, Q(p=v1 | V0=v0), via root-finding"""
+        vec_v0, vec_p = obs[:, [0]], obs[:, [1]]
+        return solve_ITP_vectorize(
+            fun=lambda vec_v1: cls.hfunc1_0(
+                obs=torch.hstack([vec_v0, vec_v1]),
+                par=par,
+            )
+            - vec_p,
+            x_a=torch.zeros_like(vec_p),
+            x_b=torch.ones_like(vec_p),
+        )
 
     @classmethod
     def hinv2(
@@ -165,6 +184,7 @@ class BiCopAbstract(ABC):
 
     @classmethod
     def hinv2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
+        # ! by default, assuming exchangeability
         return cls.hinv1_0(obs=obs.fliplr(), par=par)
 
     @classmethod
@@ -259,8 +279,8 @@ class BiCopAbstract(ABC):
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
     ) -> torch.Tensor:
-        # inverse Rosenblatt transform
-        # * v1p2~Unif(IndepBiCop), hfunc1(v2|v1)=p2, hinv1(p2|v1)=v2
+        # * inverse Rosenblatt transform
+        # * (v0,p)~Unif (IndepBiCop), hfunc1(v1|v0)=p, hinv1(p|v0)=v1
         torch.manual_seed(seed=seed)
         obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
         obs[:, [1]] = cls.hinv1(
@@ -274,54 +294,3 @@ class BiCopAbstract(ABC):
     @abstractmethod
     def tau2par(cls, tau: float, **kwargs) -> tuple:
         raise NotImplementedError
-
-    @classmethod
-    def hinv1_num(cls, u: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        # TODO: vectorize solve_ITP
-        """First h inverse function using numerical inversion"""
-        # Create a copy of the input matrix u
-        u_new = u.clone()
-
-        # Define the function h1
-        def h1(v: torch.Tensor) -> torch.Tensor:
-            u_new[:, [1]] = v  # Update the second column of u_new with v
-            return cls.hfunc1_0(u_new, par)  # Call hfunc1_0 with the updated u_new
-
-        # Numerically invert the function
-        return cls.invert_f(u[:, [1]], h1)
-
-    def invert_f(x: torch.Tensor, f):
-        # TODO: vectorize solve_ITP
-        """
-        Numerically invert a function using bisection method.
-        Args:
-            x (torch.Tensor): Input tensor of target values for which we want to find the inverse.
-            f (callable): The function for which we want to compute the inverse.
-        Returns:
-            torch.Tensor: Inverted values (the x that satisfies f(x) = target).
-        """
-        lb = 1e-20
-        ub = 1 - 1e-20
-        n_iter = 35
-
-        # Initialize bounds and temp variables
-        xl = torch.full_like(x, lb)
-        xh = torch.full_like(x, ub)
-        x_tmp = x.clone()
-        fm = torch.zeros_like(x)
-
-        # Bisection method loop
-        for _ in range(n_iter):
-            x_tmp = (xh + xl) / 2.0  # Midpoint
-            fm = f(x_tmp) - x  # Evaluate function and compare with target x
-
-            # Update bounds based on the sign of fm
-            xl = torch.where(fm < 0, x_tmp, xl)
-            xh = torch.where(fm >= 0, x_tmp, xh)
-
-        # Handle NaN values by replacing them with NaN
-        if torch.isnan(fm).any():
-            nan_mask = torch.isnan(fm)
-            x_tmp[nan_mask] = float("nan")
-
-        return x_tmp

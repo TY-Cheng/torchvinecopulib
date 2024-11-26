@@ -7,12 +7,13 @@ from ._archimedean import BiCopArchimedean
 
 class BB1(BiCopArchimedean):
     # Joe 2014 page 190
-    # * two par: theta, delta
+    # ! exchangeability
+    # theta, delta
     _PAR_MIN, _PAR_MAX = (1e-6, 1.000001), (7.0, 7.0)
 
     @staticmethod
     def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        return (vec[:, [0]].pow(-par[0]) - 1.0).pow(par[1])
+        return (vec.pow(-par[0]) - 1.0).pow(par[1])
 
     @staticmethod
     def generator_inv(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -84,25 +85,22 @@ class BB1(BiCopArchimedean):
     def par2tau_0(par: tuple[float]) -> float:
         return 1 - 2 / (par[1] * (par[0] + 2))
 
-    @staticmethod
-    def pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
-        delta_1d = 1 / delta
-        u, v = obs[:, [0]], obs[:, [1]]
-        s, p = (u.pow(-theta) - 1).pow(delta), (v.pow(-theta) - 1).pow(delta)
-        s, p = s + p, s * p
-        s_1_over_delta = s.pow(delta_1d)
-        return (
-            (1 + s_1_over_delta).pow(-(1 / theta + 2))
-            * s.pow(delta_1d - 2)
-            * (theta * (delta - 1) + (theta * delta + 1) * s_1_over_delta)
-            * p.pow(1 - delta_1d)
-            * (u * v).pow(-theta - 1)
-        )
-
     @classmethod
     def l_pdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        return cls.pdf_0(obs=obs, par=par).log()
+        theta, delta = par
+        delta_rec = 1 / delta
+        u, v = obs[:, [0]].clamp_min(1e-10), obs[:, [1]].clamp_min(1e-10)
+        l_x, l_y = (u.pow(-theta) - 1).log() * delta, (v.pow(-theta) - 1).log() * delta
+        x, y = (u.pow(-theta) - 1).pow(delta), (v.pow(-theta) - 1).pow(delta)
+        x_y = x + y
+        x_y_delta_rec = x_y.pow(delta_rec)
+        return (
+            (-1 / theta - 2) * x_y_delta_rec.log1p()
+            + (delta_rec - 2) * x_y.log()
+            + (theta * (delta - 1) + (theta * delta + 1) * x_y_delta_rec).log()
+            + (1 - delta_rec) * (l_x + l_y)
+            - (theta + 1) * (u.log() + v.log())
+        )
 
     @classmethod
     def tau2par(

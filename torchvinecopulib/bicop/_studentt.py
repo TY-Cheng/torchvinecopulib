@@ -9,6 +9,7 @@ from ._elliptical import BiCopElliptical
 
 class StudentT(BiCopElliptical):
     # Joe 2014 page 181
+    # ! exchangeability
     # ! notice all `qt` are from scipy and cannot autograd
     # rho, nu
     _PAR_MIN, _PAR_MAX = (_RHO_MIN, _NU_MIN), (_RHO_MAX, _NU_MAX)
