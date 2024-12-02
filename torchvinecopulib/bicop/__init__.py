@@ -12,6 +12,8 @@ from ._bb5 import BB5
 from ._bb6 import BB6
 from ._bb7 import BB7
 from ._bb8 import BB8
+from ._tawn1 import Tawn1
+from ._tawn2 import Tawn2
 
 __all__ = [
     "bcp_from_obs",
@@ -30,4 +32,6 @@ __all__ = [
     "BB6",
     "BB7",
     "BB8",
+    "Tawn1",
+    "Tawn2",
 ]

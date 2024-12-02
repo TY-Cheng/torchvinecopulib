@@ -63,9 +63,9 @@ pip install torchvinecopulib torch matplotlib pot scikit-learn
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.11.0-py3-none-any.whl
+pip install ./dist/torchvinecopulib-2024.12.0-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.11.0.tar.gz
+pip install ./dist/torchvinecopulib-2024.12.0.tar.gz
 ```
 
 ### (Optional) [Poetry](https://python-poetry.org/docs/) for Dependency Management and Packaging
@@ -86,8 +86,6 @@ Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main
 ## Documentation
 
 - Visit [GitHub Pages website](https://ty-cheng.github.io/torchvinecopulib/)
-
-- Or visit [html-preview.github.io](https://html-preview.github.io/?url=https%3A%2F%2Fgithub.com%2FTY-Cheng%2Ftorchvinecopulib%2Fblob%2Fmain%2Fdocs%2F_build%2Fhtml%2Findex.html)
 
 - Or build by yourself (need [`Sphinx`](https://github.com/sphinx-doc/sphinx), theme [`furo`](https://github.com/pradyunsg/furo) and [the GNU `make`](https://www.gnu.org/software/make/))
 
@@ -111,7 +109,8 @@ coverage run -m pytest ./tests && coverage html
 ## TODO
 
 - more (non-parametric) `bicop` class in `torch`
-- port to TensorFlow Probability for `cuda`-compatible [Student's t cdf/ppf](https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/StudentT)
+- Hasse diagram visualization
+- [`uv`](https://docs.astral.sh/uv/guides/integration/pytorch/) to replace `poetry`, tentatively
 
 ## Contributing
 

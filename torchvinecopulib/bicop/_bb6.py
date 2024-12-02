@@ -22,8 +22,9 @@ class BB6(BiCopArchimedean):
         theta, delta = par
         vec_1 = 1.0 - vec
         return (
-            vec_1.pow(theta).neg().log1p().neg().log().pow(delta - 1.0).neg()
+            vec_1.pow(theta).neg().log1p().neg().pow(delta - 1.0)
             * vec_1.pow(theta - 1.0)
+            / (vec_1.pow(theta) - 1.0)
             * theta
             * delta
         )
@@ -56,6 +57,27 @@ class BB6(BiCopArchimedean):
             * x_exp
             * (1.0 - x_exp.reciprocal()).pow(1.0 - theta_rec)
         )
+
+    @staticmethod
+    def par2tau_0(par: tuple[float], num_step: float = 5000) -> float:
+        """
+        Kendall's tau for bivariate Archimedean copula, numerical integration
+        """
+        theta, delta = par
+        vec_x = torch.linspace(0.0, 1.0, int(num_step))[1:-1].reshape(-1, 1)
+        # ! number of intervals is even for Simpson's rule
+        if len(vec_x) % 2 == 1:
+            vec_x = vec_x[:-1]
+        vec_y = 1 - vec_x
+        tmp = vec_y.pow(theta)
+        vec_y = (1 - tmp) * vec_y * (1 - tmp).log() / (tmp * theta * delta)
+        return (
+            (vec_x[1] - vec_x[0])
+            * (vec_y[0] + 4 * vec_y[1::2].sum() + 2 * vec_y[2:-1:2].sum() + vec_y[-1])
+            / 3
+            * 4
+            + 1
+        ).item()
 
     @staticmethod
     def pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:

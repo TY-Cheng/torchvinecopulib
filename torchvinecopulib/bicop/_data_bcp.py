@@ -19,6 +19,8 @@ from ._bb5 import BB5
 from ._bb6 import BB6
 from ._bb7 import BB7
 from ._bb8 import BB8
+from ._tawn1 import Tawn1
+from ._tawn2 import Tawn2
 
 
 class ENUM_FAM_BICOP(Enum):
@@ -36,6 +38,8 @@ class ENUM_FAM_BICOP(Enum):
     BB6: BiCopAbstract = BB6
     BB7: BiCopAbstract = BB7
     BB8: BiCopAbstract = BB8
+    Tawn1: BiCopAbstract = Tawn1
+    Tawn2: BiCopAbstract = Tawn2
 
 
 _FAM_ALL: list[str] = list(ENUM_FAM_BICOP.__members__.keys())
@@ -49,6 +53,8 @@ _FAM_ROT: tuple[str] = (
     "BB6",
     "BB7",
     "BB8",
+    "Tawn1",
+    "Tawn2",
 )
 # * a set of tuples, each tuple contains a bivariate copula family name (str) and a rotation angle (int)
 # * counter-clockwise rotation

@@ -43,12 +43,13 @@ class BB1(BiCopArchimedean):
         u, v = obs[:, [0]], obs[:, [1]]
         x, y = (u.pow(-theta) - 1).pow(delta), (v.pow(-theta) - 1).pow(delta)
         x_y = x + y
-        return (
+        res = (
             (x_y.pow(detla_1d) + 1).pow(-1 / theta - 1)
             * x_y.pow(detla_1d - 1)
             * x.pow(1 - detla_1d)
             * u.pow(-theta - 1)
         )
+        return torch.where(res.isnan(), v, res)
 
     @staticmethod
     def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -81,10 +82,6 @@ class BB1(BiCopArchimedean):
         # * y to v
         return (y.pow(delta_1d) + 1).pow(-theta_1d)
 
-    @staticmethod
-    def par2tau_0(par: tuple[float]) -> float:
-        return 1 - 2 / (par[1] * (par[0] + 2))
-
     @classmethod
     def l_pdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         theta, delta = par
@@ -101,6 +98,10 @@ class BB1(BiCopArchimedean):
             + (1 - delta_rec) * (l_x + l_y)
             - (theta + 1) * (u.log() + v.log())
         )
+
+    @staticmethod
+    def par2tau_0(par: tuple[float]) -> float:
+        return 1 - 2 / (par[1] * (par[0] + 2))
 
     @classmethod
     def tau2par(

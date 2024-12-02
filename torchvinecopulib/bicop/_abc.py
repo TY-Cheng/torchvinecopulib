@@ -278,16 +278,29 @@ class BiCopAbstract(ABC):
         seed: int = 0,
         device: str = "cpu",
         dtype: torch.dtype = torch.float64,
+        is_sobol: bool = False,
     ) -> torch.Tensor:
         # * inverse Rosenblatt transform
         # * (v0,p)~Unif (IndepBiCop), hfunc1(v1|v0)=p, hinv1(p|v0)=v1
-        torch.manual_seed(seed=seed)
-        obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
-        obs[:, [1]] = cls.hinv1(
-            obs=obs,
-            par=par,
-            rot=rot,
-        )
+        if is_sobol:
+            obs = (
+                torch.quasirandom.SobolEngine(
+                    dimension=2,
+                    scramble=True,
+                    seed=seed,
+                )
+                .draw(n=num_sim, dtype=dtype)
+                .to(device)
+            )
+        else:
+            torch.manual_seed(seed=seed)
+            obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
+        if cls.__name__ != "Independent":
+            obs[:, [1]] = cls.hinv1(
+                obs=obs,
+                par=par,
+                rot=rot,
+            )
         return obs
 
     @classmethod

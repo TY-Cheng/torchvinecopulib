@@ -34,7 +34,8 @@ class BiCopExtremeValue(BiCopAbstract):
     @classmethod
     def hfunc1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
-        tmp = obs[:, [1]].log() / (obs[:, [0]] * obs[:, [1]]).log()
+        tmp = obs[:, [1]].log()
+        tmp /= tmp + obs[:, [0]].log()
         tmp = (
             cls.cdf_0(obs=obs, par=par)
             / obs[:, [0]]
@@ -48,7 +49,8 @@ class BiCopExtremeValue(BiCopAbstract):
     @classmethod
     def hfunc2_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """second h function, Prob(V0<=v0 | V1=v1)"""
-        tmp = obs[:, [1]].log() / (obs[:, [0]] * obs[:, [1]]).log()
+        tmp = obs[:, [1]].log()
+        tmp /= tmp + obs[:, [0]].log()
         tmp = (
             cls.cdf_0(obs=obs, par=par)
             / obs[:, [1]]
