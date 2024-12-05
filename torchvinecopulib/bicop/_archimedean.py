@@ -32,19 +32,16 @@ class BiCopArchimedean(BiCopAbstract):
     @classmethod
     def hfunc1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
-        tmp = (
-            cls.generator_derivative(
-                obs[:, [0]],
+        tmp = cls.generator_derivative(
+            obs[:, [0]],
+            par,
+        ) / cls.generator_derivative(
+            cls.generator_inv(
+                cls.generator(obs[:, [0]], par) + cls.generator(obs[:, [1]], par),
                 par,
-            )
-            / cls.generator_derivative(
-                cls.generator_inv(
-                    cls.generator(obs[:, [0]], par) + cls.generator(obs[:, [1]], par),
-                    par,
-                ),
-                par,
-            )
-        ).clamp_max(1.0)
+            ),
+            par,
+        )
         return torch.where(tmp.isnan(), obs[:, [1]], tmp)
 
     @classmethod

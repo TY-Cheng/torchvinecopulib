@@ -8,6 +8,8 @@ class BB7(BiCopArchimedean):
     # ! exchangeability
     # theta, delta
     _PAR_MIN, _PAR_MAX = (1.000001, 0.000001), (6.0, 25.0)
+    # ! l_pdf_0
+    _EPS = 1e-7
 
     @staticmethod
     def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -47,24 +49,24 @@ class BB7(BiCopArchimedean):
         ).item()
 
     @staticmethod
-    def pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def l_pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         theta, delta = par
+        theta_delta = theta * delta
         theta_rec, delta_rec = 1.0 / theta, 1.0 / delta
-        u_bar, v_bar = 1.0 - obs[:, [0]], 1.0 - obs[:, [1]]
+        u_bar, v_bar = (
+            (1.0 - obs[:, [0]]).clamp(min=BB7._EPS, max=1 - BB7._EPS),
+            (1.0 - obs[:, [1]]).clamp(min=BB7._EPS, max=1 - BB7._EPS),
+        )
         x, y = (1.0 - u_bar.pow(theta)).pow(-delta) - 1.0, (1.0 - v_bar.pow(theta)).pow(
             -delta
         ) - 1.0
         x_y_1 = x + y + 1.0
-        x_y_1_delta_rec = x_y_1.pow(delta_rec)
+        x_y_1_neg_delta_rec = x_y_1.pow(-delta_rec)
         return (
-            ((1 + x) * (1 + y)).pow(1 + delta_rec)
-            * x_y_1_delta_rec.pow(-theta_rec)
-            * (u_bar * v_bar).pow(theta - 1)
-            * (x_y_1_delta_rec - 1).pow(theta_rec - 2)
-            * (-1 + (x_y_1_delta_rec * (1 + delta) - delta) * theta)
-            / x_y_1.square()
+            (1.0 + delta_rec) * (x.log1p() + y.log1p())
+            + x_y_1_neg_delta_rec.log()
+            + (theta - 1.0) * (u_bar.log() + v_bar.log())
+            + (theta_rec - 2.0) * (1.0 - x_y_1_neg_delta_rec).log()
+            + (theta + theta_delta - x_y_1_neg_delta_rec * (1.0 + theta_delta)).log()
+            - 2.0 * x_y_1.log()
         )
-
-    @classmethod
-    def l_pdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        return cls.pdf_0(obs=obs, par=par).log()

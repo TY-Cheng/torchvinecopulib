@@ -814,7 +814,13 @@ def solve_ITP_vectorize(
     num_iter_max: int = 31,
     k_1: float = 0.2,
 ) -> torch.Tensor:
+    y_a, y_b = fun(x_a), fun(x_b)
+    # * corner cases
+    tmp = torch.zeros_like(y_b)
+    x_a = torch.where(condition=y_b.isclose(tmp), input=x_b - epsilon * num_iter_max, other=x_a)
+    x_b = torch.where(condition=y_a.isclose(tmp), input=x_a + epsilon * num_iter_max, other=x_b)
     y_a, y_b, x_wid = fun(x_a), fun(x_b), x_b - x_a
+    #
     eps_2 = epsilon * 2.0
     n_max = num_iter_min + math.ceil(math.log2(max(1, (x_wid / epsilon).max().item())))
     eps_scale = epsilon * (1 << n_max)

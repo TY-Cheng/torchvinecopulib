@@ -52,6 +52,8 @@ from ..util import _CDF_MAX, _CDF_MIN, _TAU_MAX, _TAU_MIN, solve_ITP_vectorize
 
 class BiCopAbstract(ABC):
     _PAR_MIN, _PAR_MAX = tuple(), tuple()
+    # ! hinv1_0
+    _EPS = 1e-7
 
     @classmethod
     def cdf(
@@ -151,7 +153,11 @@ class BiCopAbstract(ABC):
     @classmethod
     def hinv1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0), via root-finding"""
-        vec_v0, vec_p = obs[:, [0]], obs[:, [1]]
+        vec_v0, vec_p = (
+            obs[:, [0]].clamp(BiCopAbstract._EPS, 1.0 - BiCopAbstract._EPS),
+            obs[:, [1]].clamp(BiCopAbstract._EPS, 1.0 - BiCopAbstract._EPS),
+        )
+
         return solve_ITP_vectorize(
             fun=lambda vec_v1: cls.hfunc1_0(
                 obs=torch.hstack([vec_v0, vec_v1]),

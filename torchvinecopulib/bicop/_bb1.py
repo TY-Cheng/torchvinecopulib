@@ -10,6 +10,8 @@ class BB1(BiCopArchimedean):
     # ! exchangeability
     # theta, delta
     _PAR_MIN, _PAR_MAX = (1e-6, 1.000001), (7.0, 7.0)
+    # ! l_pdf_0
+    _EPS = 1e-7
 
     @staticmethod
     def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -82,11 +84,14 @@ class BB1(BiCopArchimedean):
         # * y to v
         return (y.pow(delta_1d) + 1).pow(-theta_1d)
 
-    @classmethod
-    def l_pdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    @staticmethod
+    def l_pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         theta, delta = par
         delta_rec = 1 / delta
-        u, v = obs[:, [0]].clamp_min(1e-10), obs[:, [1]].clamp_min(1e-10)
+        u, v = (
+            obs[:, [0]].clamp(BB1._EPS, 1 - BB1._EPS),
+            obs[:, [1]].clamp(BB1._EPS, 1 - BB1._EPS),
+        )
         l_x, l_y = (u.pow(-theta) - 1).log() * delta, (v.pow(-theta) - 1).log() * delta
         x, y = (u.pow(-theta) - 1).pow(delta), (v.pow(-theta) - 1).pow(delta)
         x_y = x + y

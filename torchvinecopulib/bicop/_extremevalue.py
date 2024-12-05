@@ -43,7 +43,7 @@ class BiCopExtremeValue(BiCopAbstract):
                 cls.pickands_dep_func(vec=tmp, par=par)
                 - tmp * cls.pickands_dep_func_derivative(vec=tmp, par=par)
             )
-        ).clamp_(_CDF_MIN, _CDF_MAX)
+        )
         return torch.where(tmp.isnan(), obs[:, [1]], tmp)
 
     @classmethod
@@ -58,7 +58,7 @@ class BiCopExtremeValue(BiCopAbstract):
                 cls.pickands_dep_func(tmp, par)
                 + (1 - tmp) * cls.pickands_dep_func_derivative(tmp, par)
             )
-        ).clamp_(_CDF_MIN, _CDF_MAX)
+        )
         return torch.where(tmp.isnan(), obs[:, [0]], tmp)
 
     @classmethod
@@ -81,7 +81,7 @@ class BiCopExtremeValue(BiCopAbstract):
                     - cls.pickands_dep_func_derivative_2(vec=tmp, par=par) / lsum
                 )
             )
-        ).clamp_min_(_CDF_MIN)
+        )
 
     @classmethod
     def l_pdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
