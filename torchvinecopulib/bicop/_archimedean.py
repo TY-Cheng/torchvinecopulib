@@ -53,7 +53,9 @@ class BiCopArchimedean(BiCopAbstract):
         # ! number of intervals is even for Simpson's rule
         if len(vec_x) % 2 == 1:
             vec_x = vec_x[:-1]
-        vec_y = cls.generator(vec=vec_x, par=par) / cls.generator_derivative(vec=vec_x, par=par)
+        vec_y = cls.generator(vec=vec_x, par=par) / cls.generator_derivative(
+            vec=vec_x, par=par
+        )
         return (
             (vec_x[1] - vec_x[0])
             * (vec_y[0] + 4 * vec_y[1::2].sum() + 2 * vec_y[2:-1:2].sum() + vec_y[-1])

@@ -18,7 +18,10 @@ class Clayton(BiCopArchimedean):
         delta = par[0]
 
         return (
-            ((-delta * obs[:, [0]].log()).expm1() + (-delta * obs[:, [1]].log()).expm1()).log1p()
+            (
+                (-delta * obs[:, [0]].log()).expm1()
+                + (-delta * obs[:, [1]].log()).expm1()
+            ).log1p()
             * (-1.0 / delta)
         ).exp()
 
@@ -35,7 +38,8 @@ class Clayton(BiCopArchimedean):
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         delta = par[0]
         return (
-            ((obs[:, [1]]).pow(-delta / (delta + 1.0)) - 1.0) * obs[:, [0]].pow(-delta) + 1.0
+            ((obs[:, [1]]).pow(-delta / (delta + 1.0)) - 1.0) * obs[:, [0]].pow(-delta)
+            + 1.0
         ).pow(-1.0 / delta)
 
     @staticmethod
@@ -45,7 +49,8 @@ class Clayton(BiCopArchimedean):
         return (
             log1p(delta)
             - (delta + 1.0) * (l_0 + l_1)
-            - (1.0 / delta + 2.0) * ((-delta * l_0).expm1() + (-delta * l_1).expm1()).log1p()
+            - (1.0 / delta + 2.0)
+            * ((-delta * l_0).expm1() + (-delta * l_1).expm1()).log1p()
         )
 
     @staticmethod

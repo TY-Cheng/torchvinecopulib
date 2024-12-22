@@ -59,7 +59,9 @@ _FAM_ROT: tuple[str] = (
 # * a set of tuples, each tuple contains a bivariate copula family name (str) and a rotation angle (int)
 # * counter-clockwise rotation
 SET_FAMnROT: set[tuple[str, int]] = {
-    (fam, rot) if fam in _FAM_ROT else (fam, 0) for fam in _FAM_ALL for rot in (0, 90, 180, 270)
+    (fam, rot) if fam in _FAM_ROT else (fam, 0)
+    for fam in _FAM_ALL
+    for rot in (0, 90, 180, 270)
 }
 
 

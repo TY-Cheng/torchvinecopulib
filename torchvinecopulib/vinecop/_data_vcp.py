@@ -69,7 +69,11 @@ class DataVineCop(ABC):
             lst_nebr = [-1] * idx + [v_diag]
             for i_lv in range(lv, -1, -1):
                 for v_l, v_r, _ in self.dct_tree[i_lv]:
-                    if (v_l not in lst_diag) and (v_r not in lst_diag) and (v_diag in (v_l, v_r)):
+                    if (
+                        (v_l not in lst_diag)
+                        and (v_r not in lst_diag)
+                        and (v_diag in (v_l, v_r))
+                    ):
                         lst_nebr.append(v_l if v_diag == v_r else v_r)
             lst_diag.append(v_diag)
             mat.append(lst_nebr)
@@ -84,7 +88,13 @@ class DataVineCop(ABC):
         :return: negative log likelihood
         :rtype: float
         """
-        return sum([bcp.negloglik for dct_lv in self.dct_bcp.values() for bcp in dct_lv.values()])
+        return sum(
+            [
+                bcp.negloglik
+                for dct_lv in self.dct_bcp.values()
+                for bcp in dct_lv.values()
+            ]
+        )
 
     @property
     def num_dim(self) -> int:
@@ -99,7 +109,9 @@ class DataVineCop(ABC):
     @property
     def num_par(self) -> int:
         """number of parameters"""
-        return sum([bcp.num_par for dct_lv in self.dct_bcp.values() for bcp in dct_lv.values()])
+        return sum(
+            [bcp.num_par for dct_lv in self.dct_bcp.values() for bcp in dct_lv.values()]
+        )
 
     def _loc_bcp(self, v_down: int, s_down: frozenset) -> tuple:
         """locate the bicop on upper level that generates this pseudo obs
@@ -189,7 +201,8 @@ class DataVineCop(ABC):
         )
         if lv == 0:
             tpl_uvw = tuple(
-                (u, v, round(w, ndigits=num_digit)) for (u, v, _), w in self.dct_tree[lv].items()
+                (u, v, round(w, ndigits=num_digit))
+                for (u, v, _), w in self.dct_tree[lv].items()
             )
         elif is_bcp:
             tpl_uvw = tuple(
@@ -235,14 +248,17 @@ class DataVineCop(ABC):
             linewidths=0.5,
             edgecolors="gray",
         )
-        nx.draw_networkx_labels(G=graph_nx, pos=pos, ax=ax, font_size=font_size_vertex, alpha=0.9)
+        nx.draw_networkx_labels(
+            G=graph_nx, pos=pos, ax=ax, font_size=font_size_vertex, alpha=0.9
+        )
         nx.draw_networkx_edges(
             G=graph_nx,
             pos=pos,
             ax=ax,
             edgelist=graph_nx.edges(),
             width=[
-                math.log1p(0.5 + 100 * abs(tpl[2]["weight"])) for tpl in graph_nx.edges(data=True)
+                math.log1p(0.5 + 100 * abs(tpl[2]["weight"]))
+                for tpl in graph_nx.edges(data=True)
             ],
             style="--",
             alpha=0.9,
@@ -342,7 +358,9 @@ class DataVineCop(ABC):
                 pos_bcp[lst_node_bcp[_]] = loc_x[_], -lv + 0.5
             for _ in lst_node_bcp:
                 __ = "\n" * min(lv, 1)
-                dct_label[_] = f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
+                dct_label[_] = (
+                    f"{_[0]},{_[1]};{__}{','.join([f'{__}' for __ in sorted(_[2])])}"
+                )
             graph_nx.add_edges_from(lst_edge)
         pos = pos_obs | pos_bcp
         # highlight source nodes, given tpl_first
@@ -487,7 +505,9 @@ class DataVineCop(ABC):
                 if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
                     # ! notice hfunc1 or hfunc2
                     if bcp.fam == "Independent":
-                        dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][(v_down, s_up)]
+                        dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][
+                            (v_down, s_up)
+                        ]
                     else:
                         dct_obs[lv_down][(v_down, s_down)] = (
                             bcp.hfunc2 if v_down == v_l else bcp.hfunc1
@@ -557,7 +577,9 @@ class DataVineCop(ABC):
                 if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
                     # ! notice hfunc1 or hfunc2
                     if bcp.fam == "Independent":
-                        dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][(v_down, s_up)]
+                        dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][
+                            (v_down, s_up)
+                        ]
                     else:
                         dct_obs[lv_down][(v_down, s_down)] = (
                             bcp.hfunc2 if v_down == v_l else bcp.hfunc1
@@ -684,7 +706,9 @@ class DataVineCop(ABC):
                 if bcp.fam == "Independent":
                     dct_obs[v_down, s_down] = dct_obs[v_down, s_up]
                 else:
-                    dct_obs[v_down, s_down] = (bcp.hfunc1 if is_down_right else bcp.hfunc2)(
+                    dct_obs[v_down, s_down] = (
+                        bcp.hfunc1 if is_down_right else bcp.hfunc2
+                    )(
                         torch.hstack(
                             [
                                 dct_obs[v_l, s_up],
@@ -716,12 +740,16 @@ class DataVineCop(ABC):
         if dim_sim > 0:
             if is_sobol:
                 obs_mvcp_indep = (
-                    torch.quasirandom.SobolEngine(dimension=dim_sim, scramble=True, seed=seed)
+                    torch.quasirandom.SobolEngine(
+                        dimension=dim_sim, scramble=True, seed=seed
+                    )
                     .draw(n=num_sim, dtype=dtype)
                     .to(device)
                 )
             else:
-                obs_mvcp_indep = torch.rand(size=(num_sim, dim_sim), device=device, dtype=dtype)
+                obs_mvcp_indep = torch.rand(
+                    size=(num_sim, dim_sim), device=device, dtype=dtype
+                )
         else:
             obs_mvcp_indep = None
         # * update dct_obs and dct_ref_count (initialize source vertices)
@@ -739,7 +767,9 @@ class DataVineCop(ABC):
             while s:
                 v, s = _visit(v_down=v, s_down=s, is_hinv=True)
         # * sort pseudo obs by key
-        return torch.hstack([val for _, val in sorted(dct_obs.items(), key=itemgetter(0))])
+        return torch.hstack(
+            [val for _, val in sorted(dct_obs.items(), key=itemgetter(0))]
+        )
 
     def cdf(
         self,

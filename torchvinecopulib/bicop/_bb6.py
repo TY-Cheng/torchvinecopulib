@@ -34,7 +34,10 @@ class BB6(BiCopArchimedean):
     @staticmethod
     def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         theta, delta = par
-        x_delta, y_delta = BB6.generator(obs[:, [0]], par=par), BB6.generator(obs[:, [1]], par=par)
+        x_delta, y_delta = (
+            BB6.generator(obs[:, [0]], par=par),
+            BB6.generator(obs[:, [1]], par=par),
+        )
         return (x_delta + y_delta).pow(1.0 / delta).neg().expm1().neg().pow(
             1.0 / theta
         ).neg() + 1.0
@@ -44,9 +47,10 @@ class BB6(BiCopArchimedean):
         """first h function, Prob(V1<=v1 | V0=v0)"""
         theta, delta = par
         theta_rec, delta_rec = 1.0 / theta, 1.0 / delta
-        x, y = (1.0 - obs[:, [0]]).pow(theta).neg().log1p().neg(), (1.0 - obs[:, [1]]).pow(
-            theta
-        ).neg().log1p().neg()
+        x, y = (
+            (1.0 - obs[:, [0]]).pow(theta).neg().log1p().neg(),
+            (1.0 - obs[:, [1]]).pow(theta).neg().log1p().neg(),
+        )
         x_delta, y_delta = x.pow(delta), y.pow(delta)
         x_exp = x.exp()
         pow_sum = x_delta + y_delta

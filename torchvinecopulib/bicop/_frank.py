@@ -23,7 +23,9 @@ class Frank(BiCopArchimedean):
         delta = par[0]
         return (
             -(
-                _g(vec=obs[:, [0]], delta=delta) * _g(vec=obs[:, [1]], delta=delta) / expm1(-delta)
+                _g(vec=obs[:, [0]], delta=delta)
+                * _g(vec=obs[:, [1]], delta=delta)
+                / expm1(-delta)
             ).log1p()
             / delta
         )
@@ -42,7 +44,10 @@ class Frank(BiCopArchimedean):
         delta = par[0]
         x = obs[:, [0]]
         return (
-            _g(vec=torch.as_tensor(data=1.0, dtype=obs.dtype, device=obs.device), delta=delta)
+            _g(
+                vec=torch.as_tensor(data=1.0, dtype=obs.dtype, device=obs.device),
+                delta=delta,
+            )
             / ((-delta * x).exp() / obs[:, [1]] - _g(vec=x, delta=delta))
         ).log1p() / (-delta)
 
@@ -83,11 +88,8 @@ class Frank(BiCopArchimedean):
     def tau2par(tau: float, **kwargs) -> tuple:
         tau_a = abs(tau)
 
-        def f(delta: float) -> float:
-            return Frank.par2tau_0(par=(delta,)) - tau_a
-
         delta = solve_ITP(
-            fun=f,
+            fun=lambda delta: Frank.par2tau_0(par=(delta,)) - tau_a,
             x_a=Frank._PAR_MIN[0] + 1e-6,
             x_b=Frank._PAR_MAX[0] - 1e-5,
             epsilon=1e-6,

@@ -10,14 +10,17 @@ from torchvinecopulib.util import _TAU_MAX, _TAU_MIN
 from . import DCT_FAM, LST_MTD_FIT, compare_chart_vec, sim_from_bcp
 
 
-def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tuple | None:
+def calc_fit_par(
+    bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None
+) -> tuple | None:
     """
     given bcp, fam, rot, prepare vector of parameters to fit
     simulate based on fam/rot/par, then compare the fitted parameters given mtd_fit
     """
     if bcp_tvc.__name__ == "Independent":
         assert (
-            bcp_from_obs(sim_from_bcp(bcp_tvc=bcp_tvc), tpl_fam=(bcp_tvc.__name__,)).par == tuple()
+            bcp_from_obs(sim_from_bcp(bcp_tvc=bcp_tvc), tpl_fam=(bcp_tvc.__name__,)).par
+            == tuple()
         )
         return None
     elif bcp_tvc.__name__ == "StudentT":
@@ -51,11 +54,16 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
     for i_par in vec_par:
         if bcp_tvc.__name__ == "StudentT":
             obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=i_par, rot=rot, num_sim=2000)
-            lst_pvc.append(np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum())
+            lst_pvc.append(
+                np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum()
+            )
             lst_tvc.append(
                 np.abs(
                     bcp_from_obs(
-                        obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
+                        obs_bcp=obs,
+                        thresh_trunc=1,
+                        mtd_fit=mtd_fit,
+                        tpl_fam=[bcp_tvc.__name__],
                     ).par
                 ).sum()
             )
@@ -63,11 +71,16 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
             continue
         elif bcp_tvc.__name__ == "BB1" and mtd_fit == "mle":
             obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=i_par, rot=rot, num_sim=2000)
-            lst_pvc.append(np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum())
+            lst_pvc.append(
+                np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum()
+            )
             lst_tvc.append(
                 np.abs(
                     bcp_from_obs(
-                        obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
+                        obs_bcp=obs,
+                        thresh_trunc=1,
+                        mtd_fit=mtd_fit,
+                        tpl_fam=[bcp_tvc.__name__],
                     ).par
                 ).sum()
             )
@@ -76,7 +89,10 @@ def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tupl
             lst_pvc.append(Bicop(data=obs.cpu(), controls=temp_fcb).parameters.item())
             lst_tvc.append(
                 bcp_from_obs(
-                    obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
+                    obs_bcp=obs,
+                    thresh_trunc=1,
+                    mtd_fit=mtd_fit,
+                    tpl_fam=[bcp_tvc.__name__],
                 ).par[0]
             )
     return np.array(lst_pvc), np.array(lst_tvc)
@@ -97,7 +113,10 @@ def calc_cdfhfunchinvlpdf(
     elif func_name in ("cdf", "hfunc1", "hinv1", "hfunc2", "hinv2"):
         vec_pvc = getattr(bcp_pvc, func_name)(obs_bcp.cpu())
         vec_tvc = (
-            getattr(bcp_tvc, func_name)(obs=obs_bcp, par=par, rot=rot).flatten().cpu().numpy()
+            getattr(bcp_tvc, func_name)(obs=obs_bcp, par=par, rot=rot)
+            .flatten()
+            .cpu()
+            .numpy()
         )
     else:
         raise ValueError("Unknown test type")
@@ -122,7 +141,9 @@ def calc_tau2par2tau(bcp_pvc, bcp_tvc, func_name: str = None, rot: int = 0) -> t
             )
         if func_name == "par2tau":
             vec_pvc = np.array(
-                tuple(map(lambda par: bcp_pvc.parameters_to_tau(np.array([par])), vec_pvc))
+                tuple(
+                    map(lambda par: bcp_pvc.parameters_to_tau(np.array([par])), vec_pvc)
+                )
             ).flatten()
             vec_tvc = np.array(
                 tuple(map(lambda par: bcp_tvc.par2tau(par=(par,), rot=rot), vec_tvc))
@@ -172,7 +193,9 @@ class TestBiCop(unittest.TestCase):
             obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)
             obs_bcp_clone = obs_bcp.clone()
             mtd_fit = LST_MTD_FIT[1]
-            logging.info(msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}")
+            logging.info(
+                msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
+            )
 
             temp_fcb = FitControlsBicop(family_set=[bcp_pvc], parametric_method=mtd_fit)
             data_pvc = Bicop(data=obs_bcp.cpu(), controls=temp_fcb)
@@ -212,7 +235,9 @@ class TestBiCop(unittest.TestCase):
             obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)
             obs_bcp_clone = obs_bcp.clone()
             mtd_fit = LST_MTD_FIT[1]
-            logging.info(msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}")
+            logging.info(
+                msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
+            )
             temp_fcb = FitControlsBicop(family_set=[bcp_pvc], parametric_method=mtd_fit)
             data_pvc = Bicop(data=obs_bcp.cpu(), controls=temp_fcb)
             for func_name in ("tau2par", "par2tau"):

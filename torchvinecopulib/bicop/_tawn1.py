@@ -25,7 +25,9 @@ class Tawn1(BiCopExtremeValue):
         ).clamp_(min=_PICKANDS_MIN, max=_PICKANDS_MAX)
 
     @staticmethod
-    def pickands_dep_func_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def pickands_dep_func_derivative(
+        vec: torch.Tensor, par: tuple[float]
+    ) -> torch.Tensor:
         theta, psi = par
         t_1 = 1 - vec
         t_1_theta = t_1.pow(theta)
@@ -39,7 +41,9 @@ class Tawn1(BiCopExtremeValue):
         ).clamp_(min=_PICKANDS_DERIV_MIN, max=_PICKANDS_DERIV_MAX)
 
     @staticmethod
-    def pickands_dep_func_derivative_2(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def pickands_dep_func_derivative_2(
+        vec: torch.Tensor, par: tuple[float]
+    ) -> torch.Tensor:
         theta, psi = par
         t_1 = 1 - vec
         t_1_theta = t_1.pow(theta)

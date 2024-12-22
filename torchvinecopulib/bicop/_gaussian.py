@@ -21,7 +21,9 @@ class Gaussian(BiCopElliptical):
     def hfunc1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         rho = par[0]
-        return pnorm((qnorm(obs[:, [1]]) - rho * qnorm(obs[:, [0]])) / sqrt(1.0 - rho**2))
+        return pnorm(
+            (qnorm(obs[:, [1]]) - rho * qnorm(obs[:, [0]])) / sqrt(1.0 - rho**2)
+        )
 
     @staticmethod
     def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:

@@ -1,7 +1,6 @@
 from abc import abstractmethod
 
 import torch
-from ..util import _CDF_MIN, _CDF_MAX
 from ._abc import BiCopAbstract
 
 
@@ -17,19 +16,25 @@ class BiCopExtremeValue(BiCopAbstract):
 
     @staticmethod
     @abstractmethod
-    def pickands_dep_func_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def pickands_dep_func_derivative(
+        vec: torch.Tensor, par: tuple[float]
+    ) -> torch.Tensor:
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
-    def pickands_dep_func_derivative_2(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def pickands_dep_func_derivative_2(
+        vec: torch.Tensor, par: tuple[float]
+    ) -> torch.Tensor:
         raise NotImplementedError
 
     @classmethod
     def cdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         # * Czado 2019, page 49
         tmp = obs[:, [0]] * obs[:, [1]]
-        return tmp.pow(exponent=cls.pickands_dep_func(vec=obs[:, [1]].log() / tmp.log(), par=par))
+        return tmp.pow(
+            exponent=cls.pickands_dep_func(vec=obs[:, [1]].log() / tmp.log(), par=par)
+        )
 
     @classmethod
     def hfunc1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -78,7 +83,8 @@ class BiCopExtremeValue(BiCopAbstract):
                 * tmp
                 * (
                     pickands1d.square()
-                    - cls.pickands_dep_func_derivative_2(vec=tmp, par=par) / lsum
+                    # NOTE
+                    + cls.pickands_dep_func_derivative_2(vec=tmp, par=par) / lsum
                 )
             )
         )
@@ -98,15 +104,20 @@ class BiCopExtremeValue(BiCopAbstract):
         # ! number of intervals is even for Simpson's rule
         if len(vec_x) % 2 == 1:
             vec_x = vec_x[:-1]
-        vec_y = cls.pickands_dep_func_derivative(vec=vec_x, par=par) / cls.pickands_dep_func(
+        vec_y = cls.pickands_dep_func_derivative(
             vec=vec_x, par=par
-        )
+        ) / cls.pickands_dep_func(vec=vec_x, par=par)
         vec_y = (1 + (1 - vec_x) * vec_y) * (1 - vec_x * vec_y)
         return (
             1
             - (
                 (vec_x[1] - vec_x[0])
-                * (vec_y[0] + 4 * vec_y[1::2].sum() + 2 * vec_y[2:-1:2].sum() + vec_y[-1])
+                * (
+                    vec_y[0]
+                    + 4 * vec_y[1::2].sum()
+                    + 2 * vec_y[2:-1:2].sum()
+                    + vec_y[-1]
+                )
                 / 3
             )
         ).item()

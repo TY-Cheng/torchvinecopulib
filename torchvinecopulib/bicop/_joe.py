@@ -24,7 +24,9 @@ class Joe(BiCopArchimedean):
         """first h function, Prob(V1<=v1 | V0=v0)"""
         delta = par[0]
         y = (1.0 - obs[:, [1]]).pow(delta)
-        return (1.0 + y / (1.0 - obs[:, [0]]).pow(delta) - y).pow(-1.0 + 1.0 / delta) * (1.0 - y)
+        return (1.0 + y / (1.0 - obs[:, [0]]).pow(delta) - y).pow(
+            -1.0 + 1.0 / delta
+        ) * (1.0 - y)
 
     @staticmethod
     def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -36,14 +38,19 @@ class Joe(BiCopArchimedean):
         delta_1m = 1.0 - delta
         delta_frac = delta_1m / delta
         # * initial y, from p and x
-        y = (1.0 + (-1.0 + (1.0 - p).pow(delta_frac)) * (x * delta_1m).exp()).pow(1.0 / delta_frac)
+        y = (1.0 + (-1.0 + (1.0 - p).pow(delta_frac)) * (x * delta_1m).exp()).pow(
+            1.0 / delta_frac
+        )
         x = (x * delta).exp()
         delta_frac = 1.0 / delta
         for _ in range(23):
             xy1 = x * (y - 1.0)
             x1y1delta = ((x.reciprocal() - 1.0) * y + 1.0).pow(delta_frac)
             y -= (
-                delta * (xy1 - y) * (x1y1delta.reciprocal()) * (p * (-xy1 + y) + xy1 * x1y1delta)
+                delta
+                * (xy1 - y)
+                * (x1y1delta.reciprocal())
+                * (p * (-xy1 + y) + xy1 * x1y1delta)
             ) / ((x - 1.0) * xy1 - delta * x)
             y.clamp_(min=_CDF_MIN, max=_CDF_MAX)
         # * y to v
@@ -64,7 +71,10 @@ class Joe(BiCopArchimedean):
                 1.0
                 + 2.0
                 / (2.0 - delta)
-                * (0.42278433509846713 - torch.special.digamma(torch.as_tensor(2.0 / delta + 1.0)))
+                * (
+                    0.42278433509846713
+                    - torch.special.digamma(torch.as_tensor(2.0 / delta + 1.0))
+                )
             ).item()
 
     @staticmethod
@@ -81,7 +91,12 @@ class Joe(BiCopArchimedean):
     def tau2par(tau: float, **kwargs) -> tuple:
         tau_a = abs(tau)
 
-        def f(delta: float) -> float:
-            return Joe.par2tau_0(par=(delta,)) - tau_a
-
-        return (solve_ITP(fun=f, x_a=0.99, x_b=20600.0, epsilon=1e-6, k_1=0.1),)
+        return (
+            solve_ITP(
+                fun=lambda delta: Joe.par2tau_0(par=(delta,)) - tau_a,
+                x_a=0.99,
+                x_b=20600.0,
+                epsilon=1e-6,
+                k_1=0.1,
+            ),
+        )

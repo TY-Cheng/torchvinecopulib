@@ -35,7 +35,9 @@ class StudentT(BiCopElliptical):
         rho, nu = par
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu)
         return pt(
-            vec=((y - rho * x) / ((1.0 - rho**2) * (nu + x.square()) / (nu + 1.0)).sqrt()),
+            vec=(
+                (y - rho * x) / ((1.0 - rho**2) * (nu + x.square()) / (nu + 1.0)).sqrt()
+            ),
             nu=nu + 1.0,
         )
 
@@ -45,13 +47,18 @@ class StudentT(BiCopElliptical):
         rho, nu = par
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu + 1.0)
         return pt(
-            vec=(x * rho + y * ((nu + x.square()) * (1.0 - rho**2) / (nu + 1.0)).sqrt()),
+            vec=(
+                x * rho + y * ((nu + x.square()) * (1.0 - rho**2) / (nu + 1.0)).sqrt()
+            ),
             nu=nu,
         )
 
     @staticmethod
     def l_pdf_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
-        rho, nu = max(min(par[0], _RHO_MAX), _RHO_MIN), max(min(par[1], _NU_MAX), _NU_MIN)
+        rho, nu = (
+            max(min(par[0], _RHO_MAX), _RHO_MIN),
+            max(min(par[1], _NU_MAX), _NU_MIN),
+        )
         nu2 = nu / 2.0
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu)
         return (
@@ -61,7 +68,9 @@ class StudentT(BiCopElliptical):
             + lgamma(nu2 + 1)
             - lgamma(nu2)
             - (nu2 + 1)
-            * ((x.square() + y.square() - 2.0 * rho * x * y) / nu / (1 - rho**2)).log1p()
+            * (
+                (x.square() + y.square() - 2.0 * rho * x * y) / nu / (1 - rho**2)
+            ).log1p()
             - l_dt(x, nu=nu)
             - l_dt(y, nu=nu)
         )
@@ -72,7 +81,11 @@ class StudentT(BiCopElliptical):
 
     @classmethod
     def tau2par(
-        cls, tau: float = None, obs: torch.Tensor = None, mtd_opt: str = "L-BFGS-B", **kwargs
+        cls,
+        tau: float = None,
+        obs: torch.Tensor = None,
+        mtd_opt: str = "L-BFGS-B",
+        **kwargs,
     ) -> tuple:
         """quasi MLE for StudentT nu; rho from Kendall's tau"""
         if tau is None:

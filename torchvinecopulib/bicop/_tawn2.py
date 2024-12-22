@@ -20,13 +20,14 @@ class Tawn2(BiCopExtremeValue):
         theta, psi = par
         t_1 = 1 - vec
         return (
-            (1 - psi) * t_1
-            + (vec.pow(theta) + (psi * t_1).pow(theta)).pow(1 / theta)
+            (1 - psi) * t_1 + (vec.pow(theta) + (psi * t_1).pow(theta)).pow(1 / theta)
             # ! A[t] ∈ (0.5, 1)
         ).clamp_(min=_PICKANDS_MIN, max=_PICKANDS_MAX)
 
     @staticmethod
-    def pickands_dep_func_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def pickands_dep_func_derivative(
+        vec: torch.Tensor, par: tuple[float]
+    ) -> torch.Tensor:
         theta, psi = par
         t_1 = 1 - vec
         t_theta = vec.pow(theta)
@@ -34,12 +35,15 @@ class Tawn2(BiCopExtremeValue):
         return (
             -1
             + psi
-            + (t_theta / vec - t_1_psi_theta / t_1) * (t_theta + t_1_psi_theta).pow(-1 + 1 / theta)
+            + (t_theta / vec - t_1_psi_theta / t_1)
+            * (t_theta + t_1_psi_theta).pow(-1 + 1 / theta)
             # ! A'[t] ∈ (-1, +1)
         ).clamp_(min=_PICKANDS_DERIV_MIN, max=_PICKANDS_DERIV_MAX)
 
     @staticmethod
-    def pickands_dep_func_derivative_2(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def pickands_dep_func_derivative_2(
+        vec: torch.Tensor, par: tuple[float]
+    ) -> torch.Tensor:
         theta, psi = par
         t_1 = 1 - vec
         t_theta = vec.pow(theta)

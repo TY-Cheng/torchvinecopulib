@@ -85,6 +85,7 @@ pandas = { version = "*" }
 pot = { version = "*" }
 pytest = { version = "*" }
 pyvinecopulib = { version = "0.6.6" }
+ruff = { version = "*" }
 scikit-learn = { version = "*" }
 sphinx = { version = "*" }
 sphinx-pyproject = { version = "*" }
@@ -107,6 +108,7 @@ pandas = { version = "*" }
 pot = { version = "*" }
 pytest = { version = "*" }
 pyvinecopulib = { version = "0.6.6" }
+ruff = { version = "*" }
 scikit-learn = { version = "*" }
 sphinx = { version = "*" }
 sphinx_pyproject = { version = "*" }
@@ -127,6 +129,7 @@ dev_cpu = [
     "pot",
     "pytest",
     "pyvinecopulib",
+    "ruff",
     "scikit-learn",
     "sphinx",
     "sphinx_pyproject",
@@ -146,6 +149,7 @@ dev_cuda = [
     "pot",
     "pytest",
     "pyvinecopulib",
+    "ruff",
     "scikit-learn",
     "sphinx",
     "sphinx_pyproject",

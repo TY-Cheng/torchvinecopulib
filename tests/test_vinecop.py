@@ -9,9 +9,21 @@ import pyvinecopulib as pvc
 import torch
 from scipy.stats import kendalltau
 
-from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pth, vcp_from_sim
+from torchvinecopulib.vinecop import (
+    vcp_from_json,
+    vcp_from_obs,
+    vcp_from_pth,
+    vcp_from_sim,
+)
 
-from . import DCT_FAM, DEVICE, LST_MTD_FIT, LST_MTD_SEL, compare_chart_vec, sim_vcp_from_bcp
+from . import (
+    DCT_FAM,
+    DEVICE,
+    LST_MTD_FIT,
+    LST_MTD_SEL,
+    compare_chart_vec,
+    sim_vcp_from_bcp,
+)
 
 
 class TestVineCop(unittest.TestCase):
@@ -25,7 +37,9 @@ class TestVineCop(unittest.TestCase):
         num_dim = 10
         for len_first in (1, 3):
             for fam, (_, bcp_tvc) in DCT_FAM.items():
-                V_mvcp = vcp_from_sim(num_dim=num_dim, seed=0).sim(num_sim=1000, device=DEVICE)
+                V_mvcp = vcp_from_sim(num_dim=num_dim, seed=0).sim(
+                    num_sim=1000, device=DEVICE
+                )
                 for mtd_bidep in [
                     "kendall_tau",
                     "ferreira_tail_dep_coeff",
@@ -37,7 +51,10 @@ class TestVineCop(unittest.TestCase):
                             {random.randint(0, num_dim - 1) for _ in range(len_first)}
                         )
                         len_first = len(tpl_first)
-                        if fam in ("StudentT", "Independent") or mtd_bidep == "mutual_info":
+                        if (
+                            fam in ("StudentT", "Independent")
+                            or mtd_bidep == "mutual_info"
+                        ):
                             continue
                         logging.info(
                             msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
@@ -63,7 +80,9 @@ class TestVineCop(unittest.TestCase):
         for fam, (bcp_pvc, bcp_tvc) in DCT_FAM.items():
             if fam in ("StudentT", "Independent"):
                 continue
-            logging.info(msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}")
+            logging.info(
+                msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
+            )
             V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
             num_dim = V_mvcp.shape[1]
             # * struct: sim, cvine
@@ -147,7 +166,9 @@ class TestVineCop(unittest.TestCase):
             diag_tvc = [res_tvc.matrix[i, i] for i in range(num_dim)]
             assert sum([(1 + a - b) for a, b in zip(diag_tvc, diag_pvc)]) <= 1
             # * cdf: pvc, rvine
-            vec_tvc = res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=30000).cpu().numpy().flatten()
+            vec_tvc = (
+                res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=30000).cpu().numpy().flatten()
+            )
             vec_pvc = res_pvc.cdf(V_mvcp.cpu(), N=20000, num_threads=4)
             if err := compare_chart_vec(
                 vec_pvc=vec_pvc,
@@ -275,7 +296,8 @@ class TestVineCop(unittest.TestCase):
         for col_i, col_j in combinations(range(V_mvcp_rosenblatt.shape[1]), 2):
             assert (
                 kendalltau(
-                    x=V_mvcp_rosenblatt[:, col_i].cpu(), y=V_mvcp_rosenblatt[:, col_j].cpu()
+                    x=V_mvcp_rosenblatt[:, col_i].cpu(),
+                    y=V_mvcp_rosenblatt[:, col_j].cpu(),
                 ).pvalue
                 > 0.1
             )

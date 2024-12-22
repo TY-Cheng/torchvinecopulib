@@ -194,7 +194,8 @@ def wasserstein_dist_ind(
     torch.manual_seed(seed=seed)
     return sinkhorn2(
         a=torch.ones_like(x) / x.shape[0],
-        b=torch.ones(size=(num_step**2, 1), device=x.device, dtype=x.dtype) / num_step**2,
+        b=torch.ones(size=(num_step**2, 1), device=x.device, dtype=x.dtype)
+        / num_step**2,
         M=torch.cdist(
             x1=torch.hstack([x, y]),
             x2=torch.as_tensor(
@@ -519,7 +520,10 @@ def l_dt(obs: torch.Tensor, nu: float) -> torch.Tensor:
     """
     nu2 = nu / 2.0
     return ((obs.square() / nu).log1p() * (-nu2 - 0.5)) + (
-        math.lgamma(nu2 + 0.5) - math.lgamma(nu2) - 0.5723649429247001 - 0.5 * math.log(nu)
+        math.lgamma(nu2 + 0.5)
+        - math.lgamma(nu2)
+        - 0.5723649429247001
+        - 0.5 * math.log(nu)
     )
 
 
@@ -568,8 +572,12 @@ def pbvt(
         hhh, kkk = h - rho * k, k - rho * h
         hs, ks = hhh.sign(), kkk.sign()
         idx = hhh.abs() + ors > 0.0
-        xnhk[idx] = hhh[idx].square() / (hhh[idx].square() + ors * (nu + k[idx].square()))
-        xnkh[idx] = kkk[idx].square() / (kkk[idx].square() + ors * (nu + h[idx].square()))
+        xnhk[idx] = hhh[idx].square() / (
+            hhh[idx].square() + ors * (nu + k[idx].square())
+        )
+        xnkh[idx] = kkk[idx].square() / (
+            kkk[idx].square() + ors * (nu + h[idx].square())
+        )
         # gmph as hhh, gmpk as kkk
         if nu.ceil() % 2 == 0:
             bvt = torch.full_like(
@@ -791,7 +799,9 @@ def solve_ITP(
         # * truncation
         x_t = x_f + math.copysign(delta, sigma) if delta <= abs(sigma) else x_half
         # * projection
-        x_ITP = x_t if (rho >= abs(x_t - x_half)) else x_half - math.copysign(rho, sigma)
+        x_ITP = (
+            x_t if (rho >= abs(x_t - x_half)) else x_half - math.copysign(rho, sigma)
+        )
         # * update interval
         y_ITP = fun(x_ITP)
         if y_ITP > 0.0:
@@ -817,8 +827,12 @@ def solve_ITP_vectorize(
     y_a, y_b = fun(x_a), fun(x_b)
     # * corner cases
     tmp = torch.zeros_like(y_b)
-    x_a = torch.where(condition=y_b.isclose(tmp), input=x_b - epsilon * num_iter_max, other=x_a)
-    x_b = torch.where(condition=y_a.isclose(tmp), input=x_a + epsilon * num_iter_max, other=x_b)
+    x_a = torch.where(
+        condition=y_b.isclose(tmp), input=x_b - epsilon * num_iter_max, other=x_a
+    )
+    x_b = torch.where(
+        condition=y_a.isclose(tmp), input=x_a + epsilon * num_iter_max, other=x_b
+    )
     y_a, y_b, x_wid = fun(x_a), fun(x_b), x_b - x_a
     #
     eps_2 = epsilon * 2.0

@@ -42,7 +42,9 @@ def _mst_from_edge_rvine(
     """
     # * edge2tree, rvine (Kruskal's MST, disjoint set/ union find)
     # ! modify 'parent' to let a pseudo obs vertex linked to its previous bicop vertex
-    parent = {v_s_cond: frozenset((v_s_cond[0], *v_s_cond[1])) for v_s_cond in tpl_key_obs}
+    parent = {
+        v_s_cond: frozenset((v_s_cond[0], *v_s_cond[1])) for v_s_cond in tpl_key_obs
+    }
     # * and bicop vertices are linked to themselves
     parent.update({v: v for _, v in parent.items()})
     rank = {k_obs: 0 for k_obs in parent}
@@ -70,7 +72,8 @@ def _mst_from_edge_rvine(
         if dct_edge:
             # ! min heap, by -ABS(bidep) in ASCENDING order
             heap_bidep_abs = [
-                (-abs(bidep), v_l, v_r, s_cond) for (v_l, v_r, s_cond), bidep in dct_edge.items()
+                (-abs(bidep), v_l, v_r, s_cond)
+                for (v_l, v_r, s_cond), bidep in dct_edge.items()
             ]
             heapq.heapify(heap_bidep_abs)
             while len(mst) < num_mst:
@@ -125,7 +128,9 @@ def _mst_from_edge_cvine(
     # * init dict, the sum of abs bidep for each vertex
     if s_first:
         # ! filter for edges that touch first set vertices
-        dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in tpl_key_obs if v_s_cond[0] in s_first}
+        dct_bidep_abs_sum = {
+            v_s_cond: 0 for v_s_cond in tpl_key_obs if v_s_cond[0] in s_first
+        }
     else:
         dct_bidep_abs_sum = {v_s_cond: 0 for v_s_cond in tpl_key_obs}
     for (v_l, v_r, s_cond), bidep in dct_edge_lv.items():
@@ -137,7 +142,8 @@ def _mst_from_edge_cvine(
     # * center vertex (and its cond set) for cvine at this level
     # ! min heap, by -ABS(bidep) in ASCENDING order
     heap_bidep_abs_sum = [
-        (-bidep_abs_sum, v_s_cond) for v_s_cond, bidep_abs_sum in dct_bidep_abs_sum.items()
+        (-bidep_abs_sum, v_s_cond)
+        for v_s_cond, bidep_abs_sum in dct_bidep_abs_sum.items()
     ]
     heapq.heapify(heap_bidep_abs_sum)
     v_c = None
@@ -214,8 +220,12 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
         mst.remove(tmp_drop)
     else:
         # ! both sets have more than two vertices, TSP with precedence constraints (clustered TSP)
-        tsp_first = threshold_accepting_tsp(graph_nx.subgraph(s_first), init_cycle="greedy")
-        tsp_rest = threshold_accepting_tsp(graph_nx.subgraph(s_rest), init_cycle="greedy")
+        tsp_first = threshold_accepting_tsp(
+            graph_nx.subgraph(s_first), init_cycle="greedy"
+        )
+        tsp_rest = threshold_accepting_tsp(
+            graph_nx.subgraph(s_rest), init_cycle="greedy"
+        )
         edge_first = _edges_from_tsp(tsp_first)
         edge_rest = _edges_from_tsp(tsp_rest)
         edge_2tsp = edge_first | edge_rest
@@ -223,9 +233,10 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
         cost_mst = math.inf
         # ! add, add, (drop, drop), drop
         for drop_first, drop_rest in product(edge_first, edge_rest):
-            for edge_add_1, edge_add_2 in [*zip(drop_first, drop_rest)], [
-                *zip(drop_rest, drop_first[::-1])
-            ]:
+            for edge_add_1, edge_add_2 in (
+                [*zip(drop_first, drop_rest)],
+                [*zip(drop_rest, drop_first[::-1])],
+            ):
                 # ! add two edges to chain the two TSPs
                 edge_add_1 = tuple(sorted(edge_add_1))
                 edge_add_2 = tuple(sorted(edge_add_2))
@@ -241,7 +252,11 @@ def _mst_from_edge_dvine(tpl_key_obs: tuple, dct_edge_lv: dict, s_first: set) ->
                     tmp_mst.remove(drop_rest)
                 # ! drop the edge with max cost and (at least) one vertex not in s_first
                 drop_non_first = max(
-                    (k for k in tmp_mst if (k[0] not in s_first) or (k[1] not in s_first)),
+                    (
+                        k
+                        for k in tmp_mst
+                        if (k[0] not in s_first) or (k[1] not in s_first)
+                    ),
                     key=lambda x: dct_cost[x],
                 )
                 tmp_cost -= dct_cost[drop_non_first]
@@ -281,12 +296,12 @@ def _tpl_sim(deq_sim: deque, dct_tree: dict, s_rest: set) -> tuple:
                         # ! select the one with less hfunc calls
                         deq_sim.append(
                             v_l
-                            if ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_l,))[
-                                -1
-                            ]
-                            <= ref_count_hfunc(dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_r,))[
-                                -1
-                            ]
+                            if ref_count_hfunc(
+                                dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_l,)
+                            )[-1]
+                            <= ref_count_hfunc(
+                                dct_tree=dct_tree, tpl_sim=tuple(deq_sim) + (v_r,)
+                            )[-1]
                             else v_r
                         )
                     if lv == 0:
@@ -400,7 +415,9 @@ def vcp_from_obs(
     for lv in r_dim_1:
         # * lv_0 obs, preprocess to append an empty frozenset (s_cond)
         if lv == 0:
-            dct_obs[0] = {(idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)}
+            dct_obs[0] = {
+                (idx, frozenset()): obs_mvcp[:, [idx]] for idx in range(num_dim)
+            }
         if is_Dissmann:
             # * obs2edge, list possible edges that connect two pseudo obs, calc f_bidep
             tpl_key_obs = dct_obs[lv].keys()
@@ -436,7 +453,9 @@ def vcp_from_obs(
                         dct_edge_lv=dct_edge[lv],
                         s_first=s_first,
                     )
-                    dct_tree[lv] = {key_edge: dct_edge[lv][key_edge] for key_edge in mst}
+                    dct_tree[lv] = {
+                        key_edge: dct_edge[lv][key_edge] for key_edge in mst
+                    }
                 else:
                     dct_tree[lv] = dct_edge[lv]
             elif mtd_vine == "cvine":

@@ -24,7 +24,10 @@ class BB7(BiCopArchimedean):
         theta, delta = par
         vec_1 = 1.0 - vec
         return (
-            -(1.0 - vec_1.pow(theta)).pow(-1.0 - delta) * vec_1.pow(-1.0 + theta) * theta * delta
+            -(1.0 - vec_1.pow(theta)).pow(-1.0 - delta)
+            * vec_1.pow(-1.0 + theta)
+            * theta
+            * delta
         )
 
     @staticmethod
@@ -57,9 +60,10 @@ class BB7(BiCopArchimedean):
             (1.0 - obs[:, [0]]).clamp(min=BB7._EPS, max=1 - BB7._EPS),
             (1.0 - obs[:, [1]]).clamp(min=BB7._EPS, max=1 - BB7._EPS),
         )
-        x, y = (1.0 - u_bar.pow(theta)).pow(-delta) - 1.0, (1.0 - v_bar.pow(theta)).pow(
-            -delta
-        ) - 1.0
+        x, y = (
+            (1.0 - u_bar.pow(theta)).pow(-delta) - 1.0,
+            (1.0 - v_bar.pow(theta)).pow(-delta) - 1.0,
+        )
         x_y_1 = x + y + 1.0
         x_y_1_neg_delta_rec = x_y_1.pow(-delta_rec)
         return (

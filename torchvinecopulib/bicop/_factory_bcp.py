@@ -54,7 +54,9 @@ def bcp_from_obs(
     if tau is None:
         tau, pval = kendall_tau(x=obs_bcp[:, [0]], y=obs_bcp[:, [1]])
         if pval >= thresh_trunc:
-            return DataBiCop(fam="Independent", negloglik=0.0, num_obs=num_obs, par=tuple(), rot=0)
+            return DataBiCop(
+                fam="Independent", negloglik=0.0, num_obs=num_obs, par=tuple(), rot=0
+            )
 
     def _fit_itau(i_fam: str, i_rot: int) -> DataBiCop:
         # fetch the class
@@ -73,7 +75,9 @@ def bcp_from_obs(
     fam_rot = (tpl for tpl in SET_FAMnROT if tpl[0] in tpl_fam)
     vec_bcp_data = np.fromiter((_fit_itau(*tpl) for tpl in fam_rot), dtype=DataBiCop)
     # ! take note `k` best to accelerate MLE
-    idx_sel = np.argsort(a=tuple(_.__getattribute__(mtd_sel) for _ in vec_bcp_data))[:topk]
+    idx_sel = np.argsort(a=tuple(_.__getattribute__(mtd_sel) for _ in vec_bcp_data))[
+        :topk
+    ]
     # ! take studentt in (as its `itau` nll usually not good)
     idx = [idx for idx, _ in enumerate(vec_bcp_data) if _.fam == "StudentT"]
     if idx:
@@ -96,7 +100,10 @@ def bcp_from_obs(
             i_cls = ENUM_FAM_BICOP[i_fam].value
 
             res = minimize(
-                fun=lambda par: i_cls.l_pdf(par=par, obs=obs_bcp, rot=i_rot).sum().neg().item(),
+                fun=lambda par: i_cls.l_pdf(par=par, obs=obs_bcp, rot=i_rot)
+                .sum()
+                .neg_()
+                .item(),
                 x0=vec_bcp_data[i_idx].par,
                 bounds=tuple(zip(i_cls._PAR_MIN, i_cls._PAR_MAX)),
                 method=mtd_mle,

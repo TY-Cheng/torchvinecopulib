@@ -24,7 +24,9 @@ class BB1(BiCopArchimedean):
     @staticmethod
     def generator_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
         theta, delta = par
-        return (-delta * theta * vec.pow(-1.0 - theta)) * (vec.pow(-theta) - 1).pow(delta - 1)
+        return (-delta * theta * vec.pow(-1.0 - theta)) * (vec.pow(-theta) - 1).pow(
+            delta - 1
+        )
 
     @staticmethod
     def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -75,7 +77,11 @@ class BB1(BiCopArchimedean):
             y -= (
                 x_y_delta_1d.pow(2 * delta - 1)
                 * (x_y_delta_1d + 1).pow(2 + theta_1d)
-                * (fix - x_y_delta_1d.pow(1 - delta) * (1 + x_y_delta_1d).pow(-theta_1d - 1))
+                * (
+                    fix
+                    - x_y_delta_1d.pow(1 - delta)
+                    * (1 + x_y_delta_1d).pow(-theta_1d - 1)
+                )
                 * theta_delta
                 / (theta_delta - theta + x_y_delta_1d * (1 + theta_delta))
             )
@@ -110,7 +116,11 @@ class BB1(BiCopArchimedean):
 
     @classmethod
     def tau2par(
-        cls, tau: float = None, obs: torch.Tensor = None, mtd_opt: str = "L-BFGS-B", **kwargs
+        cls,
+        tau: float = None,
+        obs: torch.Tensor = None,
+        mtd_opt: str = "L-BFGS-B",
+        **kwargs,
     ) -> tuple[float]:
         """quasi MLE for BB1 theta delta; using Kendall's tau as a constraint"""
         if tau is None:
