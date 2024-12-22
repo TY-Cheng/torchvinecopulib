@@ -1,5 +1,3 @@
-import importlib.metadata
-
 from . import bicop, util, vinecop
 
 __all__ = [
@@ -7,5 +5,3 @@ __all__ = [
     "util",
     "vinecop",
 ]
-
-__version__ = importlib.metadata.version("torchvinecopulib")

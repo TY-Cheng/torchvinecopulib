@@ -9,6 +9,8 @@ on:
   pull_request:
     branches: ["main"]
 
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -29,7 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install "pyvinecopulib==0.6.6"
-          python -m pip install flake8 pytest numpy scipy torch pot matplotlib scikit-learn pandas
+          python -m pip install flake8 pytest numpy scipy torch pot matplotlib scikit-learn pandas coverage
           # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Lint with flake8
         run: |
@@ -41,4 +43,14 @@ jobs:
         run: |
           python -c "import sys; print(sys.version)"
           python -c "import torch; print(torch.cuda.is_available())"
-          pytest ./tests --verbose
+          coverage run -m pytest ./tests
+          coverage xml
+          coverage report
+          coverage html
+
+      - name: Upload test coverage to Codacy
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' }}
+        run: |
+          export CODACY_API_BASE_URL=${{ secrets.CODACY_API_BASE_URL }}
+          export CODACY_PROJECT_TOKEN=${{ secrets.CODACY_PROJECT_TOKEN }}
+          bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r ./coverage.xml
