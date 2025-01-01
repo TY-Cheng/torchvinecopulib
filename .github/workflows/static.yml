@@ -5,6 +5,7 @@ on:
   # Run static when Lint Pytest workflow completes
   workflow_run:
     workflows: [Lint Pytest]
+    branches: ["main"]
     types:
       - completed
 
