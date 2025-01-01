@@ -529,7 +529,7 @@ class DataVineCop(ABC):
                     # can be tensor or None
                     if dct_obs[lv].get((idx, s_cond)) is None:
                         _visit_hfunc(v_down=idx, s_down=s_cond)
-                res += bcp.l_pdf(
+                res = res + bcp.l_pdf(
                     obs=torch.hstack(
                         [
                             dct_obs[lv][(v_l, s_cond)],

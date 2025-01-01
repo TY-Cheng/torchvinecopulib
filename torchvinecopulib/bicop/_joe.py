@@ -46,13 +46,13 @@ class Joe(BiCopArchimedean):
         for _ in range(23):
             xy1 = x * (y - 1.0)
             x1y1delta = ((x.reciprocal() - 1.0) * y + 1.0).pow(delta_frac)
-            y -= (
+            y = y - (
                 delta
                 * (xy1 - y)
                 * (x1y1delta.reciprocal())
                 * (p * (-xy1 + y) + xy1 * x1y1delta)
             ) / ((x - 1.0) * xy1 - delta * x)
-            y.clamp_(min=_CDF_MIN, max=_CDF_MAX)
+            y = y.clamp(min=_CDF_MIN, max=_CDF_MAX)
         # * y to v
         return 1.0 - y.pow(delta_frac)
 

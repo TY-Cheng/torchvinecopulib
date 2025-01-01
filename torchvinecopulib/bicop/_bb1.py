@@ -69,12 +69,12 @@ class BB1(BiCopArchimedean):
         y = (x_delta_1p.pow(-theta_1d - 1) * p * x.pow(delta_1d - 1)).pow(
             1 / (1 + theta_delta)
         ) * x_delta_1p.pow(theta_1d)
-        y *= x * (1 + x.pow(-delta_1d)) / p
-        y -= x
+        y = y * x * (1 + x.pow(-delta_1d)) / p
+        y = y - x
         fix = p * x.pow(delta_1d - 1) * u.pow(theta + 1)
         for _ in range(23):
             x_y_delta_1d = (x + y).pow(delta_1d)
-            y -= (
+            y = y - (
                 x_y_delta_1d.pow(2 * delta - 1)
                 * (x_y_delta_1d + 1).pow(2 + theta_1d)
                 * (
@@ -86,7 +86,7 @@ class BB1(BiCopArchimedean):
                 / (theta_delta - theta + x_y_delta_1d * (1 + theta_delta))
             )
             # ! y ∈ (0, +∞)
-            y.clamp_(min=_CDF_MIN)
+            y = y.clamp(min=_CDF_MIN)
         # * y to v
         return (y.pow(delta_1d) + 1).pow(-theta_1d)
 
@@ -129,7 +129,7 @@ class BB1(BiCopArchimedean):
             fun=lambda theta: BB1.l_pdf_0(
                 obs=obs, par=(theta.item(), 2 / (theta.item() + 2) / (1 - tau))
             )
-            .nan_to_num_()
+            .nan_to_num()
             .sum()
             .neg()
             .item(),

@@ -73,7 +73,7 @@ class BiCopAbstract(ABC):
             res = obs[:, [0]] - col_p
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @staticmethod
     @abstractmethod
@@ -98,7 +98,7 @@ class BiCopAbstract(ABC):
             res = 1.0 - cls.hfunc2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @staticmethod
     @abstractmethod
@@ -123,7 +123,7 @@ class BiCopAbstract(ABC):
             res = cls.hfunc1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
     def hfunc2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
@@ -148,7 +148,7 @@ class BiCopAbstract(ABC):
             res = 1.0 - cls.hinv2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
     def hinv1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
@@ -186,7 +186,7 @@ class BiCopAbstract(ABC):
             res = cls.hinv1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
-        return res.nan_to_num_().clamp_(min=_CDF_MIN, max=_CDF_MAX)
+        return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
     def hinv2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
@@ -201,7 +201,7 @@ class BiCopAbstract(ABC):
         rot: int,
     ) -> torch.Tensor:
         """bicop log-density values"""
-        return cls.l_pdf_0(obs=cls.rot_0(obs=obs, rot=rot), par=par).nan_to_num_()
+        return cls.l_pdf_0(obs=cls.rot_0(obs=obs, rot=rot), par=par).nan_to_num()
 
     @staticmethod
     @abstractmethod
@@ -215,7 +215,7 @@ class BiCopAbstract(ABC):
         par: tuple,
         rot: int,
     ) -> float:
-        return cls.l_pdf(obs=obs, par=par, rot=rot).nan_to_num_().sum().neg().item()
+        return cls.l_pdf(obs=obs, par=par, rot=rot).nan_to_num().sum().neg().item()
 
     @classmethod
     def par2tau(
@@ -249,8 +249,8 @@ class BiCopAbstract(ABC):
         """
         return (
             cls.pdf_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
-            .nan_to_num_()
-            .clamp_min_(min=_CDF_MIN)
+            .nan_to_num()
+            .clamp_min(min=_CDF_MIN)
         )
 
     @classmethod

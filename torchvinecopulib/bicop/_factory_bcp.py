@@ -102,7 +102,7 @@ def bcp_from_obs(
             res = minimize(
                 fun=lambda par: i_cls.l_pdf(par=par, obs=obs_bcp, rot=i_rot)
                 .sum()
-                .neg_()
+                .neg()
                 .item(),
                 x0=vec_bcp_data[i_idx].par,
                 bounds=tuple(zip(i_cls._PAR_MIN, i_cls._PAR_MAX)),

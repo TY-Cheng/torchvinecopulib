@@ -44,7 +44,7 @@ class BB5(BiCopExtremeValue):
             )
             .pow(1 / theta)
             # ! A[t] ∈ (0.5, 1)
-            .clamp_(min=_PICKANDS_MIN, max=_PICKANDS_MAX)
+            .clamp(min=_PICKANDS_MIN, max=_PICKANDS_MAX)
         )
 
     @staticmethod
@@ -68,7 +68,7 @@ class BB5(BiCopExtremeValue):
                 * (t_1_theta_delta_neg / (1 - vec) - t_theta_delta_neg / vec)
             )
             # ! A'[t] ∈ (-1, +1)
-        ).clamp_(min=_PICKANDS_DERIV_MIN, max=_PICKANDS_DERIV_MAX)
+        ).clamp(min=_PICKANDS_DERIV_MIN, max=_PICKANDS_DERIV_MAX)
 
     @staticmethod
     def pickands_dep_func_derivative_2(
@@ -107,4 +107,4 @@ class BB5(BiCopExtremeValue):
                 )
             )
             # ! A''[t] ∈ (0, +∞), A[t] convex
-        ).clamp_min_(min=_PICKANDS_DERIV_2_MIN)
+        ).clamp_min(min=_PICKANDS_DERIV_2_MIN)

@@ -44,8 +44,8 @@ class Gumbel(BiCopArchimedean, BiCopExtremeValue):
         tmp = -x - delta_1 * x.log() + obs[:, [1]].log()
         z = x.clone()
         for _ in range(31):
-            z *= -(tmp + (z.log() - 1.0) * delta_1) / (z + delta_1)
-            z.clamp_min_(min=x)
+            z = z * (-(tmp + (z.log() - 1.0) * delta_1) / (z + delta_1))
+            z = z.clamp_min(min=x)
 
         return (z.pow(delta) - x.pow(delta)).pow(1.0 / delta).neg().exp()
 

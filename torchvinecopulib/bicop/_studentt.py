@@ -95,7 +95,7 @@ class StudentT(BiCopElliptical):
             rho,
             minimize(
                 fun=lambda nu: StudentT.l_pdf_0(obs=obs, par=(rho, nu.item()))
-                .nan_to_num_()
+                .nan_to_num()
                 .sum()
                 .neg()
                 .item(),

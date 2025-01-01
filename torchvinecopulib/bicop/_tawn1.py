@@ -22,7 +22,7 @@ class Tawn1(BiCopExtremeValue):
             (1 - psi) * vec
             + ((1 - vec).pow(theta) + (psi * vec).pow(theta)).pow(1 / theta)
             # ! A[t] ∈ (0.5, 1)
-        ).clamp_(min=_PICKANDS_MIN, max=_PICKANDS_MAX)
+        ).clamp(min=_PICKANDS_MIN, max=_PICKANDS_MAX)
 
     @staticmethod
     def pickands_dep_func_derivative(
@@ -38,7 +38,7 @@ class Tawn1(BiCopExtremeValue):
             + (-t_1_theta / t_1 + t_psi_theta / vec)
             * (t_1_theta + t_psi_theta).pow(-1 + 1 / theta)
             # ! A'[t] ∈ (-1, +1)
-        ).clamp_(min=_PICKANDS_DERIV_MIN, max=_PICKANDS_DERIV_MAX)
+        ).clamp(min=_PICKANDS_DERIV_MIN, max=_PICKANDS_DERIV_MAX)
 
     @staticmethod
     def pickands_dep_func_derivative_2(
@@ -57,4 +57,4 @@ class Tawn1(BiCopExtremeValue):
             )
             / t_1.square()
             # ! A''[t] ∈ (0, +∞), A[t] convex
-        ).clamp_min_(min=_PICKANDS_DERIV_2_MIN)
+        ).clamp_min(min=_PICKANDS_DERIV_2_MIN)

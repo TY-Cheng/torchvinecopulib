@@ -591,13 +591,13 @@ def pbvt(
             btnckh = 0.6366197723675814 * torch.atan2(xnkh.sqrt(), (1.0 - xnkh).sqrt())
             btpdkh = 0.6366197723675814 * (xnkh * (1.0 - xnkh)).sqrt()
             for j in torch.arange(start=1.0, end=nu / 2.0 + 1e-5, step=1):
-                bvt += hhh * (btnckh * ks + 1.0) + kkk * (btnchk * hs + 1.0)
-                hhh *= (j - 0.5) / (j * (1.0 + h.square() / nu))
-                kkk *= (j - 0.5) / (j * (1.0 + k.square() / nu))
-                btnchk += btpdhk
-                btpdhk *= j * 2.0 * (1.0 - xnhk) / (2.0 * j + 1.0)
-                btnckh += btpdkh
-                btpdkh *= j * 2.0 * (1.0 - xnkh) / (2.0 * j + 1.0)
+                bvt = bvt + hhh * (btnckh * ks + 1.0) + kkk * (btnchk * hs + 1.0)
+                hhh = hhh * (j - 0.5) / (j * (1.0 + h.square() / nu))
+                kkk = kkk * (j - 0.5) / (j * (1.0 + k.square() / nu))
+                btnchk = btnchk + btpdhk
+                btpdhk = btpdhk * j * 2.0 * (1.0 - xnhk) / (2.0 * j + 1.0)
+                btnckh = btnckh + btpdkh
+                btpdkh = btpdkh * j * 2.0 * (1.0 - xnkh) / (2.0 * j + 1.0)
         else:
             qhrk = (h.square() + k.square() - 2.0 * rho * h * k + nu * ors).sqrt()
             hkrn = h * k + rho * nu
@@ -610,20 +610,20 @@ def pbvt(
                 / 6.283185307179586
             )
             idx = bvt < -1e-8
-            bvt[idx] += 1.0
+            bvt[idx] = bvt[idx] + 1.0
             hhh = h / (6.283185307179586 * snu * (1.0 + h.square() / nu))
             kkk = k / (6.283185307179586 * snu * (1.0 + k.square() / nu))
             btnchk, btnckh = xnhk.sqrt(), xnkh.sqrt()
             btpdhk, btpdkh = btnchk * 1.0, btnckh * 1.0
             if (nu - 1.0) / 2.0 >= 1.0:
                 for j in torch.arange(start=1, end=(nu - 1.0) / 2.0 + 1e-5, step=1):
-                    bvt += hhh * (1.0 + ks * btnckh) + kkk * (1.0 + hs * btnchk)
-                    hhh *= j / ((j + 0.5) * (1.0 + h.square() / nu))
-                    kkk *= j / ((j + 0.5) * (1.0 + k.square() / nu))
-                    btpdhk *= (j - 0.5) * (1.0 - xnhk) / j
-                    btnchk += btpdhk
-                    btpdkh *= (j - 0.5) * (1.0 - xnkh) / j
-                    btnckh += btpdkh
+                    bvt = bvt + hhh * (1.0 + ks * btnckh) + kkk * (1.0 + hs * btnchk)
+                    hhh = hhh * j / ((j + 0.5) * (1.0 + h.square() / nu))
+                    kkk = kkk * j / ((j + 0.5) * (1.0 + k.square() / nu))
+                    btpdhk = btpdhk * (j - 0.5) * (1.0 - xnhk) / j
+                    btnchk = btnchk + btpdhk
+                    btpdkh = btpdkh * (j - 0.5) * (1.0 - xnkh) / j
+                    btnckh = btnckh + btpdkh
     return bvt
 
 
@@ -645,8 +645,8 @@ def debye1(x: float) -> float:
         res = 1.64493406684822643647241516665
         for k in range(1, 1 + k_max):
             xk = x * k
-            res -= math.exp(-xk) * (1.0 / xk + 1.0 / xk**2) * x**2
-        res /= x
+            res = res - math.exp(-xk) * (1.0 / xk + 1.0 / xk**2) * x**2
+        res = res / x
     else:
         koeff = (
             0.0,
@@ -725,14 +725,14 @@ def debye1(x: float) -> float:
         res, k = 0.0, 1
         while k <= 69:
             res_0 = res
-            res += (koeff[k] + 2.0) * x2pi ** (k * 2.0) / (k * 2.0 + 1.0)
-            k += 1
-            res -= (koeff[k] + 2.0) * x2pi ** (k * 2.0) / (k * 2.0 + 1.0)
+            res = res + (koeff[k] + 2.0) * x2pi ** (k * 2.0) / (k * 2.0 + 1.0)
+            k = k + 1
+            res = res - (koeff[k] + 2.0) * x2pi ** (k * 2.0) / (k * 2.0 + 1.0)
             if abs(res - res_0) < 1e-7:
                 break
             else:
-                k += 1
-        res += 1.0 - x / 4.0
+                k = k + 1
+        res = res + 1.0 - x / 4.0
     return res
 
 
@@ -811,7 +811,7 @@ def solve_ITP(
         else:
             return x_ITP
         x_wid = x_b - x_a
-        eps_scale *= 0.5
+        eps_scale = eps_scale * 0.5
     return 0.5 * (x_a + x_b)
 
 
@@ -868,7 +868,7 @@ def solve_ITP_vectorize(
         idx = y_ITP < 0.0
         x_a[idx], y_a[idx] = x_ITP[idx], y_ITP[idx]
         x_wid = x_b - x_a
-        eps_scale *= 0.5
+        eps_scale = eps_scale * 0.5
     return 0.5 * (x_a + x_b)
 
 
@@ -914,7 +914,7 @@ def ref_count_hfunc(
             if dct_ref_count.get((v, s), None) is None:
                 _visit(v_down=v, s_down=s, is_hinv=False)
                 # ! call hfunc only when parent missing
-                num_hfunc[0] += 1
+                num_hfunc[0] = num_hfunc[0] + 1
         # * increment reference counts for all three vertices
         l_visit = [(v_l, s_up), (v_r, s_up), (v_down, s_down)]
         for v, s in l_visit:
