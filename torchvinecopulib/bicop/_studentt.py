@@ -99,5 +99,5 @@ class StudentT(BiCopElliptical):
                 x0=(2.1,),
                 bounds=((_NU_MIN, _NU_MAX),),
                 method=mtd_opt,
-            ).x.item(),
+            ).x[0]
         return torch.tensor([rho, nu])
