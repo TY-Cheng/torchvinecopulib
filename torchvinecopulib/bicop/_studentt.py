@@ -12,12 +12,12 @@ class StudentT(BiCopElliptical):
     # ! exchangeability
     # ! notice all `qt` are from scipy and cannot autograd
     # rho, nu
-    _PAR_MIN, _PAR_MAX = (_RHO_MIN, _NU_MIN), (_RHO_MAX, _NU_MAX)
+    _PAR_MIN, _PAR_MAX = torch.tensor([_RHO_MIN, _NU_MIN]), torch.tensor([_RHO_MAX, _NU_MAX])
 
     @staticmethod
-    def cdf_0(obs: torch.Tensor, par: tuple[float, float]) -> torch.Tensor:
+    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         # * use pbvt for integer nu; otherwise interpolate linearly between floor(nu) and ceil(nu)
-        rho, nu = par
+        rho, nu = par[0], par[1]
         nu_low = floor(nu)
         if nu == nu_low:
             return pbvt(obs=qt(vec=obs, nu=nu), rho=rho, nu=nu)
@@ -30,9 +30,9 @@ class StudentT(BiCopElliptical):
             )
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
-        rho, nu = par
+        rho, nu = par[0], par[1]
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu)
         return pt(
             vec=(
@@ -42,9 +42,9 @@ class StudentT(BiCopElliptical):
         )
 
     @staticmethod
-    def hinv1_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def hinv1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
-        rho, nu = par
+        rho, nu = par[0], par[1]
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu + 1.0)
         return pt(
             vec=(
@@ -54,11 +54,10 @@ class StudentT(BiCopElliptical):
         )
 
     @staticmethod
-    def l_pdf_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
-        rho, nu = (
-            max(min(par[0], _RHO_MAX), _RHO_MIN),
-            max(min(par[1], _NU_MAX), _NU_MIN),
-        )
+    def l_pdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        rho = torch.clamp(par[0], min=StudentT._PAR_MIN[0], max=StudentT._PAR_MAX[0])
+        nu = torch.clamp(par[1], min=StudentT._PAR_MIN[1], max=StudentT._PAR_MAX[1])
+
         nu2 = nu / 2.0
         x, y = qt(obs[:, [0]], nu=nu), qt(obs[:, [1]], nu=nu)
         return (
@@ -76,7 +75,7 @@ class StudentT(BiCopElliptical):
         )
 
     @classmethod
-    def par2tau_0(cls, par: tuple) -> float:
+    def par2tau_0(cls, par: torch.Tensor) -> float:
         return cls.rho2tau_0(rho=par[0])
 
     @classmethod
@@ -86,15 +85,13 @@ class StudentT(BiCopElliptical):
         obs: torch.Tensor = None,
         mtd_opt: str = "L-BFGS-B",
         **kwargs,
-    ) -> tuple:
+    ) -> torch.Tensor:
         """quasi MLE for StudentT nu; rho from Kendall's tau"""
         if tau is None:
             tau, _ = kendall_tau(x=obs[:, [0]], y=obs[:, [1]])
         rho = cls.tau2rho_0(tau=tau)
-        return (
-            rho,
-            minimize(
-                fun=lambda nu: StudentT.l_pdf_0(obs=obs, par=(rho, nu.item()))
+        nu =  minimize(
+                fun=lambda nu: StudentT.l_pdf_0(obs=obs, par=torch.tensor([rho, nu[0]]))
                 .nan_to_num()
                 .sum()
                 .neg()
@@ -103,4 +100,4 @@ class StudentT(BiCopElliptical):
                 bounds=((_NU_MIN, _NU_MAX),),
                 method=mtd_opt,
             ).x.item(),
-        )
+        return torch.tensor([rho, nu])

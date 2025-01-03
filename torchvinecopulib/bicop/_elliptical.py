@@ -13,4 +13,4 @@ class BiCopElliptical(BiCopAbstract):
     @staticmethod
     def tau2rho_0(tau: float) -> torch.Tensor:
         """Kendall's τ to ρ"""
-        return torch.sin(tau * 1.5707963267948966)
+        return torch.sin(torch.tensor([tau * 1.5707963267948966]))
