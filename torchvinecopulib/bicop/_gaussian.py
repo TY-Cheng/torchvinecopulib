@@ -1,4 +1,4 @@
-from math import log1p, sqrt
+from math import log1p
 
 import torch
 
@@ -11,33 +11,33 @@ class Gaussian(BiCopElliptical):
     # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.NormalCopula.html
     # ! exchangeability
     # rho
-    _PAR_MIN, _PAR_MAX = (-0.9999,), (0.9999,)
+    _PAR_MIN, _PAR_MAX = torch.tensor([-0.9999]), torch.tensor([0.9999])
 
     @staticmethod
-    def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return pbvnorm(obs=qnorm(obs), rho=par[0])
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         rho = par[0]
         return pnorm(
-            (qnorm(obs[:, [1]]) - rho * qnorm(obs[:, [0]])) / sqrt(1.0 - rho**2)
+            (qnorm(obs[:, [1]]) - rho * qnorm(obs[:, [0]])) / torch.sqrt(1.0 - rho**2)
         )
 
     @staticmethod
-    def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hinv1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         rho = par[0]
-        return pnorm(qnorm(obs[:, [1]]) * sqrt(1.0 - rho**2) + rho * qnorm(obs[:, [0]]))
+        return pnorm(qnorm(obs[:, [1]]) * torch.sqrt(1.0 - rho**2) + rho * qnorm(obs[:, [0]]))
 
     @staticmethod
     def l_pdf_0(
         obs: torch.Tensor,
-        par: tuple[float],
+        par: torch.Tensor,
     ) -> torch.Tensor:
         # https://math.stackexchange.com/questions/3918915/derivation-of-bivariate-gaussian-copula-density
-        rho = max(min(par[0], _RHO_MAX), _RHO_MIN)
+        rho = torch.clamp(par[0], min=_RHO_MIN, max=_RHO_MAX)
         rho2 = rho**2
         x, y = qnorm(obs[:, [0]]), qnorm(obs[:, [1]])
         return -0.5 * log1p(-rho2) - rho / (2.0 - 2.0 * rho2) * (
@@ -45,9 +45,9 @@ class Gaussian(BiCopElliptical):
         )
 
     @classmethod
-    def par2tau_0(cls, par: tuple[float]) -> float:
+    def par2tau_0(cls, par: torch.Tensor) -> float:
         return cls.rho2tau_0(rho=par[0])
 
     @classmethod
-    def tau2par(cls, tau: float, **kwargs) -> tuple[float]:
-        return (cls.tau2rho_0(tau=tau),)
+    def tau2par(cls, tau: float, **kwargs) -> torch.Tensor:
+        return torch.tensor([cls.tau2rho_0(tau=tau)])

@@ -7,7 +7,7 @@ class Independent(BiCopAbstract):
     # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.IndependentCopula.html
     # ! exchangeability
     # no parameter
-    _PAR_MIN, _PAR_MAX = tuple(), tuple()
+    _PAR_MIN, _PAR_MAX = torch.tensor([]), torch.tensor([])
 
     @staticmethod
     def cdf_0(obs: torch.Tensor, **kwargs) -> torch.Tensor:
@@ -46,5 +46,5 @@ class Independent(BiCopAbstract):
         return torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
 
     @staticmethod
-    def tau2par(**kwargs) -> tuple:
-        return tuple()
+    def tau2par(**kwargs) -> torch.Tensor:
+        return torch.tensor([])
