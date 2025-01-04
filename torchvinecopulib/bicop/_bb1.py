@@ -9,28 +9,28 @@ class BB1(BiCopArchimedean):
     # Joe 2014 page 190
     # ! exchangeability
     # theta, delta
-    _PAR_MIN, _PAR_MAX = (1e-6, 1.000001), (7.0, 7.0)
+    _PAR_MIN, _PAR_MAX = torch.tensor([1e-6, 1.000001]), torch.tensor([7.0, 7.0])
     # ! l_pdf_0
     _EPS = 1e-7
 
     @staticmethod
-    def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return (vec.pow(-par[0]) - 1.0).pow(par[1])
 
     @staticmethod
-    def generator_inv(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator_inv(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return (vec.pow(1.0 / par[1]) + 1.0).pow(-1.0 / par[0])
 
     @staticmethod
-    def generator_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
+    def generator_derivative(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, delta = par[0], par[1]
         return (-delta * theta * vec.pow(-1.0 - theta)) * (vec.pow(-theta) - 1).pow(
             delta - 1
         )
 
     @staticmethod
-    def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
+    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, delta = par[0], par[1]
         return (
             (
                 (obs[:, [0]].pow(-theta) - 1.0).pow(delta)
@@ -40,9 +40,9 @@ class BB1(BiCopArchimedean):
         ).pow(-1.0 / theta)
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
-        theta, delta = par
+        theta, delta = par[0], par[1]
         detla_1d = 1 / delta
         u, v = obs[:, [0]], obs[:, [1]]
         x, y = (u.pow(-theta) - 1).pow(delta), (v.pow(-theta) - 1).pow(delta)
@@ -56,11 +56,11 @@ class BB1(BiCopArchimedean):
         return torch.where(res.isnan(), v, res)
 
     @staticmethod
-    def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hinv1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         # * Newton-Raphson for inverse of hfunc1_0,
         # * using x=(u**-theta-1)**delta, y=(v**-theta-1)**delta
-        theta, delta = par
+        theta, delta = par[0], par[1]
         theta_1d, delta_1d, theta_delta = 1 / theta, 1 / delta, theta * delta
         u, p = obs[:, [0]], obs[:, [1]]
         x = (u.pow(-theta) - 1).pow(delta)
@@ -91,8 +91,8 @@ class BB1(BiCopArchimedean):
         return (y.pow(delta_1d) + 1).pow(-theta_1d)
 
     @staticmethod
-    def l_pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
+    def l_pdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, delta = par[0], par[1]
         delta_rec = 1 / delta
         u, v = (
             obs[:, [0]].clamp(BB1._EPS, 1 - BB1._EPS),
@@ -111,7 +111,7 @@ class BB1(BiCopArchimedean):
         )
 
     @staticmethod
-    def par2tau_0(par: tuple[float]) -> float:
+    def par2tau_0(par: torch.Tensor) -> float:
         return 1 - 2 / (par[1] * (par[0] + 2))
 
     @classmethod
@@ -121,13 +121,13 @@ class BB1(BiCopArchimedean):
         obs: torch.Tensor = None,
         mtd_opt: str = "L-BFGS-B",
         **kwargs,
-    ) -> tuple[float]:
+    ) -> torch.Tensor:
         """quasi MLE for BB1 theta delta; using Kendall's tau as a constraint"""
         if tau is None:
             tau, _ = kendall_tau(x=obs[:, [0]], y=obs[:, [1]])
         theta = minimize(
             fun=lambda theta: BB1.l_pdf_0(
-                obs=obs, par=(theta.item(), 2 / (theta.item() + 2) / (1 - tau))
+                obs=obs, par= torch.tensor([theta.item(), 2 / (theta.item() + 2) / (1 - tau)])
             )
             .nan_to_num()
             .sum()
@@ -137,4 +137,4 @@ class BB1(BiCopArchimedean):
             bounds=((BB1._PAR_MIN[0], BB1._PAR_MAX[0]),),
             method=mtd_opt,
         ).x.item()
-        return (theta, 2 / (theta + 2) / (1 - tau))
+        return torch.tensor([theta, 2 / (theta + 2) / (1 - tau)])
