@@ -51,7 +51,7 @@ from ..util import _CDF_MAX, _CDF_MIN, _TAU_MAX, _TAU_MIN, solve_ITP_vectorize
 
 
 class BiCopAbstract(ABC):
-    _PAR_MIN, _PAR_MAX = tuple(), tuple()
+    _PAR_MIN, _PAR_MAX = torch.tensor([]), torch.tensor([])
     # ! hinv1_0
     _EPS = 1e-7
 
@@ -59,7 +59,7 @@ class BiCopAbstract(ABC):
     def cdf(
         cls,
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         col_p: torch.Tensor = cls.cdf_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
@@ -77,14 +77,14 @@ class BiCopAbstract(ABC):
 
     @staticmethod
     @abstractmethod
-    def cdf_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     @classmethod
     def hfunc1(
         cls,
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
@@ -102,14 +102,14 @@ class BiCopAbstract(ABC):
 
     @staticmethod
     @abstractmethod
-    def hfunc1_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     @classmethod
     def hfunc2(
         cls,
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """second h function, Prob(V0<=v0 | V1=v1)"""
@@ -126,7 +126,7 @@ class BiCopAbstract(ABC):
         return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
-    def hfunc2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def hfunc2_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         # ! by default, assuming exchangeability
         return cls.hfunc1_0(obs=obs.fliplr(), par=par)
 
@@ -134,7 +134,7 @@ class BiCopAbstract(ABC):
     def hinv1(
         cls,
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
@@ -151,7 +151,7 @@ class BiCopAbstract(ABC):
         return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
-    def hinv1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hinv1_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0), via root-finding"""
         vec_v0, vec_p = (
             obs[:, [0]].clamp(BiCopAbstract._EPS, 1.0 - BiCopAbstract._EPS),
@@ -172,7 +172,7 @@ class BiCopAbstract(ABC):
     def hinv2(
         cls,
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """inverse of the second h function, Q(p=v0 | V1=v1)"""
@@ -189,7 +189,7 @@ class BiCopAbstract(ABC):
         return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
-    def hinv2_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def hinv2_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         # ! by default, assuming exchangeability
         return cls.hinv1_0(obs=obs.fliplr(), par=par)
 
@@ -197,7 +197,7 @@ class BiCopAbstract(ABC):
     def l_pdf(
         cls,
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """bicop log-density values"""
@@ -205,14 +205,14 @@ class BiCopAbstract(ABC):
 
     @staticmethod
     @abstractmethod
-    def l_pdf_0(obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def l_pdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     @classmethod
     def negloglik(
         cls: "BiCopAbstract",
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> float:
         return cls.l_pdf(obs=obs, par=par, rot=rot).nan_to_num().sum().neg().item()
@@ -220,7 +220,7 @@ class BiCopAbstract(ABC):
     @classmethod
     def par2tau(
         cls,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> float:
         """convert bicop parameters to Kendall's tau."""
@@ -234,14 +234,14 @@ class BiCopAbstract(ABC):
 
     @staticmethod
     @abstractmethod
-    def par2tau_0(par: tuple) -> float:
+    def par2tau_0(par: torch.Tensor) -> float:
         raise NotImplementedError
 
     @classmethod
     def pdf(
         cls,
         obs: torch.Tensor,
-        par: tuple,
+        par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """
@@ -254,7 +254,7 @@ class BiCopAbstract(ABC):
         )
 
     @classmethod
-    def pdf_0(cls, obs: torch.Tensor, par: tuple) -> torch.Tensor:
+    def pdf_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return cls.l_pdf_0(obs=obs, par=par).exp()
 
     @staticmethod
@@ -278,7 +278,7 @@ class BiCopAbstract(ABC):
     @classmethod
     def sim(
         cls,
-        par: tuple,
+        par: torch.Tensor,
         num_sim: int,
         rot: int = 0,
         seed: int = 0,
@@ -311,5 +311,5 @@ class BiCopAbstract(ABC):
 
     @classmethod
     @abstractmethod
-    def tau2par(cls, tau: float, **kwargs) -> tuple:
+    def tau2par(cls, tau: float, **kwargs) -> torch.Tensor:
         raise NotImplementedError

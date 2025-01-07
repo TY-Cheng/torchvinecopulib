@@ -9,28 +9,28 @@ class BiCopArchimedean(BiCopAbstract):
     # Joe 2014 page 91
 
     @classmethod
-    def cdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def cdf_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return cls.generator_inv(
             cls.generator(obs[:, [0]], par) + cls.generator(obs[:, [1]], par), par
         )
 
     @staticmethod
     @abstractmethod
-    def generator(vec: torch.Tensor, par: tuple[float]):
+    def generator(vec: torch.Tensor, par: torch.Tensor):
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
-    def generator_derivative(vec: torch.Tensor, par: tuple[float]):
+    def generator_derivative(vec: torch.Tensor, par: torch.Tensor):
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
-    def generator_inv(vec: torch.Tensor, par: tuple[float]):
+    def generator_inv(vec: torch.Tensor, par: torch.Tensor):
         raise NotImplementedError
 
     @classmethod
-    def hfunc1_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hfunc1_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         tmp = cls.generator_derivative(
             obs[:, [0]],
@@ -45,7 +45,7 @@ class BiCopArchimedean(BiCopAbstract):
         return torch.where(tmp.isnan(), obs[:, [1]], tmp)
 
     @classmethod
-    def par2tau_0(cls, par: tuple[float], num_step: float = 5000) -> float:
+    def par2tau_0(cls, par: torch.Tensor, num_step: float = 5000) -> float:
         """
         Kendall's tau for bivariate Archimedean copula, numerical integration
         """

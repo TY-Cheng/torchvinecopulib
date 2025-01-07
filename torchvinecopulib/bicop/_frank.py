@@ -6,7 +6,7 @@ from ..util import debye1, solve_ITP
 from ._archimedean import BiCopArchimedean
 
 
-def _g(vec: torch.Tensor, delta: float) -> torch.Tensor:
+def _g(vec: torch.Tensor, delta: torch.Tensor) -> torch.Tensor:
     return (-vec * delta).expm1()
 
 
@@ -16,10 +16,10 @@ class Frank(BiCopArchimedean):
     # ! exchangeability
     # * suggest torch.float64 for |par|<35, torch.float32 for |par|<13
     # delta
-    _PAR_MIN, _PAR_MAX = (-35.0,), (35.0,)
+    _PAR_MIN, _PAR_MAX = torch.tensor([-35.0]), torch.tensor([35.0])
 
     @staticmethod
-    def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         delta = par[0]
         return (
             -(
@@ -31,7 +31,7 @@ class Frank(BiCopArchimedean):
         )
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         delta = par[0]
         g_y = _g(vec=obs[:, [1]], delta=delta)
@@ -39,7 +39,7 @@ class Frank(BiCopArchimedean):
         return (g_x_g_y + g_y) / (g_x_g_y + expm1(-delta))
 
     @staticmethod
-    def hinv1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hinv1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         delta = par[0]
         x = obs[:, [0]]
@@ -52,11 +52,11 @@ class Frank(BiCopArchimedean):
         ).log1p() / (-delta)
 
     @classmethod
-    def l_pdf_0(cls, obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def l_pdf_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return cls.pdf_0(obs=obs, par=par).log()
 
     @staticmethod
-    def par2tau_0(par: tuple) -> float:
+    def par2tau_0(par:  torch.Tensor) -> float:
         delta = par[0]
         tmp = abs(delta)
         if tmp < 1e-5:
@@ -68,9 +68,9 @@ class Frank(BiCopArchimedean):
     @staticmethod
     def pdf_0(
         obs: torch.Tensor,
-        par: tuple[float],
+        par: torch.Tensor,
     ) -> torch.Tensor:
-        delta = max(min(par[0], Frank._PAR_MAX[0]), Frank._PAR_MIN[0])
+        delta = par[0].clamp(Frank._PAR_MIN[0], Frank._PAR_MAX[0])
         x, y = obs[:, [0]], obs[:, [1]]
         return (
             delta
@@ -85,15 +85,15 @@ class Frank(BiCopArchimedean):
         )
 
     @staticmethod
-    def tau2par(tau: float, **kwargs) -> tuple:
+    def tau2par(tau: float, **kwargs) -> torch.Tensor:
         tau_a = abs(tau)
 
         delta = solve_ITP(
-            fun=lambda delta: Frank.par2tau_0(par=(delta,)) - tau_a,
+            fun=lambda delta: Frank.par2tau_0(torch.tensor([delta])) - tau_a,
             x_a=Frank._PAR_MIN[0] + 1e-6,
             x_b=Frank._PAR_MAX[0] - 1e-5,
             epsilon=1e-6,
             k_1=0.1,
         )
 
-        return ((delta if tau > 0 else -delta),)
+        return torch.tensor([delta if tau > 0 else -delta])
