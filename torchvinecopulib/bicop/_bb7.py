@@ -7,21 +7,21 @@ class BB7(BiCopArchimedean):
     # Joe 2014 page 202
     # ! exchangeability
     # theta, delta
-    _PAR_MIN, _PAR_MAX = (1.000001, 0.000001), (6.0, 25.0)
+    _PAR_MIN, _PAR_MAX = torch.tensor([1.000001, 0.000001]), torch.tensor([6.0, 25.0])
     # ! l_pdf_0
     _EPS = 1e-7
 
     @staticmethod
-    def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return (1.0 - (1.0 - vec).pow(par[0])).pow(-par[1]) - 1.0
 
     @staticmethod
-    def generator_inv(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator_inv(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return 1 - (1.0 - (1.0 + vec).pow(-1 / par[1])).pow(1 / par[0])
 
     @staticmethod
-    def generator_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
+    def generator_derivative(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, delta = par[0], par[1]
         vec_1 = 1.0 - vec
         return (
             -(1.0 - vec_1.pow(theta)).pow(-1.0 - delta)
@@ -31,11 +31,11 @@ class BB7(BiCopArchimedean):
         )
 
     @staticmethod
-    def par2tau_0(par: tuple[float], num_step: float = 5000) -> float:
+    def par2tau_0(par: torch.Tensor, num_step: float = 5000) -> float:
         """
         Kendall's tau for bivariate Archimedean copula, numerical integration
         """
-        theta, delta = par
+        theta, delta = par[0], par[1]
         vec_x = torch.linspace(0.0, 1.0, int(num_step))[1:-1].reshape(-1, 1)
         # ! number of intervals is even for Simpson's rule
         if len(vec_x) % 2 == 1:
@@ -52,8 +52,8 @@ class BB7(BiCopArchimedean):
         ).item()
 
     @staticmethod
-    def l_pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
+    def l_pdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, delta = par[0], par[1]
         theta_delta = theta * delta
         theta_rec, delta_rec = 1.0 / theta, 1.0 / delta
         u_bar, v_bar = (
