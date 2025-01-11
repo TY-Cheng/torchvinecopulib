@@ -13,11 +13,10 @@ from ._extremevalue import BiCopExtremeValue
 class Tawn1(BiCopExtremeValue):
     # * Czado 2019 page 52
     # ! theta, psi2
-    _PAR_MIN, _PAR_MAX = (1.000001, 1e-6), (10.0, 1.0)
-
+    _PAR_MIN, _PAR_MAX = (torch.tensor([1.000001, 1e-6]), torch.tensor([10.0, 1.0]))
     @staticmethod
-    def pickands_dep_func(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, psi = par
+    def pickands_dep_func(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, psi = par[0], par[1]
         return (
             (1 - psi) * vec
             + ((1 - vec).pow(theta) + (psi * vec).pow(theta)).pow(1 / theta)
@@ -26,9 +25,9 @@ class Tawn1(BiCopExtremeValue):
 
     @staticmethod
     def pickands_dep_func_derivative(
-        vec: torch.Tensor, par: tuple[float]
+        vec: torch.Tensor, par: torch.Tensor
     ) -> torch.Tensor:
-        theta, psi = par
+        theta, psi = par[0], par[1]
         t_1 = 1 - vec
         t_1_theta = t_1.pow(theta)
         t_psi_theta = (psi * vec).pow(theta)
@@ -42,9 +41,9 @@ class Tawn1(BiCopExtremeValue):
 
     @staticmethod
     def pickands_dep_func_derivative_2(
-        vec: torch.Tensor, par: tuple[float]
+        vec: torch.Tensor, par: torch.Tensor
     ) -> torch.Tensor:
-        theta, psi = par
+        theta, psi = par[0], par[1]
         t_1 = 1 - vec
         t_1_theta = t_1.pow(theta)
         return (

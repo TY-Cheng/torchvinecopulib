@@ -16,8 +16,8 @@ class BB5(BiCopExtremeValue):
     _PAR_MIN, _PAR_MAX = (1.000001, 1e-6), (3.0, 3.0)
 
     @staticmethod
-    def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
+    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, delta = par[0], par[1]
         delta_neg = -delta
         x_theta = obs.log().neg().pow(theta)
         x_theta, y_theta = x_theta[:, [0]], x_theta[:, [1]]
@@ -32,8 +32,8 @@ class BB5(BiCopExtremeValue):
         ).exp()
 
     @staticmethod
-    def pickands_dep_func(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
-        theta, delta = par
+    def pickands_dep_func(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+        theta, delta = par[0], par[1]
         delta_neg = -delta
         t_theta, t_1_theta = vec.pow(theta), (1 - vec).pow(theta)
         return (
@@ -49,9 +49,9 @@ class BB5(BiCopExtremeValue):
 
     @staticmethod
     def pickands_dep_func_derivative(
-        vec: torch.Tensor, par: tuple[float]
+        vec: torch.Tensor, par: torch.Tensor
     ) -> torch.Tensor:
-        theta, delta = par
+        theta, delta = par[0], par[1]
         delta_neg = -delta
         t_theta, t_1_theta = vec.pow(theta), (1 - vec).pow(theta)
         t_theta_delta_neg, t_1_theta_delta_neg = (
@@ -72,9 +72,9 @@ class BB5(BiCopExtremeValue):
 
     @staticmethod
     def pickands_dep_func_derivative_2(
-        vec: torch.Tensor, par: tuple[float]
+        vec: torch.Tensor, par: torch.Tensor
     ) -> torch.Tensor:
-        theta, delta = par
+        theta, delta = par[0], par[1]
         theta_1 = theta - 1
         delta_frac = 1 / delta
         theta_delta_1 = delta * theta + 1
