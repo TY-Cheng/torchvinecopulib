@@ -337,6 +337,7 @@ class VineCop(torch.nn.Module):
         is_tau_est: bool = False,
     ) -> None:
         self.reset()
+        obs_mvcp.to(device=self.device, dtype=self.dtype)
         self.num_obs.copy_(obs_mvcp.shape[0])
         self.mtd_bidep = mtd_bidep
         is_kendall_tau = mtd_bidep == "kendall_tau"

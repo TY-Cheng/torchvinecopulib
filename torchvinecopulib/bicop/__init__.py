@@ -78,6 +78,7 @@ class BiCop(torch.nn.Module):
         is_tau_est: bool = False,
     ) -> None:
         # TODO: fastkde.pdf
+        obs.to(device=self.device, dtype=self.dtype)
         self.is_indep = False
         self.num_obs.copy_(obs.shape[0])
         if is_tau_est:
@@ -90,7 +91,7 @@ class BiCop(torch.nn.Module):
             start=self._EPS,
             end=1.0 - self._EPS,
             steps=self.num_step_grid,
-            device=obs.device,
+            device=self.device,
             dtype=torch.float64,
         )
         grid = torch.cartesian_prod(grid, grid)
@@ -104,13 +105,13 @@ class BiCop(torch.nn.Module):
                     obs[idx, 1].cpu(),
                     list_of_points=grid.cpu(),
                 )
-            ).to(obs.device)
+            ).to(device=self.device, dtype=self.dtype)
         else:
             pdf_grid = torch.from_numpy(
                 pdf_at_points(
                     obs[:, 0].cpu(), obs[:, 1].cpu(), list_of_points=grid.cpu()
                 )
-            ).to(obs.device)
+            ).to(device=self.device, dtype=self.dtype)
         if (tmp := pdf_grid.min()) < 0:
             pdf_grid -= tmp - self._EPS
         pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
@@ -152,6 +153,7 @@ class BiCop(torch.nn.Module):
         ).clamp_min(0.0)
 
     def cdf(self, obs: torch.Tensor) -> torch.Tensor:
+        obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs.prod(dim=1, keepdim=True)
         return (
@@ -159,6 +161,7 @@ class BiCop(torch.nn.Module):
         )
 
     def hfunc_l(self, obs: torch.Tensor) -> torch.Tensor:
+        obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [1]]
         return (
@@ -168,6 +171,7 @@ class BiCop(torch.nn.Module):
         )
 
     def hfunc_r(self, obs: torch.Tensor) -> torch.Tensor:
+        obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [0]]
         return (
@@ -178,6 +182,7 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def hinv_l(self, obs: torch.Tensor) -> torch.Tensor:
+        obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [1]]
         # * via root-finding
@@ -191,6 +196,7 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def hinv_r(self, obs: torch.Tensor) -> torch.Tensor:
+        obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [0]]
         # * via root-finding
@@ -203,6 +209,7 @@ class BiCop(torch.nn.Module):
         )
 
     def pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.ones_like(obs[:, [0]])
         return (
@@ -210,6 +217,7 @@ class BiCop(torch.nn.Module):
         )
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.zeros_like(obs[:, [0]])
         return (
@@ -224,7 +232,7 @@ class BiCop(torch.nn.Module):
             obs = (
                 torch.quasirandom.SobolEngine(dimension=2, scramble=True, seed=seed)
                 .draw(n=num_sample, dtype=self.dtype)
-                .to(self.device)
+                .to(device=self.device)
             )
         else:
             torch.manual_seed(seed=seed)

@@ -1,3 +1,8 @@
+"""
+* torch.compile() for solve_ITP()
+* torch.no_grad() for solve_ITP()
+"""
+
 import enum
 
 import fastkde
@@ -24,8 +29,8 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     fastMI: A fast and consistent copula-based nonparametric estimator of mutual information.
     Journal of Multivariate Analysis, 201, 105270.
     """
-    x = ndtri(x.clamp(_EPS, 1.0 - _EPS)).ravel()
-    y = ndtri(y.clamp(_EPS, 1.0 - _EPS)).ravel()
+    x = ndtri(x.clamp(_EPS, 1.0 - _EPS)).ravel().cpu()
+    y = ndtri(y.clamp(_EPS, 1.0 - _EPS)).ravel().cpu()
     joint = torch.as_tensor(fastkde.pdf(x, y).values, dtype=x.dtype, device=x.device)
     margin_x = torch.as_tensor(fastkde.pdf(x).values, dtype=x.dtype, device=x.device)
     margin_y = torch.as_tensor(fastkde.pdf(y).values, dtype=x.dtype, device=x.device)

@@ -14,29 +14,32 @@
 
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
 
-- C/D/R-Vine full-simulation/ quantile-regression/ conditional-simulation, all in one package
-  - Flexible simulation workflow for experienced users
+- C/D/R-Vine full-sampling/ quantile-regression/ conditional-sampling, all in one package
+  - Flexible sampling order for experienced users
 - Vectorized tensor computation with GPU (`device='cuda'`) support
 - Shorter runtimes for higher dimension simulations
-- Decoupled dataclasses and factory methods
-- Pure `Python` library, inspired by and tested against [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
+- Pure `Python` library, inspired by [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
 - IO and visualization support
 
 ## Dependencies
 
 ```toml
 # inside the `./pyproject.toml` file;
+fastkde = "*"
 numpy = "*"
-python = "^3.10"
+python = ">=3.12"
 scipy = "*"
 # optional to facilitate customization
-torch = { version = "^2", optional = true }
+torch = [
+    { index = "torch-cpu", extra = "cpu" },
+    { index = "torch-cu126", extra = "cu126" },
+]
 ```
 
-For [PyTorch](https://pytorch.org/get-started/locally/) with `cuda` support on Windows:
+For [PyTorch](https://pytorch.org/get-started/locally/) with `cuda`:
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
+pip install torch --index-url https://download.pytorch.org/whl/cu126 --force-reinstall
 # check cuda availability
 python -c "import torch; print(torch.cuda.is_available())"
 ```
@@ -52,31 +55,25 @@ python -c "import torch; print(torch.cuda.is_available())"
 pip install torchvinecopulib torch
 ```
 
-- Or with full drawing and bivariate dependency metric support:
-
-```bash
-pip install torchvinecopulib torch matplotlib pot scikit-learn
-```
-
 - Or `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
   Need to use proper file name.
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-2024.10.1-py3-none-any.whl
+pip install ./dist/torchvinecopulib-1.0.0-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-2024.10.1.tar.gz
+pip install ./dist/torchvinecopulib-1.0.0.tar.gz
 ```
 
-### (Optional) [Poetry](https://python-poetry.org/docs/) for Dependency Management and Packaging
+### (Optional) [uv](https://docs.astral.sh/uv/getting-started/) for Dependency Management and Packaging
 
 After `git clone https://github.com/TY-Cheng/torchvinecopulib.git`, `cd` into the project root where [`pyproject.toml`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/pyproject.toml) exists,
 
 ```bash
 # inside project root folder
-poetry lock && poetry install -E dev_cpu --with dev_cpu --sync
+uv sync --extra cpu -U
 # or
-poetry lock && poetry install -E dev_cuda --with dev_cuda --sync
+uv sync --extra cu126 -U
 ```
 
 ## Examples
@@ -87,8 +84,6 @@ Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main
 
 - Visit [GitHub Pages website](https://ty-cheng.github.io/torchvinecopulib/)
 
-- Or visit [html-preview.github.io](https://html-preview.github.io/?url=https%3A%2F%2Fgithub.com%2FTY-Cheng%2Ftorchvinecopulib%2Fblob%2Fmain%2Fdocs%2F_build%2Fhtml%2Findex.html)
-
 - Or build by yourself (need [`Sphinx`](https://github.com/sphinx-doc/sphinx), theme [`furo`](https://github.com/pradyunsg/furo) and [the GNU `make`](https://www.gnu.org/software/make/))
 
 ```bash
@@ -97,9 +92,6 @@ sphinx-apidoc -o ./docs ./torchvinecopulib && cd ./docs && make html && cd ..
 ```
 
 ## Tests
-
-> [!TIP]
-> the `./tests/test_vinecop.py` may take longer without `'cuda'`
 
 ```python
 # inside project root folder
@@ -110,8 +102,9 @@ coverage run -m pytest ./tests && coverage html
 
 ## TODO
 
-- more (non-parametric) `bicop` class in `torch`
-- port to TensorFlow Probability for `cuda`-compatible [Student's t cdf/ppf](https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/StudentT)
+- [`fastkde.pdf`](https://github.com/LBL-EESA/fastkde/blob/main/src/fastkde/fastKDE.py): `pdf_at_points()` is potentially slow relative to `pdf()` because it does not take advantage of the inverse FFT for transforming from Fourier space to data space. However, if few input points are requested, it may actually be faster.
+- `VineCop.rosenblatt`
+- `examples/someapplications.ipynb`
 
 ## Contributing
 
@@ -138,18 +131,12 @@ We welcome contributions, whether it's a bug report, feature suggestion, code co
 
 ## License
 
-> Copyright (C) 2024- Tuoyuan Cheng, Kan Chen
+> MIT License
 >
-> This file is part of torchvinecopulib.
-> torchvinecopulib is free software: you can redistribute it and/or modify
-> it under the terms of the GNU General Public License as published by
-> the Free Software Foundation, either version 3 of the License, or
-> (at your option) any later version.
+> Copyright (c) 2024- Tuoyuan Cheng, Kan Chen
 >
-> torchvinecopulib is distributed in the hope that it will be useful,
-> but WITHOUT ANY WARRANTY; without even the implied warranty of
-> MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-> GNU General Public License for more details.
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 >
-> You should have received a copy of the GNU General Public License
-> along with torchvinecopulib. If not, see <http://www.gnu.org/licenses/>.
+> The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
