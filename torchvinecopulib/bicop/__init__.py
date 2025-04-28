@@ -25,7 +25,7 @@ __all__ = [
     "Gumbel",
     "Independent",
     "Joe",
-    "SET_FAMnROT",
+    "SET_FAMnROT"
     "StudentT",
     "BB1",
     "BB5",

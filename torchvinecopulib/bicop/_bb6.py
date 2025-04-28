@@ -12,15 +12,15 @@ class BB6(BiCopArchimedean):
     _EPS = 1e-7
 
     @staticmethod
-    def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return (1.0 - vec).pow(par[0]).neg().log1p().neg().pow(par[1])
 
     @staticmethod
-    def generator_inv(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator_inv(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return vec.pow(1.0 / par[1]).neg().expm1().neg().pow(1.0 / par[0]).neg() + 1.0
 
     @staticmethod
-    def generator_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator_derivative(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         theta, delta = par
         vec_1 = 1.0 - vec
         return (
@@ -32,7 +32,7 @@ class BB6(BiCopArchimedean):
         )
 
     @staticmethod
-    def cdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         theta, delta = par
         x_delta, y_delta = (
             BB6.generator(obs[:, [0]], par=par),
@@ -43,7 +43,7 @@ class BB6(BiCopArchimedean):
         ).neg() + 1.0
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def hfunc_l_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         theta, delta = par
         theta_rec, delta_rec = 1.0 / theta, 1.0 / delta
@@ -65,7 +65,7 @@ class BB6(BiCopArchimedean):
         )
 
     @staticmethod
-    def l_pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def l_pdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         theta, delta = par
         theta_rec, delta_rec = 1.0 / theta, 1.0 / delta
         delta_1 = delta - 1.0
@@ -93,12 +93,18 @@ class BB6(BiCopArchimedean):
         )
 
     @staticmethod
-    def par2tau_0(par: tuple[float], num_step: float = 5000) -> float:
+    def par2tau_0(par: torch.Tensor, num_step: float = 5000) -> float:
         """
         Kendall's tau for bivariate Archimedean copula, numerical integration
         """
         theta, delta = par
-        vec_x = torch.linspace(0.0, 1.0, int(num_step))[1:-1].reshape(-1, 1)
+        vec_x = torch.linspace(
+            start=0.0,
+            end=1.0,
+            steps=int(num_step),
+            dtype=par.dtype,
+            device=par.device,
+        )[1:-1].reshape(-1, 1)
         # ! number of intervals is even for Simpson's rule
         if len(vec_x) % 2 == 1:
             vec_x = vec_x[:-1]
@@ -111,4 +117,4 @@ class BB6(BiCopArchimedean):
             / 3.0
             * 4.0
             + 1.0
-        ).item()
+        )[0]

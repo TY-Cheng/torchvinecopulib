@@ -7,7 +7,6 @@ class Independent(BiCopAbstract):
     # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.IndependentCopula.html
     # ! exchangeability
     # no parameter
-    _PAR_MIN, _PAR_MAX = torch.tensor([]), torch.tensor([])
 
     @staticmethod
     def cdf_0(obs: torch.Tensor, **kwargs) -> torch.Tensor:
@@ -18,19 +17,19 @@ class Independent(BiCopAbstract):
         return torch.ones((obs.shape[0], 1), device=obs.device, dtype=obs.dtype)
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, **kwargs) -> torch.Tensor:
+    def hfunc_l_0(obs: torch.Tensor, **kwargs) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         return obs[:, [1]]
 
-    hinv1_0 = hfunc1_0
+    hinv_l_0 = hfunc_l_0
 
     @staticmethod
     def l_pdf_0(obs: torch.Tensor, **kwargs) -> torch.Tensor:
-        return torch.zeros((obs.shape[0], 1), device=obs.device, dtype=obs.dtype)
+        return torch.zeros(size=(obs.shape[0], 1), device=obs.device, dtype=obs.dtype)
 
     @staticmethod
-    def par2tau_0(**kwargs) -> float:
-        return 0.0
+    def par2tau_0(par: torch.Tensor) -> torch.Tensor:
+        return torch.tensor(data=0.0, dtype=par.dtype, device=par.device)
 
     @staticmethod
     def sim(
@@ -41,10 +40,10 @@ class Independent(BiCopAbstract):
         **kwargs,
     ) -> torch.Tensor:
         # inverse Rosenblatt transform
-        # * p1p2~Unif, hfunc1(v1|v0)=p, hinv1(p|v0)=v1
+        # * p1p2~Unif, hfunc_l(v1|v0)=p, hinv_l(p|v0)=v1
         torch.manual_seed(seed=seed)
         return torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
 
     @staticmethod
-    def tau2par(**kwargs) -> torch.Tensor:
-        return torch.tensor([])
+    def tau2par(tau: torch.Tensor, **kwargs) -> torch.Tensor:
+        return torch.tensor(data=[], dtype=tau.dtype, device=tau.device)

@@ -44,20 +44,18 @@ Mangold, B. (2017). New concepts of symmetry for copulas (No. 06/2017).
 """
 
 from abc import ABC, abstractmethod
-
 import torch
-
 from ..util import _CDF_MAX, _CDF_MIN, _TAU_MAX, _TAU_MIN, solve_ITP_vectorize
 
 
 class BiCopAbstract(ABC):
-    _PAR_MIN, _PAR_MAX = torch.tensor([]), torch.tensor([])
+    _PAR_MIN, _PAR_MAX = None, None
     # ! hinv1_0
     _EPS = 1e-7
 
     @classmethod
     def cdf(
-        cls,
+        cls: "BiCopAbstract",
         obs: torch.Tensor,
         par: torch.Tensor,
         rot: int,
@@ -77,89 +75,102 @@ class BiCopAbstract(ABC):
 
     @staticmethod
     @abstractmethod
-    def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def cdf_0(
+        obs: torch.Tensor,
+        par: torch.Tensor,
+    ) -> torch.Tensor:
         raise NotImplementedError
 
     @classmethod
-    def hfunc1(
-        cls,
+    def hfunc_l(
+        cls: "BiCopAbstract",
         obs: torch.Tensor,
         par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         if rot == 0:
-            res = cls.hfunc1_0(obs=obs, par=par)
+            res = cls.hfunc_l_0(obs=obs, par=par)
         elif rot == 90:
-            res = cls.hfunc2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = cls.hfunc_r_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 180:
-            res = 1.0 - cls.hfunc1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hfunc_l_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 270:
-            res = 1.0 - cls.hfunc2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hfunc_r_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
         return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @staticmethod
     @abstractmethod
-    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def hfunc_l_0(
+        obs: torch.Tensor,
+        par: torch.Tensor,
+    ) -> torch.Tensor:
         raise NotImplementedError
 
     @classmethod
-    def hfunc2(
-        cls,
+    def hfunc_r(
+        cls: "BiCopAbstract",
         obs: torch.Tensor,
         par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """second h function, Prob(V0<=v0 | V1=v1)"""
         if rot == 0:
-            res = cls.hfunc2_0(obs=obs, par=par)
+            res = cls.hfunc_r_0(obs=obs, par=par)
         elif rot == 90:
-            res = 1.0 - cls.hfunc1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hfunc_l_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 180:
-            res = 1.0 - cls.hfunc2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hfunc_r_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 270:
-            res = cls.hfunc1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = cls.hfunc_l_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
         return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
-    def hfunc2_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def hfunc_r_0(
+        cls: "BiCopAbstract",
+        obs: torch.Tensor,
+        par: torch.Tensor,
+    ) -> torch.Tensor:
         # ! by default, assuming exchangeability
-        return cls.hfunc1_0(obs=obs.fliplr(), par=par)
+        return cls.hfunc_l_0(obs=obs.fliplr(), par=par)
 
     @classmethod
-    def hinv1(
-        cls,
+    def hinv_l(
+        cls: "BiCopAbstract",
         obs: torch.Tensor,
         par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         if rot == 0:
-            res = cls.hinv1_0(obs=obs, par=par)
+            res = cls.hinv_l_0(obs=obs, par=par)
         elif rot == 90:
-            res = cls.hinv2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = cls.hinv_r_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 180:
-            res = 1.0 - cls.hinv1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hinv_l_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 270:
-            res = 1.0 - cls.hinv2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hinv_r_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
         return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
-    def hinv1_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def hinv_l_0(
+        cls: "BiCopAbstract",
+        obs: torch.Tensor,
+        par: torch.Tensor,
+    ) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0), via root-finding"""
         vec_v0, vec_p = (
             obs[:, [0]].clamp(BiCopAbstract._EPS, 1.0 - BiCopAbstract._EPS),
             obs[:, [1]].clamp(BiCopAbstract._EPS, 1.0 - BiCopAbstract._EPS),
         )
-
         return solve_ITP_vectorize(
-            fun=lambda vec_v1: cls.hfunc1_0(
+            fun=lambda vec_v1: cls.hfunc_l_0(
                 obs=torch.hstack([vec_v0, vec_v1]),
                 par=par,
             )
@@ -169,33 +180,37 @@ class BiCopAbstract(ABC):
         )
 
     @classmethod
-    def hinv2(
-        cls,
+    def hinv_r(
+        cls: "BiCopAbstract",
         obs: torch.Tensor,
         par: torch.Tensor,
         rot: int,
     ) -> torch.Tensor:
         """inverse of the second h function, Q(p=v0 | V1=v1)"""
         if rot == 0:
-            res = cls.hinv2_0(obs=obs, par=par)
+            res = cls.hinv_r_0(obs=obs, par=par)
         elif rot == 90:
-            res = 1.0 - cls.hinv1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hinv_l_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 180:
-            res = 1.0 - cls.hinv2_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = 1.0 - cls.hinv_r_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         elif rot == 270:
-            res = cls.hinv1_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
+            res = cls.hinv_l_0(obs=cls.rot_0(obs=obs, rot=rot), par=par)
         else:
             raise NotImplementedError
         return res.nan_to_num().clamp(min=_CDF_MIN, max=_CDF_MAX)
 
     @classmethod
-    def hinv2_0(cls, obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def hinv_r_0(
+        cls: "BiCopAbstract",
+        obs: torch.Tensor,
+        par: torch.Tensor,
+    ) -> torch.Tensor:
         # ! by default, assuming exchangeability
-        return cls.hinv1_0(obs=obs.fliplr(), par=par)
+        return cls.hinv_l_0(obs=obs.fliplr(), par=par)
 
     @classmethod
     def l_pdf(
-        cls,
+        cls: "BiCopAbstract",
         obs: torch.Tensor,
         par: torch.Tensor,
         rot: int,
@@ -302,7 +317,7 @@ class BiCopAbstract(ABC):
             torch.manual_seed(seed=seed)
             obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
         if cls.__name__ != "Independent":
-            obs[:, [1]] = cls.hinv1(
+            obs[:, [1]] = cls.hinv_l(
                 obs=obs,
                 par=par,
                 rot=rot,
@@ -311,5 +326,5 @@ class BiCopAbstract(ABC):
 
     @classmethod
     @abstractmethod
-    def tau2par(cls, tau: float, **kwargs) -> torch.Tensor:
+    def tau2par(cls, tau: float) -> torch.Tensor:
         raise NotImplementedError

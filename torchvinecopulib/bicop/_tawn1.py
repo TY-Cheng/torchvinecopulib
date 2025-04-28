@@ -16,7 +16,7 @@ class Tawn1(BiCopExtremeValue):
     _PAR_MIN, _PAR_MAX = (1.000001, 1e-6), (10.0, 1.0)
 
     @staticmethod
-    def pickands_dep_func(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def pickands_dep_func(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         theta, psi = par
         return (
             (1 - psi) * vec
@@ -26,7 +26,7 @@ class Tawn1(BiCopExtremeValue):
 
     @staticmethod
     def pickands_dep_func_derivative(
-        vec: torch.Tensor, par: tuple[float]
+        vec: torch.Tensor, par: torch.Tensor
     ) -> torch.Tensor:
         theta, psi = par
         t_1 = 1 - vec
@@ -42,7 +42,7 @@ class Tawn1(BiCopExtremeValue):
 
     @staticmethod
     def pickands_dep_func_derivative_2(
-        vec: torch.Tensor, par: tuple[float]
+        vec: torch.Tensor, par: torch.Tensor
     ) -> torch.Tensor:
         theta, psi = par
         t_1 = 1 - vec

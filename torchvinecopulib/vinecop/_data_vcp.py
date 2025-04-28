@@ -503,14 +503,14 @@ class DataVineCop(ABC):
             lv_up = lv_down - 1
             for (v_l, v_r, s_up), bcp in self.dct_bcp[lv_up].items():
                 if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
-                    # ! notice hfunc1 or hfunc2
+                    # ! notice hfunc_l or hfunc_r
                     if bcp.fam == "Independent":
                         dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][
                             (v_down, s_up)
                         ]
                     else:
                         dct_obs[lv_down][(v_down, s_down)] = (
-                            bcp.hfunc2 if v_down == v_l else bcp.hfunc1
+                            bcp.hfunc_r if v_down == v_l else bcp.hfunc_l
                         )(
                             obs=torch.hstack(
                                 [
@@ -575,14 +575,14 @@ class DataVineCop(ABC):
             lv_up = lv_down - 1
             for (v_l, v_r, s_up), bcp in self.dct_bcp[lv_up].items():
                 if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
-                    # ! notice hfunc1 or hfunc2
+                    # ! notice hfunc_l or hfunc_r
                     if bcp.fam == "Independent":
                         dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][
                             (v_down, s_up)
                         ]
                     else:
                         dct_obs[lv_down][(v_down, s_down)] = (
-                            bcp.hfunc2 if v_down == v_l else bcp.hfunc1
+                            bcp.hfunc_r if v_down == v_l else bcp.hfunc_l
                         )(
                             obs=torch.hstack(
                                 [
@@ -685,7 +685,7 @@ class DataVineCop(ABC):
                 if bcp.fam == "Independent":
                     dct_obs[v_down, s_up] = dct_obs[v_down, s_down]
                 elif is_down_right:
-                    dct_obs[v_down, s_up] = bcp.hinv1(
+                    dct_obs[v_down, s_up] = bcp.hinv_l(
                         torch.hstack(
                             [
                                 dct_obs[v_l, s_up],
@@ -694,7 +694,7 @@ class DataVineCop(ABC):
                         )
                     )
                 else:
-                    dct_obs[v_down, s_up] = bcp.hinv2(
+                    dct_obs[v_down, s_up] = bcp.hinv_r(
                         torch.hstack(
                             [
                                 dct_obs[v_down, s_down],
@@ -707,7 +707,7 @@ class DataVineCop(ABC):
                     dct_obs[v_down, s_down] = dct_obs[v_down, s_up]
                 else:
                     dct_obs[v_down, s_down] = (
-                        bcp.hfunc1 if is_down_right else bcp.hfunc2
+                        bcp.hfunc_l if is_down_right else bcp.hfunc_r
                     )(
                         torch.hstack(
                             [

@@ -1,4 +1,3 @@
-import math
 from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
@@ -7,6 +6,11 @@ from pprint import pformat
 import torch
 
 from ._abc import BiCopAbstract
+from ._bb1 import BB1
+from ._bb5 import BB5
+from ._bb6 import BB6
+from ._bb7 import BB7
+from ._bb8 import BB8
 from ._clayton import Clayton
 from ._frank import Frank
 from ._gaussian import Gaussian
@@ -14,11 +18,6 @@ from ._gumbel import Gumbel
 from ._independent import Independent
 from ._joe import Joe
 from ._studentt import StudentT
-from ._bb1 import BB1
-from ._bb5 import BB5
-from ._bb6 import BB6
-from ._bb7 import BB7
-from ._bb8 import BB8
 from ._tawn1 import Tawn1
 from ._tawn2 import Tawn2
 
@@ -63,6 +62,18 @@ SET_FAMnROT: set[tuple[str, int]] = {
     for fam in _FAM_ALL
     for rot in (0, 90, 180, 270)
 }
+SET_FAM_ITAU: set[str] = {
+    "Clayton",
+    "Frank",
+    "Gaussian",
+    "Gumbel",
+    "Independent",
+    "Joe",
+}
+SET_FAM_ITAU_QMLE: set[str] = {
+    "BB1",
+    "StudentT",
+}
 
 
 @dataclass(slots=True, frozen=True, kw_only=True)
@@ -78,55 +89,63 @@ class DataBiCop(ABC):
     fam: str = "Independent"
     """bivariate copula family name"""
 
-    negloglik: float = 0.0
+    neg_log_lik: torch.Tensor = torch.tensor(
+        0.0,
+        device="cpu",
+        dtype=torch.float64,
+    )
     """negative log likelihood, recorded during fitting using observations"""
 
-    num_obs: int = 1
+    num_obs: torch.Tensor = torch.tensor(
+        1,
+        device="cpu",
+        dtype=torch.float64,
+    )
     """number of observations, recorded during fitting using observations"""
 
-    par: tuple = tuple()
+    par: torch.Tensor = torch.empty(0, device="cpu", dtype=torch.float64)
     """parameters of the bivariate copula"""
 
     rot: int = 0
     """(COUNTER-CLOCKWISE) rotation degree of the bivariate copula model, one of (0, 90, 180, 270)"""
 
     @property
-    def num_par(self) -> int:
+    def num_par(self) -> torch.Tensor:
         """number of parameters
-
         :param self: an instance of the DataBiCop dataclass
         :return: length of the parameter tuple of the bivariate copula dataclass object
-        :rtype: int
+        :rtype: torch.Tensor
         """
-        return len(self.par)
+        return torch.tensor(
+            self.par.numel(),
+            device=self.par.device,
+            dtype=self.par.dtype,
+        )
 
     @property
-    def aic(self) -> float:
+    def aic(self) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :return: Akaike information criterion (AIC)
-        :rtype: float
+        :rtype: torch.Tensor
         """
-        return 2.0 * (self.num_par + self.negloglik)
+        return 2.0 * (self.num_par + self.neg_log_lik)
 
     @property
-    def bic(self) -> float:
+    def bic(self) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :return: Bayesian information criterion (BIC)
-        :rtype: float
+        :rtype: torch.Tensor
         """
-        return 2.0 * self.negloglik + self.num_par * math.log(self.num_obs)
+        return 2.0 * self.neg_log_lik + self.num_par * self.num_obs.log()
 
     @property
-    def tau(self) -> float:
+    def tau(self) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :return: Kendall's tau
-        :rtype: float
+        :rtype: torch.Tensor
         """
         return ENUM_FAM_BICOP[self.fam].value.par2tau(par=self.par, rot=self.rot)
 
@@ -135,12 +154,12 @@ class DataBiCop(ABC):
             object={
                 "fam": self.fam,
                 "rot": self.rot,
-                "tau": round(self.tau, 4),
-                "par": (*map(lambda _: round(_, 4), self.par),),
+                "tau": self.tau.round(decimals=4),
+                "par": self.par.round(decimals=4),
                 "num_obs": self.num_obs,
-                "negloglik": round(self.negloglik, 4),
-                "aic": round(self.aic, 4),
-                "bic": round(self.bic, 4),
+                "negloglik": self.neg_log_lik.round(decimals=4),
+                "aic": self.aic.round(decimals=4),
+                "bic": self.bic.round(decimals=4),
             },
             compact=True,
             sort_dicts=False,
@@ -152,7 +171,6 @@ class DataBiCop(ABC):
         obs: torch.Tensor,
     ) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :param obs: observation of the bivariate copula, of shape (num_obs, 2)
         :type obs: torch.Tensor
@@ -165,73 +183,69 @@ class DataBiCop(ABC):
             rot=self.rot,
         )
 
-    def hfunc1(
+    def hfunc_l(
         self,
         obs: torch.Tensor,
     ) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :param obs: observation of the bivariate copula, of shape (num_obs, 2)
         :type obs: torch.Tensor
         :return: first h function, Prob(V_right<=v_right | V_left=v_left), of shape (num_obs, 1), given the observation
         :rtype: torch.Tensor
         """
-        return ENUM_FAM_BICOP[self.fam].value.hfunc1(
+        return ENUM_FAM_BICOP[self.fam].value.hfunc_l(
             obs=obs,
             par=self.par,
             rot=self.rot,
         )
 
-    def hfunc2(
+    def hfunc_r(
         self,
         obs: torch.Tensor,
     ) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :param obs: observation of the bivariate copula, of shape (num_obs, 2)
         :type obs: torch.Tensor
         :return: second h function, Prob(V_left<=v_left | V_right=v_right), of shape (num_obs, 1), given the observation
         :rtype: torch.Tensor
         """
-        return ENUM_FAM_BICOP[self.fam].value.hfunc2(
+        return ENUM_FAM_BICOP[self.fam].value.hfunc_r(
             obs=obs,
             par=self.par,
             rot=self.rot,
         )
 
-    def hinv1(
+    def hinv_l(
         self,
         obs: torch.Tensor,
     ) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :param obs: observation of the bivariate copula, of shape (num_obs, 2)
         :type obs: torch.Tensor
         :return: first h inverse function, Q(V_right=v_right | V_left=v_left), of shape (num_obs, 1), given the observation
         :rtype: torch.Tensor
         """
-        return ENUM_FAM_BICOP[self.fam].value.hinv1(
+        return ENUM_FAM_BICOP[self.fam].value.hinv_l(
             obs=obs,
             par=self.par,
             rot=self.rot,
         )
 
-    def hinv2(
+    def hinv_r(
         self,
         obs: torch.Tensor,
     ) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :param obs: observation of the bivariate copula, of shape (num_obs, 2)
         :type obs: torch.Tensor
         :return: second h inverse function, Q(V_left=v_left | V_right=v_right), of shape (num_obs, 1), given the observation
         :rtype: torch.Tensor
         """
-        return ENUM_FAM_BICOP[self.fam].value.hinv2(
+        return ENUM_FAM_BICOP[self.fam].value.hinv_r(
             obs=obs,
             par=self.par,
             rot=self.rot,
@@ -242,7 +256,6 @@ class DataBiCop(ABC):
         obs: torch.Tensor,
     ) -> torch.Tensor:
         """
-
         :param self: an instance of the DataBiCop dataclass
         :param obs: observation of the bivariate copula, of shape (num_obs, 2)
         :type obs: torch.Tensor
@@ -288,7 +301,7 @@ class DataBiCop(ABC):
             torch.manual_seed(seed=seed)
             obs = torch.rand(size=(num_sim, 2), device=device, dtype=dtype)
         if self.fam != "Independent":
-            obs[:, [1]] = ENUM_FAM_BICOP[self.fam].value.hinv1(
+            obs[:, [1]] = ENUM_FAM_BICOP[self.fam].value.hinv_l(
                 obs=obs,
                 par=self.par,
                 rot=self.rot,

@@ -12,15 +12,15 @@ class BB7(BiCopArchimedean):
     _EPS = 1e-7
 
     @staticmethod
-    def generator(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return (1.0 - (1.0 - vec).pow(par[0])).pow(-par[1]) - 1.0
 
     @staticmethod
-    def generator_inv(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator_inv(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         return 1 - (1.0 - (1.0 + vec).pow(-1 / par[1])).pow(1 / par[0])
 
     @staticmethod
-    def generator_derivative(vec: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def generator_derivative(vec: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         theta, delta = par
         vec_1 = 1.0 - vec
         return (
@@ -31,28 +31,26 @@ class BB7(BiCopArchimedean):
         )
 
     @staticmethod
-    def par2tau_0(par: tuple[float], num_step: float = 5000) -> float:
+    def par2tau_0(par: torch.Tensor, num_step: float = 5000) -> float:
         """
         Kendall's tau for bivariate Archimedean copula, numerical integration
         """
         theta, delta = par
-        vec_x = torch.linspace(0.0, 1.0, int(num_step))[1:-1].reshape(-1, 1)
+        vec_x = torch.linspace(
+            0.0, 1.0, int(num_step), dtype=par.dtype, device=par.device
+        )[1:-1].reshape(-1, 1)
         # ! number of intervals is even for Simpson's rule
         if len(vec_x) % 2 == 1:
             vec_x = vec_x[:-1]
         vec_y = 1 - vec_x
         tmp = vec_y.pow(theta)
         vec_y = (1 - (1 - tmp).pow(delta)) * (-1 + tmp) * vec_y / (tmp * theta * delta)
-        return (
-            (vec_x[1] - vec_x[0])
-            * (vec_y[0] + 4 * vec_y[1::2].sum() + 2 * vec_y[2:-1:2].sum() + vec_y[-1])
-            / 3
-            * 4
-            + 1
-        ).item()
+        return ((vec_x[1] - vec_x[0]) * (
+            vec_y[0] + 4 * vec_y[1::2].sum() + 2 * vec_y[2:-1:2].sum() + vec_y[-1]
+        ) / 3 * 4 + 1)[0]
 
     @staticmethod
-    def l_pdf_0(obs: torch.Tensor, par: tuple[float]) -> torch.Tensor:
+    def l_pdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         theta, delta = par
         theta_delta = theta * delta
         theta_rec, delta_rec = 1.0 / theta, 1.0 / delta

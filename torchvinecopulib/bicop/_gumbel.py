@@ -1,16 +1,15 @@
 import torch
 
 from ._archimedean import BiCopArchimedean
-from ._extremevalue import BiCopExtremeValue
 
 
-class Gumbel(BiCopArchimedean, BiCopExtremeValue):
+class Gumbel(BiCopArchimedean):
     # Joe 2014 page 172
     # https://openturns.github.io/openturns/latest/user_manual/_generated/openturns.GumbelCopula.html
     # ! exchangeability
     # * suggest torch.float64 for |par|<88, torch.float32 for |par|<12
     # delta
-    _PAR_MIN, _PAR_MAX = torch.tensor([1.000001]), torch.tensor([88.0])
+    _PAR_MIN, _PAR_MAX = (1.000001,), (88.0,)
 
     @staticmethod
     def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
@@ -23,7 +22,7 @@ class Gumbel(BiCopArchimedean, BiCopExtremeValue):
         )
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def hfunc_l_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         delta = par[0]
         x = obs[:, [0]].log().neg()
@@ -35,7 +34,7 @@ class Gumbel(BiCopArchimedean, BiCopExtremeValue):
         )
 
     @staticmethod
-    def hinv1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:  
+    def hinv_l_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         # Newton, using log version f
         delta = par[0]
@@ -54,7 +53,7 @@ class Gumbel(BiCopArchimedean, BiCopExtremeValue):
         return cls.pdf_0(obs=obs, par=par).log()
 
     @staticmethod
-    def par2tau_0(par: torch.Tensor) -> float:
+    def par2tau_0(par: torch.Tensor) -> torch.Tensor:
         return 1.0 - 1.0 / par[0]
 
     @staticmethod
@@ -73,5 +72,11 @@ class Gumbel(BiCopArchimedean, BiCopExtremeValue):
         )
 
     @staticmethod
-    def tau2par(tau: float, **kwargs) -> torch.Tensor:
-        return torch.tensor([1.0 / (1.0 - abs(tau))])
+    def tau2par(tau: float) -> torch.Tensor:
+        return torch.tensor(
+            [
+                1.0 / (1.0 - abs(tau)),
+            ],
+            dtype=tau.dtype,
+            device=tau.device,
+        )

@@ -1,19 +1,27 @@
 import numpy as np
 import torch
 from scipy.optimize import minimize
-
+import heapq
 from ..util import kendall_tau
-from ._data_bcp import ENUM_FAM_BICOP, DataBiCop, SET_FAMnROT
+from ._data_bcp import (
+    ENUM_FAM_BICOP,
+    DataBiCop,
+    SET_FAMnROT,
+    SET_FAM_ITAU,
+    SET_FAM_ITAU_QMLE,
+)
 
 
 def bcp_from_obs(
     obs_bcp: torch.Tensor,
     tau: float | None = None,
+    tau_pval: float | None = None,
     thresh_trunc: float = 0.05,
     mtd_fit: str = "itau",
     mtd_mle: str = "L-BFGS-B",
     mtd_sel: str = "aic",
-    tpl_fam: tuple[str, ...] = (
+    fam: set[str] = (
+        "BB1",
         "Clayton",
         "Frank",
         "Gaussian",
@@ -23,6 +31,7 @@ def bcp_from_obs(
     ),
     topk: int = 2,
 ) -> DataBiCop:
+    # TODO: tau test should have some cases bypassed this function
     """factory method to make a bivariate copula dataclass object, fitted from observations
 
     :param obs_bcp: bivariate copula obs, of shape (num_obs, 2) with values in [0, 1]
@@ -48,14 +57,37 @@ def bcp_from_obs(
     :return: fitted bivariate copula dataclass object
     :rtype: DataBiCop
     """
-    # things known before fitting
+    # * things known before fitting
+    num_obs = obs_bcp.shape[0]
+    if tau_pval is not None and tau_pval >= thresh_trunc:
+        return DataBiCop(
+            fam="Independent",
+            neg_log_lik=0.0,
+            num_obs=obs_bcp.shape[0],
+            par=torch.tensor([], dtype=torch.float64),
+            rot=0,
+        )
+    else:
+        # * tau from data, for inv-tau/tau2par, whose par is taken as init value for mle
+        if tau is None:
+            tau, pval = kendall_tau(x=obs_bcp[:, [0]], y=obs_bcp[:, [1]])
+            if pval >= thresh_trunc:
+                return DataBiCop(
+                    fam="Independent",
+                    neg_log_lik=0.0,
+                    num_obs=num_obs,
+                    par=tuple(),
+                    rot=0,
+                )
+
+    # * things known before fitting
     num_obs = obs_bcp.shape[0]
     # * tau from data, for inv-tau/tau2par, whose par is taken as init value for mle
     if tau is None:
         tau, pval = kendall_tau(x=obs_bcp[:, [0]], y=obs_bcp[:, [1]])
         if pval >= thresh_trunc:
             return DataBiCop(
-                fam="Independent", negloglik=0.0, num_obs=num_obs, par=tuple(), rot=0
+                fam="Independent", neg_log_lik=0.0, num_obs=num_obs, par=tuple(), rot=0
             )
 
     def _fit_itau(i_fam: str, i_rot: int) -> DataBiCop:
@@ -65,14 +97,14 @@ def bcp_from_obs(
         i_par = i_cls.tau2par(tau=tau, obs=obs_bcp)
         return DataBiCop(
             fam=i_fam,
-            negloglik=i_cls.negloglik(obs=obs_bcp, par=i_par, rot=i_rot),
+            neg_log_lik=i_cls.negloglik(obs=obs_bcp, par=i_par, rot=i_rot),
             num_obs=num_obs,
             par=i_par,
             rot=i_rot,
         )
 
     # * tuple of a family tuple and a rotation tuple (transpose SET_FAMROT_ALL)
-    fam_rot = (tpl for tpl in SET_FAMnROT if tpl[0] in tpl_fam)
+    fam_rot = (tpl for tpl in SET_FAMnROT if tpl[0] in fam)
     vec_bcp_data = np.fromiter((_fit_itau(*tpl) for tpl in fam_rot), dtype=DataBiCop)
     # ! take note `k` best to accelerate MLE
     idx_sel = np.argsort(a=tuple(_.__getattribute__(mtd_sel) for _ in vec_bcp_data))[
@@ -110,7 +142,7 @@ def bcp_from_obs(
             )
             return DataBiCop(
                 fam=i_fam,
-                negloglik=float(res.fun),
+                neg_log_lik=float(res.fun),
                 num_obs=num_obs,
                 par=tuple(res.x),
                 rot=i_rot,

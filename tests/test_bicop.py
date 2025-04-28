@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from pyvinecopulib import Bicop, FitControlsBicop
 
-from torchvinecopulib.bicop import SET_FAMnROT, bcp_from_obs
+from torchvinecopulib.bicop import SET_FAM_ROT, bcp_from_obs
 from torchvinecopulib.util import _TAU_MAX, _TAU_MIN
 
 from . import DCT_FAM, LST_MTD_FIT, compare_chart_vec, sim_from_bcp
@@ -19,7 +19,7 @@ def calc_fit_par(
     """
     if bcp_tvc.__name__ == "Independent":
         assert (
-            bcp_from_obs(sim_from_bcp(bcp_tvc=bcp_tvc), tpl_fam=(bcp_tvc.__name__,)).par
+            bcp_from_obs(sim_from_bcp(bcp_tvc=bcp_tvc), fam=(bcp_tvc.__name__,)).par
             == tuple()
         )
         return None
@@ -63,7 +63,7 @@ def calc_fit_par(
                         obs_bcp=obs,
                         thresh_trunc=1,
                         mtd_fit=mtd_fit,
-                        tpl_fam=[bcp_tvc.__name__],
+                        fam=[bcp_tvc.__name__],
                     ).par
                 ).sum()
             )
@@ -80,7 +80,7 @@ def calc_fit_par(
                         obs_bcp=obs,
                         thresh_trunc=1,
                         mtd_fit=mtd_fit,
-                        tpl_fam=[bcp_tvc.__name__],
+                        fam=[bcp_tvc.__name__],
                     ).par
                 ).sum()
             )
@@ -92,7 +92,7 @@ def calc_fit_par(
                     obs_bcp=obs,
                     thresh_trunc=1,
                     mtd_fit=mtd_fit,
-                    tpl_fam=[bcp_tvc.__name__],
+                    fam=[bcp_tvc.__name__],
                 ).par[0]
             )
     return np.array(lst_pvc), np.array(lst_tvc)
@@ -159,7 +159,7 @@ class TestBiCop(unittest.TestCase):
 
     def test_fit(self):
         """test the fit results (parameter, rotation) given obs"""
-        for fam, rot in SET_FAMnROT:
+        for fam, rot in SET_FAM_ROT:
             bcp_pvc, bcp_tvc = DCT_FAM[fam]
             for mtd_fit in LST_MTD_FIT:
                 logging.info(
@@ -188,7 +188,7 @@ class TestBiCop(unittest.TestCase):
 
     def test_bcp_cdfhfunc1hinv1lpdf(self):
         """test the BiCop methods (cdf, hfunc1, hinv1, l_pdf) given obs"""
-        for fam, rot in SET_FAMnROT:
+        for fam, rot in SET_FAM_ROT:
             bcp_pvc, bcp_tvc = DCT_FAM[fam]
             obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)
             obs_bcp_clone = obs_bcp.clone()
@@ -228,7 +228,7 @@ class TestBiCop(unittest.TestCase):
 
     def test_bcp_tau2par2tau(self):
         """test the BiCop methods (tau2par, par2tau)"""
-        for fam, rot in SET_FAMnROT:
+        for fam, rot in SET_FAM_ROT:
             if fam == "Independent" or fam == "Bb1":
                 continue
             bcp_pvc, bcp_tvc = DCT_FAM[fam]

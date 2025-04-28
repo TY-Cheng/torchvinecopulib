@@ -397,12 +397,12 @@ def vcp_from_obs(
         lv_up = lv_down - 1
         for (v_l, v_r, s_up), bcp in dct_bcp[lv_up].items():
             if (v_down in {v_l, v_r}) and s_down.issubset({v_l, v_r} | s_up):
-                # ! notice hfunc1 or hfunc2
+                # ! notice hfunc_l or hfunc_r
                 if bcp.fam == "Independent":
                     dct_obs[lv_down][(v_down, s_down)] = dct_obs[lv_up][(v_down, s_up)]
                 else:
                     dct_obs[lv_down][(v_down, s_down)] = (
-                        bcp.hfunc2 if v_down == v_l else bcp.hfunc1
+                        bcp.hfunc_r if v_down == v_l else bcp.hfunc_l
                     )(
                         obs=torch.hstack(
                             [
@@ -513,7 +513,7 @@ def vcp_from_obs(
                 mtd_fit=mtd_fit,
                 mtd_mle=mtd_mle,
                 mtd_sel=mtd_sel,
-                tpl_fam=tpl_fam,
+                fam=tpl_fam,
                 topk=topk,
             )
             i_lv_next = lv + 1

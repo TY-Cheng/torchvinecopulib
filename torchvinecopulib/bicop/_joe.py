@@ -10,7 +10,7 @@ class Joe(BiCopArchimedean):
     # ! exchangeability
     # * suggest torch.float64 for |par|<88, torch.float32 for |par|<7
     # delta
-    _PAR_MIN, _PAR_MAX = torch.tensor([1.000001]), torch.tensor([88.0])
+    _PAR_MIN, _PAR_MAX = (1.000001,), (88.0,)
 
     @staticmethod
     def cdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
@@ -20,7 +20,7 @@ class Joe(BiCopArchimedean):
         return 1.0 - (x + y - x * y).pow(1.0 / delta)
 
     @staticmethod
-    def hfunc1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def hfunc_l_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """first h function, Prob(V1<=v1 | V0=v0)"""
         delta = par[0]
         y = (1.0 - obs[:, [1]]).pow(delta)
@@ -29,10 +29,10 @@ class Joe(BiCopArchimedean):
         ) * (1.0 - y)
 
     @staticmethod
-    def hinv1_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
+    def hinv_l_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
         """inverse of the first h function, Q(p=v1 | V0=v0)"""
         # * Newton, using x=(1-u)**delta, y=(1-v)**delta
-        delta = torch.clamp(par[0], min=Joe._PAR_MIN[0], max=Joe._PAR_MAX[0])
+        delta = par[0].clamp(min=Joe._PAR_MIN[0], max=Joe._PAR_MAX[0])
         x = obs[:, [0]].neg().log1p()
         p = obs[:, [1]]
         delta_1m = 1.0 - delta
@@ -61,21 +61,15 @@ class Joe(BiCopArchimedean):
         return cls.pdf_0(obs=obs, par=par).log()
 
     @staticmethod
-    def par2tau_0(par: torch.Tensor) -> float:
+    def par2tau_0(par: torch.Tensor) -> torch.Tensor:
         delta = par[0]
         if delta == 2:
-            # 1- PolyGamma[1, 2] = 2 - pi**2 / 6
-            return 0.3550659331517736
+            # ! 1- PolyGamma[1, 2] = 2 - pi**2 / 6
+            return torch.tensor(0.3550659331517736, dtype=par.dtype, device=par.device)
         else:
-            return (
-                1.0
-                + 2.0
-                / (2.0 - delta)
-                * (
-                    0.42278433509846713
-                    - torch.special.digamma(torch.as_tensor(2.0 / delta + 1.0))
-                )
-            ).item()
+            return 1.0 + 2.0 / (2.0 - delta) * (
+                0.42278433509846713 - torch.special.digamma(2.0 / delta + 1.0)
+            )
 
     @staticmethod
     def pdf_0(obs: torch.Tensor, par: torch.Tensor) -> torch.Tensor:
@@ -88,17 +82,27 @@ class Joe(BiCopArchimedean):
         return tmp.pow(-2.0 + 1.0 / delta) * (x_y * d1).exp() * (d1 + tmp)
 
     @staticmethod
-    def tau2par(tau: float, **kwargs) -> torch.Tensor:
-        tau_a = abs(tau)
-
-        return torch.tensor([
-            (
+    def tau2par(tau: torch.Tensor) -> torch.Tensor:
+        tau_a = tau.abs()
+        return torch.tensor(
+            [
                 solve_ITP(
-                    fun=lambda delta: Joe.par2tau_0(par=(delta,)) - tau_a,
+                    fun=lambda delta: Joe.par2tau_0(
+                        par=torch.tensor(
+                            [
+                                delta,
+                            ],
+                            dtype=tau.dtype,
+                            device=tau.device,
+                        )
+                    )
+                    - tau_a,
                     x_a=0.99,
                     x_b=20600.0,
                     epsilon=1e-6,
                     k_1=0.1,
                 ),
-            )
-        ])
+            ],
+            dtype=tau.dtype,
+            device=tau.device,
+        )
