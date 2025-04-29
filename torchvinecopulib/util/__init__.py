@@ -10,7 +10,7 @@ import torch
 from scipy.stats import kendalltau
 from torch.special import ndtr, ndtri
 
-_EPS = 1e-7
+_EPS = 1e-9
 
 
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -197,6 +197,11 @@ def solve_ITP(
     num_iter_max: int = 31,
     k_1: float = 0.2,
 ) -> torch.Tensor:
+    """
+    Oliveira, I. F., & Takahashi, R. H. (2020).
+    An enhancement of the bisection method average performance preserving minmax optimality.
+    ACM Transactions on Mathematical Software (TOMS), 47(1), 1-24.
+    """
     y_a, y_b = fun(x_a), fun(x_b)
     # * corner cases
     x_a = torch.where(

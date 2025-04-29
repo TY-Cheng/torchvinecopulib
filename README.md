@@ -102,9 +102,10 @@ coverage run -m pytest ./tests && coverage html
 
 ## TODO
 
-- [`fastkde.pdf`](https://github.com/LBL-EESA/fastkde/blob/main/src/fastkde/fastKDE.py): `pdf_at_points()` is potentially slow relative to `pdf()` because it does not take advantage of the inverse FFT for transforming from Fourier space to data space. However, if few input points are requested, it may actually be faster.
+- [`fastkde.pdf`](https://github.com/LBL-EESA/fastkde/blob/main/src/fastkde/fastKDE.py) onto `torch.Tensor`
 - `VineCop.rosenblatt`
 - `examples/someapplications.ipynb`
+- flatten dynamic nested dicts into tensors
 
 ## Contributing
 

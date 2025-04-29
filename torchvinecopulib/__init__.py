@@ -1,7 +1,9 @@
-from . import bicop, vinecop, util
+from . import util
+from .bicop import BiCop
+from .vinecop import VineCop
 
 __all__ = [
-    "bicop",
+    "BiCop",
+    "VineCop",
     "util",
-    "vinecop",
 ]

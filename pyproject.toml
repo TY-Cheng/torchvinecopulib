@@ -1,3 +1,6 @@
+# List/Specify python version
+# uv python list
+# uv python pin python3.13
 # Install default + dev dependencies with torch for CPU/cu126:
 # uv sync --extra cpu -U
 # uv sync --extra cu126 -U

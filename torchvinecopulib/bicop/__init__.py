@@ -139,9 +139,9 @@ class BiCop(torch.nn.Module):
                 ],
                 dim=1,
             )
-        pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid]
-        if (tmp := pdf_grid.min()) <= 0:
-            pdf_grid -= tmp - self._EPS
+        pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(
+            self._EPS
+        )
         pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
         # * normalization: Sinkhorn / iterative proportional fitting (IPF)
         for _ in range(num_iter_max):
@@ -184,29 +184,19 @@ class BiCop(torch.nn.Module):
         obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs.prod(dim=1, keepdim=True)
-        return (
-            self._interp(grid=self._cdf_grid, obs=obs).clamp_min(0.0).unsqueeze(dim=1)
-        )
+        return self._interp(grid=self._cdf_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_l(self, obs: torch.Tensor) -> torch.Tensor:
         obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [1]]
-        return (
-            self._interp(grid=self._hfunc_l_grid, obs=obs)
-            .clamp_min(0.0)
-            .unsqueeze(dim=1)
-        )
+        return self._interp(grid=self._hfunc_l_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_r(self, obs: torch.Tensor) -> torch.Tensor:
         obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [0]]
-        return (
-            self._interp(grid=self._hfunc_r_grid, obs=obs)
-            .clamp_min(0.0)
-            .unsqueeze(dim=1)
-        )
+        return self._interp(grid=self._hfunc_r_grid, obs=obs).unsqueeze(dim=1)
 
     @torch.no_grad()
     def hinv_l(self, obs: torch.Tensor) -> torch.Tensor:
@@ -240,9 +230,7 @@ class BiCop(torch.nn.Module):
         obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.ones_like(obs[:, [0]])
-        return (
-            self._interp(grid=self._pdf_grid, obs=obs).clamp_min(0.0).unsqueeze(dim=1)
-        )
+        return self._interp(grid=self._pdf_grid, obs=obs).unsqueeze(dim=1)
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
         obs.to(device=self.device, dtype=self.dtype)
@@ -293,8 +281,8 @@ class BiCop(torch.nn.Module):
         is_log_pdf: bool = False,
         ax: plt.Axes | None = None,
         cmap: str = "inferno",
-        xlabel: str = r"$u_1$",
-        ylabel: str = r"$u_2$",
+        xlabel: str = r"$u_{left}$",
+        ylabel: str = r"$u_{right}$",
         title: str = "Estimated bivariate copula density",
         colorbartitle: str = "Density",
         **imshow_kwargs: dict,
@@ -302,7 +290,11 @@ class BiCop(torch.nn.Module):
         if ax is None:
             _, ax = plt.subplots()
         im = ax.imshow(
-            X=self._pdf_grid.log().cpu() if is_log_pdf else self._pdf_grid.cpu(),
+            X=self._pdf_grid.log()
+            .nan_to_num(posinf=0.0, neginf=-13.815510557964274)
+            .cpu()
+            if is_log_pdf
+            else self._pdf_grid.cpu(),
             extent=(0, 1, 0, 1),
             origin="lower",
             cmap=cmap,
