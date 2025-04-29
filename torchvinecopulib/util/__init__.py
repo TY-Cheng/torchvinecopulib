@@ -25,6 +25,16 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """mutual information, x,y are both of shape (n, 1)
 
+    O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P.
+    A fast and objective multidimensional kernel density estimation method: fastKDE.
+    Comput. Stat. Data Anal. 101, 148–160 (2016).
+    http://dx.doi.org/10.1016/j.csda.2016.02.014
+
+    O’Brien, T. A., Collins, W. D., Rauscher, S. A. & Ringler, T. D.
+    Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method.
+    Comput. Stat. Data Anal. 79, 222–234 (2014).
+    http://dx.doi.org/10.1016/j.csda.2014.06.002
+
     Purkayastha, S., & Song, P. X. K. (2024).
     fastMI: A fast and consistent copula-based nonparametric estimator of mutual information.
     Journal of Multivariate Analysis, 201, 105270.

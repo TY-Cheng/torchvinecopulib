@@ -9,7 +9,7 @@ from pprint import pformat
 
 import matplotlib.pyplot as plt
 import torch
-from fastkde import pdf_at_points
+from fastkde import pdf as fkpdf
 from scipy.stats import kendalltau
 
 from ..util import _EPS, solve_ITP
@@ -25,10 +25,13 @@ class BiCop(torch.nn.Module):
 
     def __init__(
         self,
-        num_step_grid: int = 100,
+        num_step_grid: int = 128,
         dtype: torch.dtype = torch.float64,
         device: str = "cpu",
     ):
+        """
+        num_step_grid has to be a power of 2
+        """
         super().__init__()
         # * by default an independent bicop, otherwise cache grids from KDE
         self.is_indep = True
@@ -77,7 +80,6 @@ class BiCop(torch.nn.Module):
         num_iter_max: int = 17,
         is_tau_est: bool = False,
     ) -> None:
-        # TODO: fastkde.pdf
         obs.to(device=self.device, dtype=self.dtype)
         self.is_indep = False
         self.num_obs.copy_(obs.shape[0])
@@ -100,19 +102,45 @@ class BiCop(torch.nn.Module):
             torch.manual_seed(seed=seed)
             idx = torch.randperm(self.num_obs, device=obs.device)[:num_obs_max]
             pdf_grid = torch.from_numpy(
-                pdf_at_points(
+                fkpdf(
                     obs[idx, 0].cpu(),
                     obs[idx, 1].cpu(),
-                    list_of_points=grid.cpu(),
-                )
+                    num_points=self.num_step_grid * 2 + 1,
+                ).values
             ).to(device=self.device, dtype=self.dtype)
         else:
             pdf_grid = torch.from_numpy(
-                pdf_at_points(
-                    obs[:, 0].cpu(), obs[:, 1].cpu(), list_of_points=grid.cpu()
-                )
+                fkpdf(
+                    obs[:, 0].cpu(),
+                    obs[:, 1].cpu(),
+                    num_points=self.num_step_grid * 2 + 1,
+                ).values
             ).to(device=self.device, dtype=self.dtype)
-        if (tmp := pdf_grid.min()) < 0:
+        # * padding/trimming after fastkde.pdf
+        H, W = pdf_grid.shape
+        if H < self.num_step_grid:
+            pdf_grid = torch.cat(
+                [
+                    pdf_grid,
+                    torch.zeros(
+                        self.num_step_grid - H, W, dtype=self.dtype, device=self.device
+                    ),
+                ],
+                dim=0,
+            )
+        H, W = pdf_grid.shape
+        if W < self.num_step_grid:
+            pdf_grid = torch.cat(
+                [
+                    pdf_grid,
+                    torch.zeros(
+                        H, self.num_step_grid - W, dtype=self.dtype, device=self.device
+                    ),
+                ],
+                dim=1,
+            )
+        pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid]
+        if (tmp := pdf_grid.min()) <= 0:
             pdf_grid -= tmp - self._EPS
         pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
         # * normalization: Sinkhorn / iterative proportional fitting (IPF)
@@ -262,6 +290,7 @@ class BiCop(torch.nn.Module):
     @torch.no_grad()
     def imshow(
         self,
+        is_log_pdf: bool = False,
         ax: plt.Axes | None = None,
         cmap: str = "inferno",
         xlabel: str = r"$u_1$",
@@ -273,7 +302,7 @@ class BiCop(torch.nn.Module):
         if ax is None:
             _, ax = plt.subplots()
         im = ax.imshow(
-            X=self._pdf_grid.cpu(),
+            X=self._pdf_grid.log().cpu() if is_log_pdf else self._pdf_grid.cpu(),
             extent=(0, 1, 0, 1),
             origin="lower",
             cmap=cmap,

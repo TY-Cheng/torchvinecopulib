@@ -675,19 +675,24 @@ class VineCop(torch.nn.Module):
     ) -> torch.Tensor:
         # * broadcast
         return (
-            self.sample(num_sample=num_sample, seed=seed, is_sobol=True).unsqueeze(
-                dim=1
-            )  # * (num_sample,1,num_dim)
-            <= obs_mvcp  # * (num_sample, num_obs, num_dim)
-        ).all(
-            dim=2,
-            keepdim=True,
-            # * (num_sample, num_obs, 1)
-        ).sum(
-            axis=0,
-            keepdim=False,
-            # * (num_obs, 1)
-        ) / num_sample
+            (
+                self.sample(num_sample=num_sample, seed=seed, is_sobol=True).unsqueeze(
+                    dim=1
+                )  # * (num_sample,1,num_dim)
+                <= obs_mvcp  # * (num_sample, num_obs, num_dim)
+            )
+            .all(
+                dim=2,
+                keepdim=True,
+                # * (num_sample, num_obs, 1)
+            )
+            .sum(
+                axis=0,
+                keepdim=False,
+                # * (num_obs, 1)
+            )
+            / num_sample
+        ).to(device=self.device, dtype=self.dtype)
 
     def __str__(self) -> str:
         header = self.__class__.__name__
