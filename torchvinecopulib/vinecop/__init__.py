@@ -10,7 +10,7 @@ from textwrap import indent
 import torch
 
 from ..bicop import BiCop
-from ..util import ENUM_FUNC_BIDEP
+from ..util import ENUM_FUNC_BIDEP, kdeCDFPPF1D
 
 __all__ = [
     "VineCop",
@@ -24,12 +24,13 @@ class VineCop(torch.nn.Module):
     def __init__(
         self,
         num_dim: int,
-        num_step_grid: int = 100,
-        dtype: torch.dtype = torch.float64,
-        device: str = "cpu",
+        is_cop_scale: bool = False,
+        num_step_grid: int = 128,
     ) -> None:
         super().__init__()
         self.num_dim = num_dim
+        self.is_cop_scale = is_cop_scale
+        self.marginals = torch.nn.ModuleList([None] * num_dim)
         self.bicops = torch.nn.ModuleDict()
         self.struct_bcp = {}
         self.struct_obs = [{} for _ in range(num_dim)]
@@ -40,11 +41,7 @@ class VineCop(torch.nn.Module):
             # NOTE i < j by itertools.combinations;
             # ! ModuleDict key must be str
             cond_ed = f"{i},{j}"
-            self.bicops[cond_ed] = BiCop(
-                num_step_grid=num_step_grid,
-                dtype=dtype,
-                device=device,
-            )
+            self.bicops[cond_ed] = BiCop(num_step_grid=num_step_grid)
             self.struct_bcp[cond_ed] = dict(
                 # * cond_ed, cond_ing (now empty) of a bicop
                 cond_ed=(i, j),
@@ -58,10 +55,18 @@ class VineCop(torch.nn.Module):
         self.mtd_bidep = None
         self.tree_bidep = [{} for _ in range(num_dim - 1)]
         self.num_step_grid = num_step_grid
-        self.dtype = dtype
-        self.device = device
         self.sample_order = tuple(_ for _ in range(num_dim))
-        self.register_buffer("num_obs", torch.empty((), dtype=torch.int, device=device))
+        self.register_buffer("num_obs", torch.empty((), dtype=torch.int))
+        # ! device agnostic
+        self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))
+
+    @property
+    def device(self):
+        return self._dd.device
+
+    @property
+    def dtype(self):
+        return self._dd.dtype
 
     @property
     def matrix(self) -> torch.Tensor:
@@ -324,7 +329,7 @@ class VineCop(torch.nn.Module):
     @torch.no_grad()
     def fit(
         self,
-        obs_mvcp: torch.Tensor,
+        obs: torch.Tensor,
         is_dissmann: bool = True,
         matrix: torch.Tensor = None,
         first_tree_vertex: tuple = tuple(),
@@ -335,9 +340,25 @@ class VineCop(torch.nn.Module):
         seed: int = 42,
         num_iter_max: int = 17,
         is_tau_est: bool = False,
+        num_step_grid_kde1d: int = None,
+        **kde_kwargs,
     ) -> None:
         self.reset()
-        obs_mvcp.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        device, dtype = self.device, self.dtype
+        if self.is_cop_scale:
+            obs_mvcp = obs.to(device=device, dtype=dtype)
+        else:
+            for v in range(self.num_dim):
+                self.marginals[v] = kdeCDFPPF1D(
+                    x=obs[:, v],
+                    num_step_grid=num_step_grid_kde1d,
+                    **kde_kwargs,
+                ).to(device=device, dtype=dtype)
+            obs_mvcp = torch.hstack(
+                [self.marginals[v].cdf(obs[:, [v]]) for v in range(self.num_dim)]
+            ).to(device=device, dtype=dtype)
+
         self.num_obs.copy_(obs_mvcp.shape[0])
         self.mtd_bidep = mtd_bidep
         is_kendall_tau = mtd_bidep == "kendall_tau"
@@ -492,9 +513,17 @@ class VineCop(torch.nn.Module):
         # * update sample order
         self._sample_order()
 
-    def log_pdf(self, obs_mvcp: torch.Tensor) -> torch.Tensor:
+    def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        # ! device agnostic
+        device, dtype = self.device, self.dtype
+        if self.is_cop_scale:
+            obs_mvcp = obs.to(device=device, dtype=dtype)
+        else:
+            obs_mvcp = torch.hstack(
+                [self.marginals[v].cdf(obs[:, [v]]) for v in range(self.num_dim)]
+            ).to(device=device, dtype=dtype)
         num_obs, num_dim = obs_mvcp.shape
-        lpdf = torch.zeros((num_obs, 1), dtype=obs_mvcp.dtype, device=obs_mvcp.device)
+        lpdf = torch.zeros((num_obs, 1), dtype=dtype, device=device)
         dct_obs = [dict() for _ in range(num_dim)]
         # * lv-0 marginals
         for idx in range(num_dim):
@@ -541,13 +570,17 @@ class VineCop(torch.nn.Module):
                 # * free prev lv dict
                 with torch.no_grad():
                     dct_obs[lv - 1].clear()
+        if not self.is_cop_scale:
+            # * add-on marginal pdfs
+            for v in range(num_dim):
+                lpdf = lpdf + self.marginals[v].log_pdf(x=obs[:, [v]])
         return lpdf
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         return -self.log_pdf(x).mean()
 
     def rosenblatt(
-        self, obs_mvcp: torch.Tensor, sample_order: tuple | None = None
+        self, obs: torch.Tensor, sample_order: tuple | None = None
     ) -> torch.Tensor:
         # TODO, needs grad as residuals
         raise NotImplementedError
@@ -560,7 +593,7 @@ class VineCop(torch.nn.Module):
         is_sobol: bool = False,
         sample_order: tuple[int, ...] | None = None,
         dct_v_s_obs: dict[tuple[int, ...], torch.Tensor] | None = None,
-    ):
+    ) -> torch.Tensor:
         def _ref_count_decrement(v_s) -> None:
             ref_count[v_s] -= 1
             if ref_count[v_s] < 1 and (len(v_s) > 1):
@@ -626,8 +659,9 @@ class VineCop(torch.nn.Module):
             if is_hinv:
                 return v_s_next
 
-        torch.manual_seed(seed=seed)
+        # ! device agnostic
         device, dtype = self.device, self.dtype
+        torch.manual_seed(seed=seed)
         # ! start with any user‐provided pseudo obs
         dct_obs = dct_v_s_obs.copy() if dct_v_s_obs else dict()
         # * source vertices in each path; reference counting for whole DAG
@@ -667,12 +701,27 @@ class VineCop(torch.nn.Module):
                 v_s = _visit(lv=lv, v_s=v_s, is_hinv=True)
                 lv -= 1
         # ! gather pseudo-obs by v
-        return torch.hstack([dct_obs[(v,)] for v in range(self.num_dim)])
+        obs_mvcp = torch.hstack([dct_obs[(v,)] for v in range(self.num_dim)])
+        if self.is_cop_scale:
+            return obs_mvcp
+        else:
+            # * transform to original scale
+            return torch.hstack(
+                [self.marginals[v].ppf(obs_mvcp[:, [v]]) for v in range(self.num_dim)]
+            )
 
     @torch.no_grad()
     def cdf(
-        self, obs_mvcp: torch.Tensor, num_sample: int = 50000, seed: int = 0
+        self, obs: torch.Tensor, num_sample: int = 10007, seed: int = 0
     ) -> torch.Tensor:
+        # ! device agnostic
+        device, dtype = self.device, self.dtype
+        if self.is_cop_scale:
+            obs_mvcp = obs.to(device=device, dtype=dtype)
+        else:
+            obs_mvcp = torch.hstack(
+                [self.marginals[v].cdf(obs[:, [v]]) for v in range(self.num_dim)]
+            ).to(device=device, dtype=dtype)
         # * broadcast
         return (
             (
@@ -692,13 +741,15 @@ class VineCop(torch.nn.Module):
                 # * (num_obs, 1)
             )
             / num_sample
-        ).to(device=self.device, dtype=self.dtype)
+            # * bool -> float32 -> dtype
+        ).to(device=device, dtype=dtype)
 
     def __str__(self) -> str:
         header = self.__class__.__name__
         params = {
             "num_dim": int(self.num_dim),
             "num_obs": int(self.num_obs),
+            "is_cop_scale": self.is_cop_scale,
             "mtd_bidep": self.mtd_bidep,
             "negloglik": float(
                 sum(bcp.negloglik for bcp in self.bicops.values()).round(decimals=4)

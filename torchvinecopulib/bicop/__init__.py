@@ -26,8 +26,6 @@ class BiCop(torch.nn.Module):
     def __init__(
         self,
         num_step_grid: int = 128,
-        dtype: torch.dtype = torch.float64,
-        device: str = "cpu",
     ):
         """
         num_step_grid has to be a power of 2
@@ -36,29 +34,35 @@ class BiCop(torch.nn.Module):
         # * by default an independent bicop, otherwise cache grids from KDE
         self.is_indep = True
         self.num_step_grid = num_step_grid
-        self.dtype = dtype
-        self.device = device
-        self.register_buffer("tau", torch.zeros(2, dtype=torch.float64, device=device))
-        self.register_buffer("num_obs", torch.empty((), dtype=torch.int, device=device))
-        self.register_buffer(
-            "negloglik", torch.zeros((), dtype=torch.float64, device=device)
-        )
+        self.register_buffer("tau", torch.zeros(2, dtype=torch.float64))
+        self.register_buffer("num_obs", torch.empty((), dtype=torch.int))
+        self.register_buffer("negloglik", torch.zeros((), dtype=torch.float64))
         self.register_buffer(
             "_pdf_grid",
-            torch.ones(num_step_grid, num_step_grid, dtype=dtype, device=device),
+            torch.ones(num_step_grid, num_step_grid, dtype=torch.float64),
         )
         self.register_buffer(
             "_cdf_grid",
-            torch.empty(num_step_grid, num_step_grid, dtype=dtype, device=device),
+            torch.empty(num_step_grid, num_step_grid, dtype=torch.float64),
         )
         self.register_buffer(
             "_hfunc_l_grid",
-            torch.empty(num_step_grid, num_step_grid, dtype=dtype, device=device),
+            torch.empty(num_step_grid, num_step_grid, dtype=torch.float64),
         )
         self.register_buffer(
             "_hfunc_r_grid",
-            torch.empty(num_step_grid, num_step_grid, dtype=dtype, device=device),
+            torch.empty(num_step_grid, num_step_grid, dtype=torch.float64),
         )
+        # ! device agnostic
+        self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))
+
+    @property
+    def device(self):
+        return self._dd.device
+
+    @property
+    def dtype(self):
+        return self._dd.dtype
 
     @torch.no_grad()
     def reset(self) -> None:
@@ -80,34 +84,33 @@ class BiCop(torch.nn.Module):
         num_iter_max: int = 17,
         is_tau_est: bool = False,
     ) -> None:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        device, dtype = self.device, self.dtype
+        # * fastkde works on cpu
+        obs = obs.to(device="cpu", dtype=dtype)
         self.is_indep = False
         self.num_obs.copy_(obs.shape[0])
         if is_tau_est:
             self.tau.copy_(
-                torch.as_tensor(kendalltau(obs[:, 0].cpu(), obs[:, 1].cpu()))
+                torch.as_tensor(
+                    kendalltau(obs[:, 0].cpu(), obs[:, 1].cpu()),
+                    device=device,
+                    dtype=dtype,
+                )
             )
         self._target = self.num_step_grid - 1.0  # * marginal target
         self.step_grid = 1.0 / self._target
-        grid = torch.linspace(
-            start=self._EPS,
-            end=1.0 - self._EPS,
-            steps=self.num_step_grid,
-            device=self.device,
-            dtype=torch.float64,
-        )
-        grid = torch.cartesian_prod(grid, grid)
         # ! pdf
         if num_obs_max and self.num_obs > num_obs_max:
             torch.manual_seed(seed=seed)
-            idx = torch.randperm(self.num_obs, device=obs.device)[:num_obs_max]
+            idx = torch.randperm(self.num_obs, device=device)[:num_obs_max]
             pdf_grid = torch.from_numpy(
                 fkpdf(
                     obs[idx, 0].cpu(),
                     obs[idx, 1].cpu(),
                     num_points=self.num_step_grid * 2 + 1,
                 ).values
-            ).to(device=self.device, dtype=self.dtype)
+            ).to(device=device, dtype=dtype)
         else:
             pdf_grid = torch.from_numpy(
                 fkpdf(
@@ -115,16 +118,14 @@ class BiCop(torch.nn.Module):
                     obs[:, 1].cpu(),
                     num_points=self.num_step_grid * 2 + 1,
                 ).values
-            ).to(device=self.device, dtype=self.dtype)
+            ).to(device=device, dtype=dtype)
         # * padding/trimming after fastkde.pdf
         H, W = pdf_grid.shape
         if H < self.num_step_grid:
             pdf_grid = torch.cat(
                 [
                     pdf_grid,
-                    torch.zeros(
-                        self.num_step_grid - H, W, dtype=self.dtype, device=self.device
-                    ),
+                    torch.zeros(self.num_step_grid - H, W, dtype=dtype, device=device),
                 ],
                 dim=0,
             )
@@ -133,9 +134,7 @@ class BiCop(torch.nn.Module):
             pdf_grid = torch.cat(
                 [
                     pdf_grid,
-                    torch.zeros(
-                        H, self.num_step_grid - W, dtype=self.dtype, device=self.device
-                    ),
+                    torch.zeros(H, self.num_step_grid - W, dtype=dtype, device=device),
                 ],
                 dim=1,
             )
@@ -168,7 +167,10 @@ class BiCop(torch.nn.Module):
         idx = obs.clamp(self._EPS, 1 - self._EPS) / self.step_grid
         i0 = idx.floor().long()
         di = idx - i0
-        i1 = torch.minimum(i0 + 1, torch.full_like(input=i0, fill_value=self._target))
+        i1 = torch.minimum(
+            i0 + 1,
+            torch.full_like(input=i0, fill_value=self._target, device=idx.device),
+        )
         g00 = grid[i0[:, 0], i0[:, 1]]
         g10 = grid[i1[:, 0], i0[:, 1]]
         g01 = grid[i0[:, 0], i1[:, 1]]
@@ -181,26 +183,30 @@ class BiCop(torch.nn.Module):
         ).clamp_min(0.0)
 
     def cdf(self, obs: torch.Tensor) -> torch.Tensor:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs.prod(dim=1, keepdim=True)
         return self._interp(grid=self._cdf_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_l(self, obs: torch.Tensor) -> torch.Tensor:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [1]]
         return self._interp(grid=self._hfunc_l_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_r(self, obs: torch.Tensor) -> torch.Tensor:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [0]]
         return self._interp(grid=self._hfunc_r_grid, obs=obs).unsqueeze(dim=1)
 
     @torch.no_grad()
     def hinv_l(self, obs: torch.Tensor) -> torch.Tensor:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [1]]
         # * via root-finding
@@ -214,7 +220,8 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def hinv_r(self, obs: torch.Tensor) -> torch.Tensor:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [0]]
         # * via root-finding
@@ -227,13 +234,15 @@ class BiCop(torch.nn.Module):
         )
 
     def pdf(self, obs: torch.Tensor) -> torch.Tensor:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.ones_like(obs[:, [0]])
         return self._interp(grid=self._pdf_grid, obs=obs).unsqueeze(dim=1)
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
-        obs.to(device=self.device, dtype=self.dtype)
+        # ! device agnostic
+        obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.zeros_like(obs[:, [0]])
         return (
@@ -244,15 +253,17 @@ class BiCop(torch.nn.Module):
     def sample(
         self, num_sample: int = 100, seed: int = 42, is_sobol: bool = False
     ) -> torch.Tensor:
+        # ! device agnostic
+        device, dtype = self.device, self.dtype
         if is_sobol:
             obs = (
                 torch.quasirandom.SobolEngine(dimension=2, scramble=True, seed=seed)
-                .draw(n=num_sample, dtype=self.dtype)
-                .to(device=self.device)
+                .draw(n=num_sample, dtype=dtype)
+                .to(device=device)
             )
         else:
             torch.manual_seed(seed=seed)
-            obs = torch.rand(size=(num_sample, 2), dtype=self.dtype, device=self.device)
+            obs = torch.rand(size=(num_sample, 2), dtype=dtype, device=device)
         if not self.is_indep:
             obs[:, [1]] = self.hinv_l(obs=obs)
         return obs
@@ -266,8 +277,8 @@ class BiCop(torch.nn.Module):
                     'negloglik': self.negloglik.round(decimals=4),
                     'num_step_grid': self.num_step_grid,
                     'tau': self.tau.round(decimals=4),
-                    'dtype': self.dtype,
-                    'device': self.device,
+                    'dtype': self._dd.dtype,
+                    'device': self._dd.device,
                 },
                 compact=True,
                 sort_dicts=False,

@@ -4,17 +4,21 @@
 """
 
 import enum
+from pprint import pformat
 
 import fastkde
 import torch
 from scipy.stats import kendalltau
-from torch.special import ndtr, ndtri
+from torch.special import ndtri
 
 _EPS = 1e-9
 
 
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Kendall's tau, x,y are both of shape (n, 1)"""
+    """Kendall's tau, x,y are both of shape (n, 1)
+
+    Note: this method will .cpu() its inputs and use scipy under the hood.”
+    """
     return torch.as_tensor(
         kendalltau(x.ravel().cpu(), y.ravel().cpu()),
         dtype=x.dtype,
@@ -24,6 +28,8 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """mutual information, x,y are both of shape (n, 1)
+
+    Note: this method will .cpu() its inputs and use fastkde under the hood.
 
     O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P.
     A fast and objective multidimensional kernel density estimation method: fastKDE.
@@ -39,6 +45,7 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     fastMI: A fast and consistent copula-based nonparametric estimator of mutual information.
     Journal of Multivariate Analysis, 201, 105270.
     """
+
     x = ndtri(x.clamp(_EPS, 1.0 - _EPS)).ravel().cpu()
     y = ndtri(y.clamp(_EPS, 1.0 - _EPS)).ravel().cpu()
     joint = torch.as_tensor(fastkde.pdf(x, y).values, dtype=x.dtype, device=x.device)
@@ -115,7 +122,11 @@ def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> torch.Tensor:
     # whole eq. 3 in Lin and Han (2023)
     n = x.shape[0]
     return -2.0 + 24.0 * (
-        torch.as_tensor([xy_sum(m) for m in range(1, M + 1)]).sum(dim=0).max()
+        torch.as_tensor(
+            [xy_sum(m) for m in range(1, M + 1)], device=x.device, dtype=x.dtype
+        )
+        .sum(dim=0)
+        .max()
     ) / (M * (1.0 + n) * (1.0 + M + 4.0 * n))
 
 
@@ -131,60 +142,115 @@ class ENUM_FUNC_BIDEP(enum.Enum):
         return self.value(x, y, **kw)
 
 
-def make_cdf_ppf_kernel(vec_obs: torch.Tensor, bandwidth: float | None = None):
-    obs = vec_obs.flatten()
-    obs = obs[torch.isfinite(obs)]
-    n = obs.numel()
-    device = obs.device
-    dtype = obs.dtype
-    if bandwidth is None:
-        bandwidth = obs.std(unbiased=False) * 1.06 * n ** (-0.25)
-    obs, _ = torch.sort(obs)
+class kdeCDFPPF1D(torch.nn.Module):
+    _EPS = 1e-12
 
-    def cdf(x):
-        return (
-            ndtr(
-                (
-                    x.to(device=device, dtype=dtype).flatten().unsqueeze(-1)
-                    - obs.unsqueeze(0)
-                )
-                / bandwidth
+    def __init__(
+        self,
+        x: torch.Tensor,
+        num_step_grid: int = None,
+        x_min: float = None,
+        x_max: float = None,
+        pad: float = 1.0,
+    ):
+        super().__init__()
+        self.num_obs = x.shape[0]
+        self.x_min = x_min if x_min is not None else x.min().item() - pad
+        self.x_max = x_max if x_max is not None else x.max().item() + pad
+        # * power of 2 plus 1
+        if num_step_grid is None:
+            num_step_grid = (
+                int(2 ** torch.log2(torch.tensor(x.numel())).ceil().item()) + 1
             )
-            .mean(dim=1)
-            .reshape(x.shape)
+        self.num_step_grid = num_step_grid
+        # * fastkde
+        res = fastkde.pdf(x.cpu().numpy(), num_points=num_step_grid)
+        xs = torch.from_numpy(res.var0.values).to(dtype=torch.float64)
+        pdfs = torch.from_numpy(res.values).to(dtype=torch.float64).clamp_min(self._EPS)
+        N = pdfs.shape[0]
+        ws = torch.ones(N, dtype=torch.float64)
+        ws[1:-1:2] = 4
+        ws[2:-1:2] = 2
+        h = xs[1] - xs[0]
+        cdf = torch.cumsum(pdfs * ws, dim=0) * (h / 3)
+        cdf = cdf / cdf[-1]
+        slope_fwd = (cdf[1:] - cdf[:-1]) / h
+        slope_inv = h / (cdf[1:] - cdf[:-1])
+        slope_pdf = (pdfs[1:] - pdfs[:-1]) / h
+        self.register_buffer("grid_x", xs)
+        self.register_buffer("grid_pdf", pdfs)
+        self.register_buffer("grid_cdf", cdf)
+        self.register_buffer("slope_fwd", slope_fwd)
+        self.register_buffer("slope_inv", slope_inv)
+        self.register_buffer("slope_pdf", slope_pdf)
+        self.h = h
+        # ! device agnostic
+        self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))
+        self.negloglik = -self.log_pdf(x).mean()
+
+    @property
+    def device(self):
+        return self._dd.device
+
+    @property
+    def dtype(self):
+        return self._dd.dtype
+
+    def cdf(self, x: torch.Tensor) -> torch.Tensor:
+        # ! device agnostic
+        x = x.to(device=self.device, dtype=self.dtype)
+        x_clamped = x.clamp(self.x_min, self.x_max)
+        idx = torch.searchsorted(self.grid_x, x_clamped, right=False)
+        idx = idx.clamp(1, self.grid_cdf.numel() - 1)
+        y = (self.grid_cdf[idx - 1]) + (self.slope_fwd[idx - 1]) * (
+            x_clamped - self.grid_x[idx - 1]
         )
+        y = torch.where(x < self.x_min, torch.zeros_like(y), y)
+        y = torch.where(x > self.x_max, torch.ones_like(y), y)
+        return y.clamp(0.0, 1.0)
 
-    F = cdf(obs)
-    F, _ = torch.cummax(F, dim=0)
+    def ppf(self, q: torch.Tensor) -> torch.Tensor:
+        # ! device agnostic
+        q = q.to(device=self.device, dtype=self.dtype)
+        q_clamped = q.clamp(0.0, 1.0)
+        idx = torch.searchsorted(self.grid_cdf, q_clamped, right=False)
+        idx = idx.clamp(1, self.grid_cdf.numel() - 1)
+        x = (self.grid_x[idx - 1]) + (self.slope_inv[idx - 1]) * (
+            q_clamped - self.grid_cdf[idx - 1]
+        )
+        x = torch.where(q < 0.0, torch.full_like(x, self.x_min), x)
+        x = torch.where(q > 1.0, torch.full_like(x, self.x_max), x)
+        return x.clamp(self.x_min, self.x_max)
 
-    def ppf(u):
-        u0 = u.to(device=device, dtype=dtype).flatten().clamp(0.0, 1.0)
-        out = torch.empty_like(u0, device=device, dtype=dtype)
-        # below minimum
-        mask_lo = u0 <= F[0]
-        out[mask_lo] = obs[0]
-        # above maximum
-        mask_hi = u0 >= F[-1]
-        out[mask_hi] = F[-1]
+    def pdf(self, x: torch.Tensor) -> torch.Tensor:
+        # ! device agnostic
+        x = x.to(device=self.device, dtype=self.dtype)
+        x_clamped = x.clamp(self.x_min, self.x_max)
+        idx = torch.searchsorted(self.grid_x, x_clamped, right=False)
+        idx = idx.clamp(1, self.grid_pdf.numel() - 1)
+        f = self.grid_pdf[idx - 1] + (self.slope_pdf[idx - 1]) * (
+            x_clamped - self.grid_x[idx - 1]
+        )
+        f = torch.where((x < self.x_min) | (x > self.x_max), torch.zeros_like(f), f)
+        return f.clamp_min(0.0)
 
-        # in between
-        mask_mid = ~(mask_lo | mask_hi)
-        if mask_mid.any():
-            u_mid = u0[mask_mid]
-            idx = torch.searchsorted(F, u_mid)
-            idx = idx.clamp(1, n - 1)
-            lo, hi = idx - 1, idx
-            F_lo, F_hi = F[lo], F[hi]
-            x_lo, x_hi = obs[lo], obs[hi]
-            denom = F_hi - F_lo
-            t = (u_mid - F_lo) / torch.where(denom == 0, torch.ones_like(denom), denom)
-            t = t.clamp(0.0, 1.0)
+    def log_pdf(self, x: torch.Tensor) -> torch.Tensor:
+        return self.pdf(x).log().nan_to_num(posinf=0.0, neginf=-13.815510557964274)
 
-            out[mask_mid] = x_lo + t * (x_hi - x_lo)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return -self.log_pdf(x).mean()
 
-        return out.reshape(u.shape)
-
-    return cdf, ppf
+    def __str__(self):
+        header = self.__class__.__name__
+        params = {
+            "num_obs": int(self.num_obs),
+            "negloglik": float(self.negloglik.round(decimals=4)),
+            "num_step_grid": int(self.num_step_grid),
+            "dtype": self.dtype,
+            "device": self.device,
+        }
+        params_str = pformat(params, sort_dicts=False, underscore_numbers=True)
+        return f"{header}\n{params_str[1:-1]}\n\n"
 
 
 @torch.compile
