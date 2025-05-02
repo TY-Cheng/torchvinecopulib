@@ -11,7 +11,7 @@ import torch
 from scipy.stats import kendalltau
 from torch.special import ndtri
 
-_EPS = 1e-9
+_EPS = 1e-10
 
 
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -143,7 +143,7 @@ class ENUM_FUNC_BIDEP(enum.Enum):
 
 
 class kdeCDFPPF1D(torch.nn.Module):
-    _EPS = 1e-12
+    _EPS = _EPS
 
     def __init__(
         self,
@@ -256,7 +256,7 @@ class kdeCDFPPF1D(torch.nn.Module):
 @torch.compile
 @torch.no_grad()
 def solve_ITP(
-    fun: callable,  # ! (N,1) -> (N,1)
+    fun: callable,
     x_a: torch.Tensor,
     x_b: torch.Tensor,
     epsilon: float = 1e-7,

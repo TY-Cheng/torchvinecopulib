@@ -663,7 +663,11 @@ class VineCop(torch.nn.Module):
         device, dtype = self.device, self.dtype
         torch.manual_seed(seed=seed)
         # ! start with any user‐provided pseudo obs
-        dct_obs = dct_v_s_obs.copy() if dct_v_s_obs else dict()
+        dct_obs = dict()
+        if dct_v_s_obs:
+            for v_s, vec in dct_v_s_obs.items():
+                v, *_ = v_s
+                dct_obs[v_s] = self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
         # * source vertices in each path; reference counting for whole DAG
         ref_count, lst_source, _ = self.ref_count_hfunc(
             num_dim=self.num_dim,

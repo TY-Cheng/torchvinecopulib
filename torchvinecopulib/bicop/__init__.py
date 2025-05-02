@@ -138,9 +138,7 @@ class BiCop(torch.nn.Module):
                 ],
                 dim=1,
             )
-        pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(
-            self._EPS
-        )
+        pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(_EPS)
         pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
         # * normalization: Sinkhorn / iterative proportional fitting (IPF)
         for _ in range(num_iter_max):
