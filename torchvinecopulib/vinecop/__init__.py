@@ -335,7 +335,7 @@ class VineCop(torch.nn.Module):
         first_tree_vertex: tuple = tuple(),
         mtd_vine: str = "rvine",
         mtd_bidep: str = "chatterjee_xi",
-        thresh_trunc: None | float = None,
+        thresh_trunc: None | float = 0.01,
         num_obs_max: int = None,
         seed: int = 42,
         num_iter_max: int = 17,
@@ -666,8 +666,16 @@ class VineCop(torch.nn.Module):
         dct_obs = dict()
         if dct_v_s_obs:
             for v_s, vec in dct_v_s_obs.items():
-                v, *_ = v_s
-                dct_obs[v_s] = self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
+                v, *s = v_s
+                # ! sorted !
+                v_s = (v, *sorted(s))
+                # TODO: if top lv then marginal cdf, else nothing happen (quantile regression for experienced users)
+                if not s:
+                    dct_obs[v_s] = (
+                        self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
+                    )
+                else:
+                    dct_obs[v_s] = vec.to(device=device, dtype=dtype)
         # * source vertices in each path; reference counting for whole DAG
         ref_count, lst_source, _ = self.ref_count_hfunc(
             num_dim=self.num_dim,
@@ -689,15 +697,15 @@ class VineCop(torch.nn.Module):
                 obs_mvcp_indep = torch.rand(
                     size=(num_sample, dim_sim), device=device, dtype=dtype
                 )
-        # * initialize source vertices
-        idx = 0
-        for v_s in lst_source:
-            if v_s not in dct_obs:
-                dct_obs[v_s] = obs_mvcp_indep[:, [idx]]
-                idx += 1
-        for v_s in dct_obs:
-            dct_obs[v_s].clamp_(min=self._EPS, max=1.0 - self._EPS)
-        del obs_mvcp_indep, idx
+            # * initialize source vertices
+            idx = 0
+            for v_s in lst_source:
+                if v_s not in dct_obs:
+                    dct_obs[v_s] = obs_mvcp_indep[:, [idx]]
+                    idx += 1
+            for v_s in dct_obs:
+                dct_obs[v_s].clamp_(min=self._EPS, max=1.0 - self._EPS)
+            del obs_mvcp_indep, idx
         # * source to target (empty cond_ing), from the shallowest to the deepest
         for v_s in lst_source:
             lv = len(v_s) - 1
