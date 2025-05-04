@@ -45,6 +45,10 @@ def get_pipe_pargrid_scorer(
         pargrid = {
             "qr__q": [alpha],
             "qr__bootstrap": [False],
+            "qr__n_estimators": [50, 100],
+            "qr__min_samples_split": [2, 4, 6],
+            "qr__max_depth": [10, None],
+            "qr__max_features": ["sqrt", "log2"],
             "qr__random_state": [random_state],
         }
     elif model_name == "knnqr":
@@ -56,22 +60,24 @@ def get_pipe_pargrid_scorer(
         )
         pargrid = {
             "qr__q": [alpha],
+            "qr__n_neighbors": [5, 10, 20, 30],
             "qr__p": [1, 2],
         }
     elif model_name == "lgbmqr":
         # * lgbmqr
         pipe = Pipeline(
             [
-                ("qr", LGBMRegressor(random_state=random_state)),
+                ("qr", LGBMRegressor()),
             ]
         )
         pargrid = {
             "qr__alpha": [alpha],
             "qr__objective": ["quantile"],
-            "qr__subsample": [0.87],
-            "qr__colsample_bytree": [0.87],
-            "qr__reg_alpha": [0.01],
-            "qr__reg_lambda": [0.01],
+            "qr__max_depth": [31, -1],
+            "qr__subsample": [0.87, 1.0],
+            "qr__colsample_bytree": [0.87, 1.0],
+            "qr__reg_alpha": [0.01, 0.1],
+            "qr__reg_lambda": [0.01, 0.1],
             "qr__random_state": [random_state],
         }
     else:

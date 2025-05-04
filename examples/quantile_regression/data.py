@@ -1,11 +1,11 @@
 # %%
 import pandas as pd
 import torch
-from sklearn.datasets import load_diabetes
+from sklearn.datasets import fetch_california_housing, load_diabetes
 from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
 
-from quantile_regression import DEVICE, DIR_DATA
+from quantile_regression import DEVICE
 
 
 def get_train_test_data(name: str, test_size=0.2, random_state=42):
@@ -24,6 +24,14 @@ def get_train_test_data(name: str, test_size=0.2, random_state=42):
             columns=concrete_compressive_strength.feature_names,
         )
         df_data["strength"] = concrete_compressive_strength.data.targets
+    elif name == "housing":
+        df_data = pd.concat(
+            [
+                fetch_california_housing(as_frame=True)["data"],
+                fetch_california_housing(as_frame=True)["target"],
+            ],
+            axis=1,
+        )
     elif name == "diabetes":
         df_data = pd.concat(
             [

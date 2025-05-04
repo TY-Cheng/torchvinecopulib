@@ -1,6 +1,6 @@
 """
 * torch.compile() for solve_ITP()
-* torch.no_grad() for solve_ITP()
+* torch.no_grad() for solve_ITP(), kendall_tau(), mutual_info(), ferreira_tail_dep_coeff(), chatterjee_xi()
 """
 
 import enum
@@ -14,6 +14,7 @@ from torch.special import ndtri
 _EPS = 1e-10
 
 
+@torch.no_grad()
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Kendall's tau, x,y are both of shape (n, 1)
 
@@ -26,6 +27,7 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     )
 
 
+@torch.no_grad()
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """mutual information, x,y are both of shape (n, 1)
 
@@ -58,6 +60,7 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     )
 
 
+@torch.no_grad()
 def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """pairwise tail dependence coefficient (λ) estimator, max of rotation 0, 90, 180, 270
     x and y are both of shape (n, 1) inside (0, 1)
@@ -65,26 +68,19 @@ def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
     Ferreira, M.S., 2013. Nonparametric estimation of the tail-dependence coefficient;
     """
-    x1 = 1.0 - x
-    y1 = 1.0 - y
     return (
         3.0
         - (
             1.0
-            - torch.as_tensor(
-                [
-                    torch.max(x, y).mean(),
-                    torch.max(x1, y).mean(),
-                    torch.max(x1, y1).mean(),
-                    torch.max(x, y1).mean(),
-                ]
-            )
+            - torch.stack([torch.max(x, y), torch.max(1.0 - x, y)], dim=1)
+            .mean(dim=0)
             .clamp(0.5, 0.6666666666666666)
             .min()
         ).reciprocal()
     )
 
 
+@torch.no_grad()
 def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> torch.Tensor:
     """revised Chatterjee's rank correlation coefficient (ξ), taken max to be symmetric
 

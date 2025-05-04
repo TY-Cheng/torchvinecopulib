@@ -14,6 +14,12 @@ In project root folder run in bash:
 uv sync --extra cpu -U
 ```
 
+For `LightGBM` benchmark it may need `libomp`:
+
+```bash
+brew install libomp
+```
+
 ## Run
 
 `cd` into folder `DIR_WORK/examples/` where `quantile_regression` is visible as a child folder, trigger by:
