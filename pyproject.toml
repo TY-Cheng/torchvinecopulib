@@ -44,17 +44,25 @@ dependencies = ["numpy>=2", "scipy", 'fastkde']
 [dependency-groups]
 dev = [
     "coverage",
+    "datasets",
     "furo",
     "ipykernel",
+    "kagglehub",
+    "lightgbm",
     "matplotlib",
     "pandas",
-    # "pot",
+    "pot",
     "pytest",
-    # "pyvinecopulib",
+    "python-dotenv",
+    "pyvinecopulib",
     "ruff",
+    "scikit-learn",
+    "sklearn_quantile",
     "sphinx_pyproject",
     "sphinx",
     "tokenize-rt",
+    "torchvision",
+    "ucimlrepo",
     "yfinance",
 ]
 

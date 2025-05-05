@@ -21,7 +21,7 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     Note: this method will .cpu() its inputs and use scipy under the hood.”
     """
     return torch.as_tensor(
-        kendalltau(x.ravel().cpu(), y.ravel().cpu()),
+        kendalltau(x.view(-1).cpu(), y.view(-1).cpu()),
         dtype=x.dtype,
         device=x.device,
     )
@@ -48,8 +48,8 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     Journal of Multivariate Analysis, 201, 105270.
     """
 
-    x = ndtri(x.clamp(_EPS, 1.0 - _EPS)).ravel().cpu()
-    y = ndtri(y.clamp(_EPS, 1.0 - _EPS)).ravel().cpu()
+    x = ndtri(x.clamp(_EPS, 1.0 - _EPS)).view(-1).cpu()
+    y = ndtri(y.clamp(_EPS, 1.0 - _EPS)).view(-1).cpu()
     joint = torch.as_tensor(fastkde.pdf(x, y).values, dtype=x.dtype, device=x.device)
     margin_x = torch.as_tensor(fastkde.pdf(x).values, dtype=x.dtype, device=x.device)
     margin_y = torch.as_tensor(fastkde.pdf(y).values, dtype=x.dtype, device=x.device)

@@ -145,20 +145,16 @@ class BiCop(torch.nn.Module):
             pdf_grid *= self._target / pdf_grid.sum(dim=0, keepdim=True)
             pdf_grid *= self._target / pdf_grid.sum(dim=1, keepdim=True)
         pdf_grid /= pdf_grid.sum() * self.step_grid**2
-        self._pdf_grid = pdf_grid.contiguous()
+        self._pdf_grid = pdf_grid
         # * negloglik
         self.negloglik = -self.log_pdf(obs=obs).sum()
         # ! cdf
         self._cdf_grid = (
             (self._pdf_grid * self.step_grid**2).cumsum(dim=0).cumsum(dim=1)
-        ).contiguous()
+        )
         # ! h functions
-        self._hfunc_l_grid = (
-            (self._pdf_grid * self.step_grid).cumsum(dim=1).contiguous()
-        )
-        self._hfunc_r_grid = (
-            (self._pdf_grid * self.step_grid).cumsum(dim=0).contiguous()
-        )
+        self._hfunc_l_grid = (self._pdf_grid * self.step_grid).cumsum(dim=1)
+        self._hfunc_r_grid = (self._pdf_grid * self.step_grid).cumsum(dim=0)
 
     @torch.compile
     def _interp(self, grid: torch.Tensor, obs: torch.Tensor) -> torch.Tensor:

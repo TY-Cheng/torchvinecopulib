@@ -1,6 +1,12 @@
 # Manual
 /scratch
 /docs
+/Styles
+/data
+/out
+/examples/VAE*
+*.pkl
+*.svg
 
 # Python-generated files
 __pycache__/
@@ -195,7 +201,6 @@ cython_debug/
 
 # Icon must end with two \r
 Icon
-
 
 # Thumbnails
 ._*

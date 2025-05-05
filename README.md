@@ -104,6 +104,9 @@ coverage run -m pytest ./tests && coverage html
 
 - [`fastkde.pdf`](https://github.com/LBL-EESA/fastkde/blob/main/src/fastkde/fastKDE.py) onto `torch.Tensor`
 - `VineCop.rosenblatt`
+- replace `dict` with `torch.Tensor`
+- vectorized union-find
+- flatten `_visit` logic
 - `examples/someapplications.ipynb`
 - flatten dynamic nested dicts into tensors
 

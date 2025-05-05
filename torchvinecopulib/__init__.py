@@ -7,5 +7,4 @@ __all__ = [
     "VineCop",
     "util",
 ]
-
 __version__ = "1.0.0"

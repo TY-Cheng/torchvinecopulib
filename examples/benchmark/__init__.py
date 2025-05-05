@@ -20,7 +20,7 @@ import torchvinecopulib as tvc
 is_test = False
 # ! ===================
 # ! ===================
-num_threads = 8
+num_threads = 10
 is_cuda_avail = torch.cuda.is_available()
 load_dotenv()
 DIR_WORK = Path(os.getenv("DIR_WORK"))
@@ -29,12 +29,12 @@ DIR_OUT.mkdir(parents=True, exist_ok=True)
 torch.set_default_dtype(torch.float64)
 SEED = 42
 if is_test:
-    lst_num_dim = [10, 25]
-    lst_num_obs = [1000, 10000]
+    lst_num_dim = [10, 30][::-1]
+    lst_num_obs = [1000, 50000][::-1]
     lst_seed = list(range(3))
 else:
-    lst_num_dim = [10, 25, 40, 55, 70, 85, 100]
-    lst_num_obs = [1000, 5000, 10000, 20000, 30000, 40000, 60000]
+    lst_num_dim = [10, 20, 30, 40, 50][::-1]
+    lst_num_obs = [1000, 5000, 10000, 20000, 30000, 40000, 50000][::-1]
     lst_seed = list(range(100))
 dct_time_fit = {
     "pvc": defaultdict(list),
@@ -71,15 +71,15 @@ print(
 )
 print(f"pyvinecopulib:     {pvc.__version__}")
 print(f"torchvinecopulib:  {tvc.__version__}")
-print(f"Threads:           torch.get_num_threads() = {torch.get_num_threads()}")
+print(f"number of seeds:   {len(lst_seed)}")
 
 # %%
-for num_dim, num_obs, seed in product(lst_num_dim, lst_num_obs, lst_seed):
+for num_dim, num_obs in product(lst_num_dim, lst_num_obs):
     print(
-        f"{time.strftime('%Y-%m-%d %H:%M:%S')}\nnum_dim: {num_dim}, num_obs: {num_obs}, seed: {seed}"
+        f"\n\n{time.strftime('%Y-%m-%d %H:%M:%S')}\nnum_dim: {num_dim}, num_obs: {num_obs}\n\n"
     )
     # ! preprocess into copula scale (uniform marginals)
-    torch.manual_seed(seed)
+    torch.manual_seed(SEED)
     # * tensor on cpu
     R = torch.rand(num_dim, num_dim, dtype=torch.float64)
     R /= R.norm(dim=1, keepdim=True)
@@ -111,70 +111,88 @@ for num_dim, num_obs, seed in product(lst_num_dim, lst_num_obs, lst_seed):
         ).cuda()
 
     # * fit
-    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} Fitting...")
-    t0 = time.perf_counter()
-    pvc_mdl = pvc.Vinecop.from_data(data=U_numpy, controls=pvc_ctrl)
-    t1 = time.perf_counter()
-    if seed > 0:
-        dct_time_fit["pvc"][num_obs, num_dim].append(t1 - t0)
-    t0 = time.perf_counter()
-    tvc_mdl.fit(obs=U, mtd_bidep="kendall_tau", num_iter_max=11)
-    t1 = time.perf_counter()
-    if seed > 0:
-        dct_time_fit["tvc"][num_obs, num_dim].append(t1 - t0)
-    if is_cuda_avail:
-        cuda_warmup(num_obs, num_dim)
-        torch.cuda.synchronize()
+    print(f"\n{time.strftime('%Y-%m-%d %H:%M:%S')} Fitting...\n")
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} PVC...")
+    for seed in lst_seed:
         t0 = time.perf_counter()
-        tvc_mdl_cuda.fit(obs=U_cuda, mtd_bidep="kendall_tau", num_iter_max=11)
+        pvc_mdl = pvc.Vinecop.from_data(data=U_numpy, controls=pvc_ctrl)
         t1 = time.perf_counter()
-        torch.cuda.synchronize()
         if seed > 0:
-            dct_time_fit["tvc_cuda"][num_obs, num_dim].append(t1 - t0)
+            dct_time_fit["pvc"][num_obs, num_dim].append(t1 - t0)
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} TVC...")
+    for seed in lst_seed:
+        t0 = time.perf_counter()
+        tvc_mdl.fit(obs=U, mtd_bidep="kendall_tau", num_iter_max=11)
+        t1 = time.perf_counter()
+        if seed > 0:
+            dct_time_fit["tvc"][num_obs, num_dim].append(t1 - t0)
+    if is_cuda_avail:
+        print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} TVC CUDA...")
+        cuda_warmup(num_obs, num_dim)
+        for seed in lst_seed:
+            torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            tvc_mdl_cuda.fit(obs=U_cuda, mtd_bidep="kendall_tau", num_iter_max=11)
+            t1 = time.perf_counter()
+            torch.cuda.synchronize()
+            if seed > 0:
+                dct_time_fit["tvc_cuda"][num_obs, num_dim].append(t1 - t0)
 
     # * sample
-    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} Sampling...")
-    t0 = time.perf_counter()
-    pvc_mdl.simulate(n=num_obs, num_threads=num_threads)
-    t1 = time.perf_counter()
-    if seed > 0:
-        dct_time_sample["pvc"][num_obs, num_dim].append(t1 - t0)
-    t0 = time.perf_counter()
-    tvc_mdl.sample(num_sample=num_obs)
-    t1 = time.perf_counter()
-    if seed > 0:
-        dct_time_sample["tvc"][num_obs, num_dim].append(t1 - t0)
-    if is_cuda_avail:
-        cuda_warmup(num_obs, num_dim)
-        torch.cuda.synchronize()
+    print(f"\n{time.strftime('%Y-%m-%d %H:%M:%S')} Sampling...\n")
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} PVC...")
+    for seed in lst_seed:
         t0 = time.perf_counter()
-        tvc_mdl_cuda.sample(num_sample=num_obs)
+        pvc_mdl.simulate(n=num_obs, num_threads=num_threads)
         t1 = time.perf_counter()
-        torch.cuda.synchronize()
         if seed > 0:
-            dct_time_sample["tvc_cuda"][num_obs, num_dim].append(t1 - t0)
+            dct_time_sample["pvc"][num_obs, num_dim].append(t1 - t0)
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} TVC...")
+    for seed in lst_seed:
+        t0 = time.perf_counter()
+        tvc_mdl.sample(num_sample=num_obs)
+        t1 = time.perf_counter()
+        if seed > 0:
+            dct_time_sample["tvc"][num_obs, num_dim].append(t1 - t0)
+    if is_cuda_avail:
+        print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} TVC CUDA...")
+        cuda_warmup(num_obs, num_dim)
+        for seed in lst_seed:
+            torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            tvc_mdl_cuda.sample(num_sample=num_obs)
+            t1 = time.perf_counter()
+            torch.cuda.synchronize()
+            if seed > 0:
+                dct_time_sample["tvc_cuda"][num_obs, num_dim].append(t1 - t0)
 
     # * pdf
-    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} PDF...")
-    t0 = time.perf_counter()
-    pvc_mdl.pdf(U_numpy, num_threads=num_threads)
-    t1 = time.perf_counter()
-    if seed > 0:
-        dct_time_pdf["pvc"][num_obs, num_dim].append(t1 - t0)
-    t0 = time.perf_counter()
-    tvc_mdl.log_pdf(U)
-    t1 = time.perf_counter()
-    if seed > 0:
-        dct_time_pdf["tvc"][num_obs, num_dim].append(t1 - t0)
-    if is_cuda_avail:
-        cuda_warmup(num_obs, num_dim)
-        torch.cuda.synchronize()
+    print(f"\n{time.strftime('%Y-%m-%d %H:%M:%S')} PDF...\n")
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} PVC...")
+    for seed in lst_seed:
         t0 = time.perf_counter()
-        tvc_mdl_cuda.log_pdf(U_cuda)
+        pvc_mdl.pdf(U_numpy, num_threads=num_threads)
         t1 = time.perf_counter()
-        torch.cuda.synchronize()
         if seed > 0:
-            dct_time_pdf["tvc_cuda"][num_obs, num_dim].append(t1 - t0)
+            dct_time_pdf["pvc"][num_obs, num_dim].append(t1 - t0)
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} TVC...")
+    for seed in lst_seed:
+        t0 = time.perf_counter()
+        tvc_mdl.log_pdf(U)
+        t1 = time.perf_counter()
+        if seed > 0:
+            dct_time_pdf["tvc"][num_obs, num_dim].append(t1 - t0)
+    if is_cuda_avail:
+        print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} TVC CUDA...")
+        cuda_warmup(num_obs, num_dim)
+        for seed in lst_seed:
+            torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            tvc_mdl_cuda.log_pdf(U_cuda)
+            t1 = time.perf_counter()
+            torch.cuda.synchronize()
+            if seed > 0:
+                dct_time_pdf["tvc_cuda"][num_obs, num_dim].append(t1 - t0)
 
 # %%
 # ! save
