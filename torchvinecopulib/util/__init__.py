@@ -255,7 +255,7 @@ def solve_ITP(
     fun: callable,
     x_a: torch.Tensor,
     x_b: torch.Tensor,
-    epsilon: float = 1e-7,
+    epsilon: float = _EPS,
     num_iter_max: int = 31,
     k_1: float = 0.2,
 ) -> torch.Tensor:

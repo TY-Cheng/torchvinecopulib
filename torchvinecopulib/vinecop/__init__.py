@@ -18,9 +18,6 @@ __all__ = [
 
 
 class VineCop(torch.nn.Module):
-    # ! hinv
-    _EPS: float = 1e-7
-
     def __init__(
         self,
         num_dim: int,
@@ -152,6 +149,9 @@ class VineCop(torch.nn.Module):
 
         # * climb each source until cond-ing set empty
         for v_s in lst_source:
+            if len(v_s) == 1:
+                # * if top lv source, no need to climb
+                ref_cnt[v_s] += 1
             while len(v_s) > 1:
                 v_s = _visit(v_s=v_s, is_hinv=True)
         return dict(ref_cnt), lst_source, num_hfunc
@@ -703,8 +703,6 @@ class VineCop(torch.nn.Module):
                 if v_s not in dct_obs:
                     dct_obs[v_s] = obs_mvcp_indep[:, [idx]]
                     idx += 1
-            for v_s in dct_obs:
-                dct_obs[v_s].clamp_(min=self._EPS, max=1.0 - self._EPS)
             del obs_mvcp_indep, idx
         # * source to target (empty cond_ing), from the shallowest to the deepest
         for v_s in lst_source:
