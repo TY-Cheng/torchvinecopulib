@@ -96,6 +96,8 @@ class BiCop(torch.nn.Module):
         self.is_indep = False
         self.is_tll = is_tll
         self.num_obs.copy_(obs.shape[0])
+        # * assuming already in [0, 1]
+        obs = obs.clamp(min=0.0, max=1.0)
         if is_tau_est:
             self.tau.copy_(
                 torch.as_tensor(
@@ -111,15 +113,29 @@ class BiCop(torch.nn.Module):
             torch.manual_seed(seed=seed)
             idx = torch.randperm(self.num_obs, device=device)[:num_obs_max]
             obs = obs[idx]
-
         if is_tll:
-            controls = pv.FitControlsBicop(family_set=[pv.tll])
+            controls = pv.FitControlsBicop(
+                family_set=[pv.tll],
+                num_threads=torch.get_num_threads(),
+                nonparametric_method="quadratic",
+            )
             cop = pv.Bicop.from_data(data=obs.cpu().numpy(), controls=controls)
-            axis = np.linspace(_EPS, 1 - _EPS, self.num_step_grid)
-            grid = np.stack(np.meshgrid(axis, axis)).reshape(2, -1).T
-            pdf_grid = torch.from_numpy(
-                cop.pdf(grid).reshape(self.num_step_grid, self.num_step_grid)
-            ).to(device=device, dtype=dtype)
+            axis = torch.linspace(
+                _EPS,
+                1.0 - _EPS,
+                steps=self.num_step_grid,
+                device="cpu",
+                dtype=torch.float64,
+            )
+            pdf_grid = (
+                torch.from_numpy(
+                    cop.pdf(
+                        torch.cartesian_prod(axis, axis).view(-1, 2).fliplr().numpy()
+                    )
+                )
+                .view(self.num_step_grid, self.num_step_grid)
+                .to(device=device, dtype=dtype)
+            )
         else:
             pdf_grid = torch.from_numpy(
                 fkpdf(
