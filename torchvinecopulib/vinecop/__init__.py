@@ -902,8 +902,8 @@ class VineCop(torch.nn.Module):
                     node = (v, frozenset())
                     labels[node] = str(v)
                     pos_obs[node] = (float(x), 1.0)
-            # * traverse around the bcp
-            for v_l, v_r, *cond in self.tree_bidep[lv]:
+            # * traverse around the bcp; sorted!
+            for v_l, v_r, *cond in sorted(self.tree_bidep[lv]):
                 cond_set = frozenset(cond)
                 bcp = (v_l, v_r, cond_set)
                 bicops.append(bcp)

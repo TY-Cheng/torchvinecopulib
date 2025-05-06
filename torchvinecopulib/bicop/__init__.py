@@ -38,6 +38,7 @@ class BiCop(torch.nn.Module):
         super().__init__()
         # * by default an independent bicop, otherwise cache grids from KDE
         self.is_indep = True
+        self.is_tll = False
         self.num_step_grid = num_step_grid
         self.register_buffer("tau", torch.zeros(2, dtype=torch.float64))
         self.register_buffer("num_obs", torch.empty((), dtype=torch.int))
@@ -88,11 +89,12 @@ class BiCop(torch.nn.Module):
         seed: int = 42,
         num_iter_max: int = 17,
         is_tau_est: bool = False,
-        tll: bool = False,
+        is_tll: bool = True,
     ) -> None:
         # ! device agnostic
         device, dtype = self.device, self.dtype
         self.is_indep = False
+        self.is_tll = is_tll
         self.num_obs.copy_(obs.shape[0])
         if is_tau_est:
             self.tau.copy_(
@@ -110,7 +112,7 @@ class BiCop(torch.nn.Module):
             idx = torch.randperm(self.num_obs, device=device)[:num_obs_max]
             obs = obs[idx]
 
-        if tll:
+        if is_tll:
             controls = pv.FitControlsBicop(family_set=[pv.tll])
             cop = pv.Bicop.from_data(data=obs.cpu().numpy(), controls=controls)
             axis = np.linspace(_EPS, 1 - _EPS, self.num_step_grid)
@@ -164,10 +166,14 @@ class BiCop(torch.nn.Module):
         # ! cdf
         self._cdf_grid = (
             (self._pdf_grid * self.step_grid**2).cumsum(dim=0).cumsum(dim=1)
-        )
+        ).clamp_(0.0, 1.0)
         # ! h functions
-        self._hfunc_l_grid = (self._pdf_grid * self.step_grid).cumsum(dim=1)
-        self._hfunc_r_grid = (self._pdf_grid * self.step_grid).cumsum(dim=0)
+        self._hfunc_l_grid = (
+            (self._pdf_grid * self.step_grid).cumsum(dim=1).clamp_(0.0, 1.0)
+        )
+        self._hfunc_r_grid = (
+            (self._pdf_grid * self.step_grid).cumsum(dim=0).clamp_(0.0, 1.0)
+        )
 
     @torch.compile
     def _interp(self, grid: torch.Tensor, obs: torch.Tensor) -> torch.Tensor:
@@ -284,6 +290,7 @@ class BiCop(torch.nn.Module):
                     'negloglik': self.negloglik.round(decimals=4),
                     'num_step_grid': self.num_step_grid,
                     'tau': self.tau.round(decimals=4),
+                    'is_tll': self.is_tll,
                     'dtype': self._dd.dtype,
                     'device': self._dd.device,
                 },
@@ -306,7 +313,7 @@ class BiCop(torch.nn.Module):
         **imshow_kwargs: dict,
     ) -> plt.Axes:
         if ax is None:
-            _, ax = plt.subplots()
+            fig, ax = plt.subplots()
         im = ax.imshow(
             X=self._pdf_grid.log()
             .nan_to_num(posinf=0.0, neginf=-13.815510557964274)
@@ -324,7 +331,7 @@ class BiCop(torch.nn.Module):
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         plt.colorbar(im, ax=ax, label=colorbartitle)
-        return ax
+        return fig, ax
 
     @staticmethod
     @torch.no_grad()
@@ -424,11 +431,17 @@ class BiCop(torch.nn.Module):
 
         ## plot
         if plot_type == "contour":
-            contour = plt.contour(points, points, dens, levels=levels, cmap="gray")
-            plt.clabel(contour, inline=True, fontsize=8, fmt="%1.2f")
-            plt.xlabel(xlabel)
-            plt.ylabel(ylabel)
-            plt.show()
+            fig, ax = plt.subplots()
+            contour = ax.contour(points, points, dens, levels=levels, cmap="gray")
+            ax.clabel(contour, inline=True, fontsize=8, fmt="%1.2f")
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.set_xlim(xylim)
+            ax.set_ylim(xylim)
+            ax.set_aspect("equal")
+            fig.tight_layout()
+            plt.draw_if_interactive()
+            return fig, ax
         elif plot_type == "surface":
             fig = plt.figure()
             ax = cast(Axes3D, fig.add_subplot(111, projection="3d"))
@@ -445,7 +458,8 @@ class BiCop(torch.nn.Module):
             ax.yaxis.pane.fill = False
             ax.zaxis.pane.fill = False
             ax.grid(False)
-            plt.draw()
-            plt.show()
+            fig.tight_layout()
+            plt.draw_if_interactive()
+            return fig, ax
         else:
             raise ValueError("Unknown plot type")
