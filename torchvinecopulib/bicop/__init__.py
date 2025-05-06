@@ -6,11 +6,16 @@
 """
 
 from pprint import pformat
+from typing import Any, Optional, cast
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pyvinecopulib as pv
 import torch
 from fastkde import pdf as fkpdf
-from scipy.stats import kendalltau
+from matplotlib.colors import LinearSegmentedColormap
+from mpl_toolkits.mplot3d.axes3d import Axes3D
+from scipy.stats import kendalltau, norm
 
 from ..util import _EPS, solve_ITP
 
@@ -83,11 +88,10 @@ class BiCop(torch.nn.Module):
         seed: int = 42,
         num_iter_max: int = 17,
         is_tau_est: bool = False,
+        tll: bool = False,
     ) -> None:
         # ! device agnostic
         device, dtype = self.device, self.dtype
-        # * fastkde works on cpu
-        obs = obs.to(device="cpu", dtype=dtype)
         self.is_indep = False
         self.num_obs.copy_(obs.shape[0])
         if is_tau_est:
@@ -104,12 +108,15 @@ class BiCop(torch.nn.Module):
         if num_obs_max and self.num_obs > num_obs_max:
             torch.manual_seed(seed=seed)
             idx = torch.randperm(self.num_obs, device=device)[:num_obs_max]
+            obs = obs[idx]
+
+        if tll:
+            controls = pv.FitControlsBicop(family_set=[pv.tll])
+            cop = pv.Bicop.from_data(data=obs.cpu().numpy(), controls=controls)
+            axis = np.linspace(_EPS, 1 - _EPS, self.num_step_grid)
+            grid = np.stack(np.meshgrid(axis, axis)).reshape(2, -1).T
             pdf_grid = torch.from_numpy(
-                fkpdf(
-                    obs[idx, 0].cpu(),
-                    obs[idx, 1].cpu(),
-                    num_points=self.num_step_grid * 2 + 1,
-                ).values
+                cop.pdf(grid).reshape(self.num_step_grid, self.num_step_grid)
             ).to(device=device, dtype=dtype)
         else:
             pdf_grid = torch.from_numpy(
@@ -119,32 +126,38 @@ class BiCop(torch.nn.Module):
                     num_points=self.num_step_grid * 2 + 1,
                 ).values
             ).to(device=device, dtype=dtype)
-        # * padding/trimming after fastkde.pdf
-        H, W = pdf_grid.shape
-        if H < self.num_step_grid:
-            pdf_grid = torch.cat(
-                [
-                    pdf_grid,
-                    torch.zeros(self.num_step_grid - H, W, dtype=dtype, device=device),
-                ],
-                dim=0,
+            # * padding/trimming after fastkde.pdf
+            H, W = pdf_grid.shape
+            if H < self.num_step_grid:
+                pdf_grid = torch.cat(
+                    [
+                        pdf_grid,
+                        torch.zeros(
+                            self.num_step_grid - H, W, dtype=dtype, device=device
+                        ),
+                    ],
+                    dim=0,
+                )
+            H, W = pdf_grid.shape
+            if W < self.num_step_grid:
+                pdf_grid = torch.cat(
+                    [
+                        pdf_grid,
+                        torch.zeros(
+                            H, self.num_step_grid - W, dtype=dtype, device=device
+                        ),
+                    ],
+                    dim=1,
+                )
+            pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(
+                _EPS
             )
-        H, W = pdf_grid.shape
-        if W < self.num_step_grid:
-            pdf_grid = torch.cat(
-                [
-                    pdf_grid,
-                    torch.zeros(H, self.num_step_grid - W, dtype=dtype, device=device),
-                ],
-                dim=1,
-            )
-        pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(_EPS)
-        pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
-        # * normalization: Sinkhorn / iterative proportional fitting (IPF)
-        for _ in range(num_iter_max):
-            pdf_grid *= self._target / pdf_grid.sum(dim=0, keepdim=True)
-            pdf_grid *= self._target / pdf_grid.sum(dim=1, keepdim=True)
-        pdf_grid /= pdf_grid.sum() * self.step_grid**2
+            pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
+            # * normalization: Sinkhorn / iterative proportional fitting (IPF)
+            for _ in range(num_iter_max):
+                pdf_grid *= self._target / pdf_grid.sum(dim=0, keepdim=True)
+                pdf_grid *= self._target / pdf_grid.sum(dim=1, keepdim=True)
+            pdf_grid /= pdf_grid.sum() * self.step_grid**2
         self._pdf_grid = pdf_grid
         # * negloglik
         self.negloglik = -self.log_pdf(obs=obs).sum()
@@ -312,3 +325,127 @@ class BiCop(torch.nn.Module):
         ax.set_ylim(0, 1)
         plt.colorbar(im, ax=ax, label=colorbartitle)
         return ax
+
+    @staticmethod
+    @torch.no_grad()
+    def get_default_xylim(margin_type: str) -> tuple[float, float]:
+        if margin_type == "unif":
+            return (1e-2, 1 - 1e-2)
+        elif margin_type == "norm":
+            return (-3, 3)
+        else:
+            raise ValueError("Unknown margin type")
+
+    @staticmethod
+    @torch.no_grad()
+    def get_default_grid_size(plot_type: str) -> int:
+        if plot_type == "contour":
+            return 100
+        elif plot_type == "surface":
+            return 40
+        else:
+            raise ValueError("Unknown plot type")
+
+    @torch.no_grad()
+    def plot(
+        self,
+        plot_type: str = "surface",
+        margin_type: str = "unif",
+        xylim: Optional[tuple[float, float]] = None,
+        grid_size: Optional[int] = None,
+    ) -> None:
+        if plot_type not in ["contour", "surface"]:
+            raise ValueError("Unknown type")
+
+        if margin_type not in ["unif", "norm"]:
+            raise ValueError("Unknown margin type")
+
+        if xylim is None:
+            xylim = self.get_default_xylim(margin_type)
+
+        if grid_size is None:
+            grid_size = self.get_default_grid_size(plot_type)
+
+        if margin_type == "unif":
+            if plot_type == "contour":
+                points = np.linspace(1e-5, 1 - 1e-5, grid_size)
+            else:
+                points = np.linspace(1, grid_size, grid_size) / (grid_size + 1)
+
+            g = np.meshgrid(points, points)
+            points = g[0][0]
+            adj = 1
+            levels = [0.2, 0.6, 1, 1.5, 2, 3, 5, 10, 20]
+            xlabel = "u1"
+            ylabel = "u2"
+        elif margin_type == "norm":
+            points = norm.cdf(np.linspace(xylim[0], xylim[1], grid_size))
+            g = np.meshgrid(points, points)
+            points = norm.ppf(g[0][0])
+            adj = np.outer(norm.pdf(points), norm.pdf(points))
+            levels = [0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]
+            xlabel = "z1"
+            ylabel = "z2"
+        else:
+            raise ValueError("Unknown margin type")
+
+        ## evaluate on grid
+        g_tensor = torch.from_numpy(np.stack(g, axis=-1).reshape(-1, 2)).to(
+            device=self.device, dtype=self.dtype
+        )
+        vals = self.pdf(g_tensor).cpu().numpy()
+        cop = np.reshape(vals, (grid_size, grid_size))
+
+        ## adjust for margins
+        dens = cop * adj
+        if len(np.unique(dens)) == 1:
+            dens[0] = 1.000001 * dens[0]
+
+        if margin_type == "unif":
+            zlim = (0, max(3, 1.1 * max(dens.flatten())))
+        elif margin_type == "norm":
+            zlim = (0, max(0.4, 1.1 * max(dens.flatten())))
+
+        # Define the colors as in the R code
+        colors = [
+            "#00007F",
+            "blue",
+            "#007FFF",
+            "cyan",
+            "#7FFF7F",
+            "yellow",
+            "#FF7F00",
+            "red",
+            "#7F0000",
+        ]
+
+        # Create the custom colormap
+        jet_colors = LinearSegmentedColormap.from_list("jet_colors", colors, N=100)
+
+        ## plot
+        if plot_type == "contour":
+            contour = plt.contour(points, points, dens, levels=levels, cmap="gray")
+            plt.clabel(contour, inline=True, fontsize=8, fmt="%1.2f")
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
+            plt.show()
+        elif plot_type == "surface":
+            fig = plt.figure()
+            ax = cast(Axes3D, fig.add_subplot(111, projection="3d"))
+            ax.view_init(elev=30, azim=-110)
+            X, Y = np.meshgrid(points, points)
+            ax.plot_surface(X, Y, dens, cmap=jet_colors, edgecolor="none", shade=False)
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.set_xlim(xylim)
+            ax.set_ylim(xylim)
+            ax.set_zlim(zlim)
+            ax.set_box_aspect([1, 1, 1])
+            ax.xaxis.pane.fill = False
+            ax.yaxis.pane.fill = False
+            ax.zaxis.pane.fill = False
+            ax.grid(False)
+            plt.draw()
+            plt.show()
+        else:
+            raise ValueError("Unknown plot type")
