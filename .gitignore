@@ -5,6 +5,8 @@
 /data
 /out
 /examples/VAE*
+/examples/pred_intvl
+/examples/quantile_regression
 *.pkl
 *.svg
 

@@ -87,9 +87,10 @@ class BiCop(torch.nn.Module):
         obs: torch.Tensor,
         num_obs_max: int = None,
         seed: int = 42,
+        is_tll: bool = True,
+        mtd_tll: str = "constant",
         num_iter_max: int = 17,
         is_tau_est: bool = False,
-        is_tll: bool = True,
     ) -> None:
         # ! device agnostic
         device, dtype = self.device, self.dtype
@@ -117,7 +118,7 @@ class BiCop(torch.nn.Module):
             controls = pv.FitControlsBicop(
                 family_set=[pv.tll],
                 num_threads=torch.get_num_threads(),
-                nonparametric_method="quadratic",
+                nonparametric_method=mtd_tll,
             )
             cop = pv.Bicop.from_data(data=obs.cpu().numpy(), controls=controls)
             axis = torch.linspace(
@@ -168,7 +169,7 @@ class BiCop(torch.nn.Module):
                     dim=1,
                 )
             pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(
-                _EPS
+                0.0
             )
             pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
             # * normalization: Sinkhorn / iterative proportional fitting (IPF)
@@ -178,7 +179,7 @@ class BiCop(torch.nn.Module):
             pdf_grid /= pdf_grid.sum() * self.step_grid**2
         self._pdf_grid = pdf_grid
         # * negloglik
-        self.negloglik = -self.log_pdf(obs=obs).sum()
+        self.negloglik = -self.log_pdf(obs=obs).nan_to_num(posinf=0.0, neginf=0.0).sum()
         # ! cdf
         self._cdf_grid = (
             (self._pdf_grid * self.step_grid**2).cumsum(dim=0).cumsum(dim=1)

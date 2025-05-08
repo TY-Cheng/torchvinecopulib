@@ -43,12 +43,12 @@ classifiers = [
 dependencies = ["numpy>=2", "scipy", 'fastkde']
 [dependency-groups]
 dev = [
+    "blitz-bayesian-pytorch",
     "coverage",
     "datasets",
     "furo",
     "ipykernel",
     "kagglehub",
-    "lightgbm",
     "matplotlib",
     "pandas",
     "pot",
@@ -57,7 +57,6 @@ dev = [
     "pyvinecopulib",
     "ruff",
     "scikit-learn",
-    "sklearn_quantile",
     "sphinx_pyproject",
     "sphinx",
     "tokenize-rt",

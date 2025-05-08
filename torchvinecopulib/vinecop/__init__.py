@@ -338,6 +338,8 @@ class VineCop(torch.nn.Module):
         thresh_trunc: None | float = 0.01,
         num_obs_max: int = None,
         seed: int = 42,
+        is_tll: bool = False,
+        mtd_tll: str = "constant",
         num_iter_max: int = 17,
         is_tau_est: bool = False,
         num_step_grid_kde1d: int = None,
@@ -487,6 +489,8 @@ class VineCop(torch.nn.Module):
                         seed=seed,
                         num_iter_max=num_iter_max,
                         is_tau_est=is_tau_est,
+                        is_tll=is_tll,
+                        mtd_tll=mtd_tll,
                     )
                     self.struct_bcp[cond_ed]["is_indep"] = False
                 else:
