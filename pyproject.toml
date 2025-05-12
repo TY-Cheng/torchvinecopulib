@@ -40,7 +40,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["numpy>=2", "scipy", 'fastkde']
+dependencies = ["numpy>=2", "scipy", "fastkde", "pyvinecopulib"]
 [dependency-groups]
 dev = [
     "blitz-bayesian-pytorch",
@@ -54,7 +54,6 @@ dev = [
     "pot",
     "pytest",
     "python-dotenv",
-    "pyvinecopulib",
     "ruff",
     "scikit-learn",
     "sphinx_pyproject",

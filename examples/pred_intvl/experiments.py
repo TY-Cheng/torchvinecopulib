@@ -31,7 +31,12 @@ ALPHA = 0.05
 DIR_OUT = DIR_WORK / "examples" / "pred_intvl" / "out"
 DIR_OUT.mkdir(parents=True, exist_ok=True)
 LATENT_DIM = 10
-
+lst_lr = [1e-2, 1e-3, 1e-4]
+lst_weight_decay = [0.0, 0.91, 0.99]
+lst_p_drop = [0.1, 0.3, 0.5]
+lr = lst_lr[1]
+weight_decay = lst_weight_decay[1]
+p_drop = lst_p_drop[1]
 # * ===== is_test =====
 is_test = False
 # * ===== is_test =====
@@ -92,6 +97,8 @@ if __name__ == "__main__":
                 val_loader=val_loader,
                 input_dim=input_dim,
                 latent_dim=LATENT_DIM,
+                lr=lr,
+                weight_decay=weight_decay,
                 device=device,
                 num_epochs=NUM_EPOCH,
             )
@@ -109,7 +116,9 @@ if __name__ == "__main__":
                 train_loader=train_loader,
                 val_loader=val_loader,
                 input_dim=input_dim,
-                p_drop=0.3,
+                lr=lr,
+                weight_decay=weight_decay,
+                p_drop=p_drop,
                 latent_dim=LATENT_DIM,
                 num_epoch=NUM_EPOCH,
                 device=device,
@@ -129,6 +138,8 @@ if __name__ == "__main__":
                 val_loader=val_loader,
                 input_dim=input_dim,
                 latent_dim=LATENT_DIM,
+                lr=lr,
+                weight_decay=weight_decay,
                 device=device,
                 num_epochs=NUM_EPOCH,
             )
@@ -146,6 +157,8 @@ if __name__ == "__main__":
                 train_loader=train_loader,
                 val_loader=val_loader,
                 input_dim=input_dim,
+                lr=lr,
+                weight_decay=weight_decay,
                 p_drop=0.0,
                 latent_dim=LATENT_DIM,
                 device=device,

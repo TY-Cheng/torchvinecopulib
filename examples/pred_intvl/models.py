@@ -109,6 +109,8 @@ def train_base_model(
     train_loader,
     val_loader,
     input_dim,
+    lr=1e-3,
+    weight_decay=0.91,
     p_drop=0.5,
     latent_dim=10,
     num_epoch=100,
@@ -118,7 +120,7 @@ def train_base_model(
     model = EncoderRegressor(
         input_dim=input_dim, latent_dim=latent_dim, p_drop=p_drop
     ).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = nn.MSELoss()
     best_state = copy.deepcopy(model.state_dict())
     best_loss = float("inf")
@@ -162,6 +164,8 @@ def train_ensemble(
     latent_dim,
     device,
     num_epochs,
+    lr=1e-3,
+    weight_decay=0.91,
     patience=5,
 ):
     ensemble = nn.ModuleList()
@@ -172,6 +176,8 @@ def train_ensemble(
             val_loader=val_loader,
             input_dim=input_dim,
             latent_dim=latent_dim,
+            lr=lr,
+            weight_decay=weight_decay,
             p_drop=0.0,
             num_epoch=num_epochs,
             patience=patience,
@@ -283,10 +289,10 @@ def train_bnn(
     input_dim,
     latent_dim,
     num_epochs,
-    device=None,
-    patience=5,
     lr=1e-3,
     weight_decay=0.91,
+    device=None,
+    patience=5,
 ):
     """
     Trains one BayesianEncoderRegressor with ELBO-loss and early stopping

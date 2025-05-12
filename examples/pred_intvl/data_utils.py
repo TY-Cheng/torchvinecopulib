@@ -15,6 +15,7 @@ latent_dim = 10
 num_epochs = 10
 batch_size = 128
 test_size = 0.2
+val_size = 0.1
 random_seed = 42
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(random_seed)
@@ -77,8 +78,8 @@ def get_logger(
 
 def load_california_housing(
     batch_size: int = 128,
-    test_size: float = 0.2,
-    val_size: float = 0.1,
+    test_size: float = test_size,
+    val_size: float = val_size,
     seed_val: int = 42,
     num_workers: int = 4,
     pin_memory: bool = True,
@@ -145,8 +146,8 @@ def load_california_housing(
 
 def load_news_popularity(
     batch_size: int = 128,
-    test_size: float = 0.2,
-    val_size: float = 0.1,
+    test_size: float = test_size,
+    val_size: float = val_size,
     seed_val: int = 42,
     num_workers: int = 4,
     pin_memory: bool = True,
