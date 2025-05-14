@@ -24,7 +24,7 @@ uv sync --extra cu126 -U
 
 ## Examples
 
-Visit the [`./examples/`](./examples) folder for `.ipynb` Jupyter notebooks.
+Visit the [`./examples/`](./examples/) folder for `.ipynb` Jupyter notebooks.
 
 ## Dependencies
 
