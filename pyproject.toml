@@ -11,25 +11,19 @@ build-backend = "hatchling.build"
 
 [project.urls]
 # homepage = ""
-repository = "https://github.com/TY-Cheng/torchvinecopulib"
-documentation = "https://ty-cheng.github.io/torchvinecopulib/"
+# repository = ""
+# documentation = ""
 # "Bug Tracker" = ""
 
 [project]
 name = "torchvinecopulib"
 version = "1.0.0"
 requires-python = ">=3.12"
-authors = [{ name = "Tuoyuan Cheng", email = "tuoyuan.cheng@nus.edu.sg" }]
+authors = [{ name = "Anonymous", email = "anon@anon.org" }]
 # maintainers = []
-description = "yet another vine copula library, using PyTorch."
+description = ""
 readme = "README.md"
-keywords = [
-    "vine copula",
-    "copula",
-    "torch",
-    "conditional simulation",
-    "fastkde",
-]
+keywords = ["vine copula", "torch", "conditional simulation"]
 classifiers = [
     # "Private :: Do Not Upload",
     "License :: OSI Approved :: MIT License",
@@ -51,7 +45,6 @@ dev = [
     "kagglehub",
     "matplotlib",
     "pandas",
-    "pot",
     "pytest",
     "python-dotenv",
     "ruff",
