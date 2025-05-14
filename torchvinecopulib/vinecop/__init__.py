@@ -1,3 +1,38 @@
+"""
+torchvinecopulib.vinecop
+------------------------
+
+Provides `VineCop` (torch.nn.Module) for multivariate vine copula fitting, and sampling
+- Constructs and fits D-, C-, and R-vine copula structures via the Dissmann algorithm or user-specified tree matrices.
+- Optinally handles marginals with 1D KDE via `kdeCDFPPF1D`.
+- Employs pairwise bivariate copulas (`BiCop`).
+- Supports a variety of dependence measures (`ENUM_FUNC_BIDEP`) such as Kendall’s τ and Chatterjee’s ξ for edge weighting.
+- Offers device-agnostic `.fit()`, `.log_pdf()`, `.cdf()`, `.sample()`, and visualization helpers (`.draw_lv()`, `.draw_dag()`).
+
+Key Features
+----------------
+- **Modular design**: `ModuleDict` of bivariate copulas + `ModuleList` of marginals.
+- **Lazy pseudo-obs**: Efficient on-the-fly computation of h-functions.
+- **Structure learning**: MST-based tree construction per vine level (DVine/CVine/RVine).
+- **Sampling**: Inverse Rosenblatt using reference counting and ITP root-finding.
+- **Visualization**: NetworkX-based plots of vine in trees and in DAGs.
+
+Usage
+--------
+>>> from torchvinecopulib.vinecop import VineCop
+>>> vc = VineCop(num_dim=4, is_cop_scale=False, num_step_grid=128)
+>>> vc.fit(obs=data_tensor, mtd_vine="rvine", mtd_bidep="chatterjee_xi")
+>>> samples = vc.sample(num_sample=500)
+>>> log_liks = vc.log_pdf(obs=data_tensor)
+
+References
+----------
+Dissmann, J., Brechmann, E. C., Czado, C., & Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics & Data Analysis, 59, 52-69.
+Chang, B., & Joe, H. (2019). Prediction based on conditional distributions of vine copulas. Computational Statistics & Data Analysis, 139, 45-63.
+Zhu, K., Kurowicka, D., & Nane, G. F. (2020). Common sampling orders of regular vines with application to model selection. Computational Statistics & Data Analysis, 142, 106811.
+Czado, C., & Nagler, T. (2022). Vine copula based modeling. Annual Review of Statistics and Its Application, 9(1), 453-477.
+"""
+
 import copy
 import heapq
 import math
@@ -24,6 +59,25 @@ class VineCop(torch.nn.Module):
         is_cop_scale: bool = False,
         num_step_grid: int = 128,
     ) -> None:
+        """Initialize a VineCop object.
+
+        Args:
+            num_dim (int): number of dimensions.
+            is_cop_scale (bool, optional): if True, the marginals are assumed in copula scale [0,1]. Otherwise, the marginals are fitted via KDE. Defaults to False.
+            num_step_grid (int, optional): Grid resolution (power of 2) passed to each BiCop. Defaults to 128.
+
+        Attributes:
+            num_dim (int):
+            is_cop_scale (bool):
+            num_step_grid (int):
+            marginals (torch.nn.ModuleList): list of marginals for each dimension.
+            bicops (torch.nn.ModuleDict): dictionary of BiCop
+            struct_bcp (dict): BiCop structures on condition-ed/ing sets, independence, parents.
+            struct_obs (list): Pseudo-obs structure per vine level.
+            tree_bidep (list): Learned edge weights per vine level.
+            sample_order (tuple): Sampling order for inverse Rosenblatt transform.
+            num_obs (torch.Tensor): number of observations.
+        """
         super().__init__()
         self.num_dim = num_dim
         self.is_cop_scale = is_cop_scale
@@ -59,14 +113,23 @@ class VineCop(torch.nn.Module):
 
     @property
     def device(self):
+        """Device of internal buffers."""
         return self._dd.device
 
     @property
     def dtype(self):
+        """Data type of internal buffers."""
         return self._dd.dtype
 
     @property
     def matrix(self) -> torch.Tensor:
+        """Matrix representation of the vine. Diagonal elements form the sampling order.
+            Read in row-wise: a row of (0,1,3,4,2) indicates a source vertex (0|1,2,3,4) and
+            bicops (fix the leftmost, move `;` from right to left) including
+            (0,2;), (0,4;2), (0,3;2,4), and (0,1;2,3,4).
+        Returns:
+            torch.Tensor: Matrix representation of the vine.
+        """
         with torch.no_grad():
             mat: list[list[int]] = []
             seen: set[int] = set()
@@ -77,11 +140,7 @@ class VineCop(torch.nn.Module):
                 # * look up tree-edges from level lv upwards
                 for up in range(lv, -1, -1):
                     for v_l, v_r, *_ in self.tree_bidep[up]:
-                        if (
-                            v_diag in (v_l, v_r)
-                            and (v_l not in seen)
-                            and (v_r not in seen)
-                        ):
+                        if v_diag in (v_l, v_r) and (v_l not in seen) and (v_r not in seen):
                             # * append the "other" variable
                             row.append(v_l if (v_diag == v_r) else v_r)
                 seen.add(v_diag)
@@ -92,6 +151,7 @@ class VineCop(torch.nn.Module):
 
     @torch.no_grad()
     def reset(self) -> None:
+        """Reset the VineCop object to its initial state."""
         self.num_obs.zero_()
         for i in range(self.num_dim):
             self.struct_obs[0][(i,)] = ""
@@ -108,7 +168,19 @@ class VineCop(torch.nn.Module):
 
     @staticmethod
     @torch.no_grad()
-    def ref_count_hfunc(num_dim: int, struct_obs: list, sample_order: tuple):
+    def ref_count_hfunc(
+        num_dim: int, struct_obs: list, sample_order: tuple
+    ) -> tuple[dict, list, int]:
+        """Count references of pseudo-obs, identify source vertices, and count number of hfuncs.
+
+        Args:
+            num_dim (int): number of dimensions in the vine.
+            struct_obs (list): structure of pseudo observations. (parents)
+            sample_order (tuple): sampling order.
+
+        Returns:
+            tuple[dict, list, int]: reference counts of pseudo-obs, list of source vertices, and number of hfuncs.
+        """
         missing = set(range(num_dim)) - set(sample_order)
         lst_source = []
         for idx, v in enumerate(sample_order):
@@ -158,6 +230,11 @@ class VineCop(torch.nn.Module):
 
     @torch.no_grad()
     def _sample_order(self) -> tuple[int, ...]:
+        """Schedule an optimized sampling order to minimize h‐function calls.
+
+        Returns:
+            tuple[int, ...]: New `sample_order` of variable indices for inverse Rosenblatt sampling.
+        """
         last_tree_vertex = set(range(self.num_dim)) - set(self.first_tree_vertex)
         sample_order = []
         for v_s_parent in self.struct_obs[::-1]:
@@ -194,9 +271,7 @@ class VineCop(torch.nn.Module):
         # * edge2tree, dvine (MST, restricted to dvine)
         # * TSP with precedence constraints (clustered TSP), only called at lv-0
         # ! all s have to be empty for level‑0 D‑vine
-        edge_list = [
-            ((v_l, v_r), -abs(w)) for (v_l, v_r, *s), w in edge_weight_lv.items()
-        ]
+        edge_list = [((v_l, v_r), -abs(w)) for (v_l, v_r, *s), w in edge_weight_lv.items()]
         edge_list.sort(key=lambda x: x[1])
         parent = list(range(self.num_dim))
         degree = [0] * self.num_dim
@@ -268,9 +343,7 @@ class VineCop(torch.nn.Module):
         parent = {}
         for lr_s, cond_ed in self.struct_obs[lv].items():
             parent[lr_s] = (
-                frozenset(lr_s + tuple(map(int, cond_ed.split(","))))
-                if lv > 0
-                else frozenset(lr_s)
+                frozenset(lr_s + tuple(map(int, cond_ed.split(",")))) if lv > 0 else frozenset(lr_s)
             )
         # * bicop vertices point to themselves
         parent.update({r: r for r in parent.values()})
@@ -297,9 +370,7 @@ class VineCop(torch.nn.Module):
         def kruskal(cand_e_w: dict, num_mst: int) -> None:
             if cand_e_w:
                 # ! min heap, by -ABS(bidep) in ASCENDING order
-                heap_bidep_abs = [
-                    (-abs(bidep), lr_s) for lr_s, bidep in cand_e_w.items()
-                ]
+                heap_bidep_abs = [(-abs(bidep), lr_s) for lr_s, bidep in cand_e_w.items()]
                 heapq.heapify(heap_bidep_abs)
                 while len(mst) < num_mst:
                     _, lr_s = heapq.heappop(heap_bidep_abs)
@@ -320,9 +391,7 @@ class VineCop(torch.nn.Module):
             }
             kruskal(
                 cand_e_w=cand_e_w,
-                num_mst=max(
-                    0, len(cand_v) - lv - 1
-                ),  # * number of edges in the MST, at this stage
+                num_mst=max(0, len(cand_v) - lv - 1),  # * number of edges in the MST, at this stage
             )
         return mst
 
@@ -345,6 +414,30 @@ class VineCop(torch.nn.Module):
         num_step_grid_kde1d: int = None,
         **kde_kwargs,
     ) -> None:
+        """Fit the VineCop object to multivariate data.
+            Learns both the vine structure (via Dissmann’s greedy MST or a provided matrix)
+            and fits all bivariate copulas and 1D marginals (if needed).
+
+        Args:
+            obs (torch.Tensor): observations of shape (num_obs, num_dim). If `is_cop_scale=False`, raw data; otherwise assumed already uniform.
+            is_dissmann (bool, optional): if True, use Dissmann's algorithm to learn the vine structure. Otherwise, use the provided matrix. Defaults to True.
+            matrix (torch.Tensor, optional): matrix representation of the vine structure. Defaults to None.
+            first_tree_vertex (tuple, optional): vertices of the first tree (set of conditioning variables). Defaults to ().
+            mtd_vine (str, optional): method for vine structure. One of "cvine", "dvine", "rvine". Defaults to "rvine".
+            mtd_bidep (str, optional): method for bivariate dependence. One of "chatterjee_xi", "ferreira_tail_dep_coeff", "kendall_tau", "mutual_info", "spearman_rho". Defaults to "chatterjee_xi".
+            thresh_trunc (None | float, optional): threshold for truncating bivariate copulas using p-val from Kendall's tau stats test. Defaults to 0.01.
+            num_obs_max (int, optional): maximum number of observations for fitting BiCop (subsample if < num_obs). Defaults to None.
+            seed (int, optional): random seed for BiCop fitting, used only when `num_obs_max` < `num_obs`. Defaults to 42.
+            is_tll (bool, optional): Using tll or fastKDE. Defaults to False (fastKDE).
+            mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
+            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
+            is_tau_est (bool, optional): If True, compute and store Kendall’s τ inside BiCop. Defaults to False.
+            num_step_grid_kde1d (int, optional): Grid resolution for each marginal KDE. Defaults to None.
+            **kde_kwargs: additional keyword arguments for kdeCDFPPF1D.
+
+        Raises:
+            ValueError: if `mtd_vine` is not one of "cvine", "dvine", or "rvine".
+        """
         self.reset()
         # ! device agnostic
         device, dtype = self.device, self.dtype
@@ -436,9 +529,7 @@ class VineCop(torch.nn.Module):
                     # * edge2tree, rvine
                     tree = self._mst_from_edge_rvine(edge_weight_lv=tmp_edge_weight)
                 else:
-                    raise ValueError(
-                        "mtd_vine must be one of 'cvine', 'dvine', 'rvine'"
-                    )
+                    raise ValueError("mtd_vine must be one of 'cvine', 'dvine', 'rvine'")
                 # * store tree and weights
                 self.tree_bidep[lv] = {lr_s: tmp_edge_weight[lr_s] for lr_s in tree}
             else:
@@ -518,6 +609,14 @@ class VineCop(torch.nn.Module):
         self._sample_order()
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        """Compute the log-density function of the vine copula at the given observations (including marginals).
+
+        Args:
+            obs (torch.Tensor): Points at which to evaluate the log-density function. Shape (num_obs, num_dim).
+
+        Returns:
+            torch.Tensor: Log-density function values at the given observations. Shape (num_obs, 1).
+        """
         # ! device agnostic
         device, dtype = self.device, self.dtype
         if self.is_cop_scale:
@@ -580,13 +679,22 @@ class VineCop(torch.nn.Module):
                 lpdf = lpdf + self.marginals[v].log_pdf(x=obs[:, [v]])
         return lpdf
 
-    def forward(self, x) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """neg average log-likelihood function for the given observations.
+
+        Args:
+            x (torch.Tensor): Points at which to evaluate. Shape (num_obs, num_dim).
+
+        Returns:
+            torch.Tensor: scalar loss value.
+        """
         return -self.log_pdf(x).mean()
 
-    def rosenblatt(
-        self, obs: torch.Tensor, sample_order: tuple | None = None
-    ) -> torch.Tensor:
+    def rosenblatt(self, obs: torch.Tensor, sample_order: tuple | None = None) -> torch.Tensor:
+        """Compute the Rosenblatt transform of observations.
+        Maps input `obs` into uniform pseudo‐observations via successive conditional CDFs (Rosenblatt).
         # TODO, needs grad as residuals
+        """
         raise NotImplementedError
 
     @torch.no_grad()
@@ -598,6 +706,27 @@ class VineCop(torch.nn.Module):
         sample_order: tuple[int, ...] | None = None,
         dct_v_s_obs: dict[tuple[int, ...], torch.Tensor] | None = None,
     ) -> torch.Tensor:
+        """Draw random samples from the fitted vine copula via inverse Rosenblatt.
+
+        Generates `num_sample` joint samples in original or copula scale by
+        (1) sampling independent uniforms for each “source” pseudo-obs,
+        (2) recursively applying h-functions and their inverses following the
+        vine structure, and (3) optionally transforming back through 1D marginal PPFs.
+
+        Args:
+            num_sample (int, optional): number of samples to draw. Defaults to 1000.
+            seed (int, optional): random seed for RNG or Sobol engine. Defaults to 42.
+            is_sobol (bool, optional): if True, use Sobol engine for quasi-random sampling. Defaults to False.
+            sample_order (tuple[int, ...] | None, optional): custom sampling order. Defaults to None and uses `self.sample_order`.
+            dct_v_s_obs (dict[tuple[int, ...], torch.Tensor] | None, optional):
+                dict mapping tuple(idx|conding set)->pseudo-obs. Defaults to None. User-provided pseudo-obs to initialize
+                the sampling process. Notice if `is_cop_scale=False`, CDF/PPF will only be applied to the top level marginals.
+                Pseudo-obs at deeper levels are assumed to be in copula scale [0,1].
+
+        Returns:
+            torch.Tensor: sampled observations in original scale if `self.is_cop_scale=False`, otherwise in [0,1]^d.
+        """
+
         def _ref_count_decrement(v_s) -> None:
             ref_count[v_s] -= 1
             if ref_count[v_s] < 1 and (len(v_s) > 1):
@@ -647,9 +776,7 @@ class VineCop(torch.nn.Module):
                 if bcp.is_indep:
                     dct_obs[v_down, *s_down] = dct_obs[v_down, *s_up]
                 else:
-                    dct_obs[v_down, *s_down] = (
-                        bcp.hfunc_l if is_down_right else bcp.hfunc_r
-                    )(
+                    dct_obs[v_down, *s_down] = (bcp.hfunc_l if is_down_right else bcp.hfunc_r)(
                         torch.hstack(
                             [
                                 dct_obs[v_l, *s_up],
@@ -675,9 +802,7 @@ class VineCop(torch.nn.Module):
                 v_s = (v, *sorted(s))
                 # TODO: if top lv then marginal cdf, else nothing happen (quantile regression for experienced users)
                 if not s:
-                    dct_obs[v_s] = (
-                        self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
-                    )
+                    dct_obs[v_s] = self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
                 else:
                     dct_obs[v_s] = vec.to(device=device, dtype=dtype)
         # * source vertices in each path; reference counting for whole DAG
@@ -691,16 +816,12 @@ class VineCop(torch.nn.Module):
         if dim_sim > 0:
             if is_sobol:
                 obs_mvcp_indep = (
-                    torch.quasirandom.SobolEngine(
-                        dimension=dim_sim, scramble=True, seed=seed
-                    )
+                    torch.quasirandom.SobolEngine(dimension=dim_sim, scramble=True, seed=seed)
                     .draw(n=num_sample, dtype=dtype)
                     .to(device=device)
                 )
             else:
-                obs_mvcp_indep = torch.rand(
-                    size=(num_sample, dim_sim), device=device, dtype=dtype
-                )
+                obs_mvcp_indep = torch.rand(size=(num_sample, dim_sim), device=device, dtype=dtype)
             # * initialize source vertices
             idx = 0
             for v_s in lst_source:
@@ -725,9 +846,19 @@ class VineCop(torch.nn.Module):
             )
 
     @torch.no_grad()
-    def cdf(
-        self, obs: torch.Tensor, num_sample: int = 10007, seed: int = 0
-    ) -> torch.Tensor:
+    def cdf(self, obs: torch.Tensor, num_sample: int = 10007, seed: int = 42) -> torch.Tensor:
+        """Estimate the multivariate CDF via Monte Carlo of the vine copula.
+            Approximates C(u) = P(U ≤ u) by drawing `num_sample` Sobol samples in copula scale
+            and computing the proportion that lie below `obs`.
+
+        Args:
+            obs (torch.Tensor): Points at which to evaluate the CDF. Shape (num_obs, num_dim).
+            num_sample (int, optional): number of samples to draw for approx. Defaults to 10007.
+            seed (int, optional): random seed for Sobol engine. Defaults to 0.
+
+        Returns:
+            torch.Tensor: Estimated CDF values at the given observations. Shape (num_obs, 1).
+        """
         # ! device agnostic
         device, dtype = self.device, self.dtype
         if self.is_cop_scale:
@@ -759,6 +890,11 @@ class VineCop(torch.nn.Module):
         ).to(device=device, dtype=dtype)
 
     def __str__(self) -> str:
+        """String representation of the VineCop object.
+
+        Returns:
+            str: String representation of the VineCop object.
+        """
         header = self.__class__.__name__
         params = {
             "num_dim": int(self.num_dim),
@@ -788,7 +924,28 @@ class VineCop(torch.nn.Module):
         font_size_edge: int = 7,
         f_path: Path = None,
         fig_size: tuple = None,
-    ):
+    ) -> tuple:
+        """Draw the weighted undirected graph at a single level of the vine copula.
+            Constructs a NetworkX graph of bivariate‐copula edges at level `lv`,
+            where nodes represent either raw variables (lv=0), parent‐copula modules,
+            or pseudo‐observations, and edge widths encode dependence strength.
+
+        Args:
+            lv (int, optional): Level to draw. Defaults to 0.
+            is_bcp (bool, optional): If True, nodes are parent‐bicop "l,r;s". Otherwise, nodes are pseudo‐obs "v|s". Defaults to True.
+            title (str | None, optional): Title of the plot. Defaults to `f"Vine level {lv}"`.
+            num_digit (int, optional): Number of decimal digits for edge weights. Defaults to 2.
+            font_size_vertex (int, optional): Font size for vertex labels. Defaults to 8.
+            font_size_edge (int, optional): Font size for edge labels. Defaults to 7.
+            f_path (Path, optional): Path to save the figure. Defaults to None.
+            fig_size (tuple, optional): Figure size. Defaults to None.
+
+        Raises:
+            ImportError: If matplotlib or networkx is not installed.
+
+        Returns:
+            tuple: Figure, axis, graph object, and file path (if saved).
+        """
         try:
             import matplotlib.pyplot as plt
             import networkx as nx
@@ -811,14 +968,10 @@ class VineCop(torch.nn.Module):
                 # * append the cond_ing set
                 sep = "" if lv == 1 else "\n"
                 label_u = f"{label_u};{sep}{
-                    ','.join(
-                        str(x) for x in sorted(self.struct_bcp[label_u]['cond_ing'])
-                    )
+                    ','.join(str(x) for x in sorted(self.struct_bcp[label_u]['cond_ing']))
                 }"
                 label_v = f"{label_v};{sep}{
-                    ','.join(
-                        str(x) for x in sorted(self.struct_bcp[label_v]['cond_ing'])
-                    )
+                    ','.join(str(x) for x in sorted(self.struct_bcp[label_v]['cond_ing']))
                 }"
                 edge_weight.append((label_u, label_v, round(w.item(), num_digit)))
         else:
@@ -847,14 +1000,9 @@ class VineCop(torch.nn.Module):
             edgecolors="gray",
             alpha=0.8,
         )
-        nx.draw_networkx_labels(
-            G, pos, ax=ax, font_size=font_size_vertex, font_color="black"
-        )
+        nx.draw_networkx_labels(G, pos, ax=ax, font_size=font_size_vertex, font_color="black")
         # * scale line‐width by weight
-        widths = [
-            math.log1p(0.5 + 100 * abs(data["weight"]))
-            for _, _, data in G.edges(data=True)
-        ]
+        widths = [math.log1p(0.5 + 100 * abs(data["weight"])) for _, _, data in G.edges(data=True)]
         nx.draw_networkx_edges(G, pos, ax=ax, width=widths, style="--", alpha=0.9)
         nx.draw_networkx_edge_labels(
             G,
@@ -880,7 +1028,24 @@ class VineCop(torch.nn.Module):
         font_size_vertex: int = 8,
         f_path: Path = None,
         fig_size: tuple = None,
-    ):
+    ) -> tuple:
+        """Draw the computational graph (DAG) of the vine copula.
+            Creates a directed graph where edges flow from upstream pseudo‐obs
+            and bicop modules to downstream pseudo‐obs, laid out by vine levels.
+
+        Args:
+            sample_order (tuple[int, ...], optional): Variable sampling order. Defaults to `self.sample_order`.
+            title (str, optional): Title of the plot. Defaults to "Vine comp graph".
+            font_size_vertex (int, optional): Font size for vertex labels. Defaults to 8.
+            f_path (Path, optional): Path to save the figure. If provided, the figure will be saved. Defaults to None.
+            fig_size (tuple, optional): Figure size. Defaults to None.
+
+        Raises:
+            ImportError: If matplotlib or networkx is not installed.
+
+        Returns:
+            tuple: Figure, axis, graph object, and file path (if saved).
+        """
         try:
             import matplotlib.pyplot as plt
             import networkx as nx
@@ -930,9 +1095,7 @@ class VineCop(torch.nn.Module):
                 labels[bcp] = f"{v_l},{v_r};{br}{','.join(map(str, sorted(cond_set)))}"
             # * layout downstream at y = –lv
             if downstream:
-                xs = np.linspace(
-                    -len(downstream) / 2, len(downstream) / 2, len(downstream)
-                )
+                xs = np.linspace(-len(downstream) / 2, len(downstream) / 2, len(downstream))
                 for i, node in enumerate(downstream):
                     pos_obs[node] = (float(xs[i]), float(-lv))
             # * layout bicops at y = –lv + 0.5
@@ -953,9 +1116,7 @@ class VineCop(torch.nn.Module):
         _, node_source, _ = self.ref_count_hfunc(
             num_dim=self.num_dim,
             struct_obs=self.struct_obs,
-            sample_order=sample_order
-            if sample_order is not None
-            else self.sample_order,
+            sample_order=sample_order if sample_order is not None else self.sample_order,
         )
         node_source = [(v_s[0], frozenset(v_s[1:])) for v_s in node_source]
         # * draw

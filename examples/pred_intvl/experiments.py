@@ -72,9 +72,7 @@ if __name__ == "__main__":
         np.random.seed(seed)
         # * load data
         try:
-            train_loader, val_loader, test_loader, xsc, ysc = DATASETS[ds_name](
-                seed_val=seed
-            )
+            train_loader, val_loader, test_loader, xsc, ysc = DATASETS[ds_name](seed_val=seed)
             X_test, Y_test = extract_XY(test_loader, device)
         except Exception as e:
             logger.error(f"Error loading dataset {ds_name}: {e}")
@@ -102,9 +100,7 @@ if __name__ == "__main__":
                 device=device,
                 num_epochs=NUM_EPOCH,
             )
-            dct_result["ensemble"] = ensemble_pred_intvl(
-                ensemble, X_test, device, ALPHA
-            )
+            dct_result["ensemble"] = ensemble_pred_intvl(ensemble, X_test, device, ALPHA)
         except Exception as e:
             logger.error(f"Error training ensemble: {e}")
             dct_result["ensemble"] = (None, None, None)
@@ -143,9 +139,7 @@ if __name__ == "__main__":
                 device=device,
                 num_epochs=NUM_EPOCH,
             )
-            dct_result["bnn"] = bnn_pred_intvl(
-                model_bnn, X_test, T=200, alpha=ALPHA, device=device
-            )
+            dct_result["bnn"] = bnn_pred_intvl(model_bnn, X_test, T=200, alpha=ALPHA, device=device)
         except Exception as e:
             logger.error(f"Error training BNN: {e}")
             dct_result["bnn"] = (None, None, None)

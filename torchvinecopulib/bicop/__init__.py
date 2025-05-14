@@ -1,8 +1,39 @@
 """
-* CamelCase naming convention for class
-* grid stored in registered buffer after fit()
+torchvinecopulib.bicop
+----------------------
+Provides `BiCop` (torch.nn.Module) for estimating, evaluating, and sampling
+from bivariate copulas via `tll` or `fastKDE` approaches.
+
+Decorators
+----------
 * torch.compile() for bilinear interpolation
 * torch.no_grad() for fit(), hinv_l(), hinv_r(), sample(), and imshow()
+
+Key Features
+----------
+- Fits a copula density on a uniform [0,1]² grid and caches PDF/CDF/h‐functions
+- Device‐agnostic: all buffers live on the same device/dtype you fit on
+- Fast bilinear interpolation compiled with `torch.compile`
+- Convenient `.cdf()`, `.pdf()`, `.hfunc_*()`, `.hinv_*()`, and `.sample()` APIs
+- Plotting helpers: `.imshow()` and `.plot(contour|surface)`
+
+Usage
+------
+>>> from torchvinecopulib.bicop import BiCop
+>>> cop = BiCop(num_step_grid=256)
+>>> cop.fit(obs)  # obs: Tensor of shape (n,2) in [0,1]²
+>>> u = torch.rand(10, 2)
+>>> cdf_vals = cop.cdf(u)
+>>> samples = cop.sample(1000, is_sobol=True)
+
+References
+----------
+Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models:
+        comparison of methods. Dependence Modeling, 5(1), 99-120.
+O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P. A fast and objective
+        multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). http://dx.doi.org/10.1016/j.csda.2016.02.014
+O’Brien, T. A., Collins, W. D., Rauscher, S. A. & Ringler, T. D. Reducing the computational cost of the ECF
+        using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). http://dx.doi.org/10.1016/j.csda.2014.06.002
 """
 
 from pprint import pformat
@@ -33,7 +64,10 @@ class BiCop(torch.nn.Module):
         num_step_grid: int = 128,
     ):
         """
-        num_step_grid has to be a power of 2
+        Initializes the bivariate copula (BiCop) class. By default an independent bicop.
+
+        Args:
+            num_step_grid (int, optional): number of steps per dimension for the precomputed grids (must be a power of 2). Defaults to 128.
         """
         super().__init__()
         # * by default an independent bicop, otherwise cache grids from KDE
@@ -63,15 +97,31 @@ class BiCop(torch.nn.Module):
         self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
+        """Get the device of the bicop model (all internal buffers).
+
+        Returns:
+            torch.device: The device on which the registered buffers reside.
+        """
         return self._dd.device
 
     @property
-    def dtype(self):
+    def dtype(self) -> torch.dtype:
+        """Get the data type of the bicop model (all internal buffers). Should be torch.float64.
+
+        Returns:
+            torch.dtype: The data type of the registered buffers.
+        """
         return self._dd.dtype
 
     @torch.no_grad()
     def reset(self) -> None:
+        """Reinitialize state and zero all statistics and precomputed grids.
+
+        Sets the bicop back to independent bicop and clears accumulated
+        metrics (`tau`, `num_obs`, `negloglik`) as well as all grid buffers
+        (`_pdf_grid`, `_cdf_grid`, `_hfunc_l_grid`, `_hfunc_r_grid`).
+        """
         self.is_indep = True
         self.tau.zero_()
         self.num_obs.zero_()
@@ -92,6 +142,29 @@ class BiCop(torch.nn.Module):
         num_iter_max: int = 17,
         is_tau_est: bool = False,
     ) -> None:
+        """Estimate and cache PDF/CDF/h-function grids from bivariate copula observations.
+
+        This method computes KDE-based bicopula densities
+        on a uniform [0,1]^2 grid and populates internal buffers
+        (`_pdf_grid`, `_cdf_grid`, `_hfunc_l_grid`, `_hfunc_r_grid`, `negloglik`).
+
+        Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models:
+            comparison of methods. Dependence Modeling, 5(1), 99-120.
+        O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P. A fast and objective
+            multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). http://dx.doi.org/10.1016/j.csda.2016.02.014
+        O’Brien, T. A., Collins, W. D., Rauscher, S. A. & Ringler, T. D. Reducing the computational cost of the ECF
+            using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). http://dx.doi.org/10.1016/j.csda.2014.06.002
+
+
+        Args:
+            obs (torch.Tensor): shape (n, 2) bicop obs in [0, 1]^2.
+            num_obs_max (int, optional): max number of obs to subsample for KDE. Defaults to None.
+            seed (int, optional): random seed for subsampling, used only when num_obs_max<obs.shape[0]. Defaults to 42.
+            is_tll (bool, optional): Using tll or fastKDE. Defaults to True (tll).
+            mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
+            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
+            is_tau_est (bool, optional): If True, compute and store Kendall’s τ. Defaults to False.
+        """
         # ! device agnostic
         device, dtype = self.device, self.dtype
         self.is_indep = False
@@ -130,9 +203,7 @@ class BiCop(torch.nn.Module):
             )
             pdf_grid = (
                 torch.from_numpy(
-                    cop.pdf(
-                        torch.cartesian_prod(axis, axis).view(-1, 2).fliplr().numpy()
-                    )
+                    cop.pdf(torch.cartesian_prod(axis, axis).view(-1, 2).fliplr().numpy())
                 )
                 .view(self.num_step_grid, self.num_step_grid)
                 .to(device=device, dtype=dtype)
@@ -151,9 +222,7 @@ class BiCop(torch.nn.Module):
                 pdf_grid = torch.cat(
                     [
                         pdf_grid,
-                        torch.zeros(
-                            self.num_step_grid - H, W, dtype=dtype, device=device
-                        ),
+                        torch.zeros(self.num_step_grid - H, W, dtype=dtype, device=device),
                     ],
                     dim=0,
                 )
@@ -162,15 +231,11 @@ class BiCop(torch.nn.Module):
                 pdf_grid = torch.cat(
                     [
                         pdf_grid,
-                        torch.zeros(
-                            H, self.num_step_grid - W, dtype=dtype, device=device
-                        ),
+                        torch.zeros(H, self.num_step_grid - W, dtype=dtype, device=device),
                     ],
                     dim=1,
                 )
-            pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(
-                0.0
-            )
+            pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(0.0)
             pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
             # * normalization: Sinkhorn / iterative proportional fitting (IPF)
             for _ in range(num_iter_max):
@@ -181,19 +246,25 @@ class BiCop(torch.nn.Module):
         # * negloglik
         self.negloglik = -self.log_pdf(obs=obs).nan_to_num(posinf=0.0, neginf=0.0).sum()
         # ! cdf
-        self._cdf_grid = (
-            (self._pdf_grid * self.step_grid**2).cumsum(dim=0).cumsum(dim=1)
-        ).clamp_(0.0, 1.0)
+        self._cdf_grid = ((self._pdf_grid * self.step_grid**2).cumsum(dim=0).cumsum(dim=1)).clamp_(
+            0.0, 1.0
+        )
         # ! h functions
-        self._hfunc_l_grid = (
-            (self._pdf_grid * self.step_grid).cumsum(dim=1).clamp_(0.0, 1.0)
-        )
-        self._hfunc_r_grid = (
-            (self._pdf_grid * self.step_grid).cumsum(dim=0).clamp_(0.0, 1.0)
-        )
+        self._hfunc_l_grid = (self._pdf_grid * self.step_grid).cumsum(dim=1).clamp_(0.0, 1.0)
+        self._hfunc_r_grid = (self._pdf_grid * self.step_grid).cumsum(dim=0).clamp_(0.0, 1.0)
 
     @torch.compile
     def _interp(self, grid: torch.Tensor, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Bilinearly interpolate values on a 2D grid at given sample points.
+
+        Args:
+            grid (torch.Tensor): Precomputed grid of values (e.g., PDF/CDF/h‐function), shape (m,m).
+            obs (torch.Tensor): Points in [0,1]² where to interpolate (rows are (u₁,u₂)), shape (n,2).
+
+        Returns:
+            torch.Tensor: Interpolated grid values at each observation, clamped ≥0, shape (n,1).
+        """
         idx = obs.clamp(self._EPS, 1 - self._EPS) / self.step_grid
         i0 = idx.floor().long()
         di = idx - i0
@@ -213,6 +284,17 @@ class BiCop(torch.nn.Module):
         ).clamp_min(0.0)
 
     def cdf(self, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Evaluate the copula CDF at given points.
+
+        For independent copula, returns u₁·u₂.
+
+        Args:
+            obs (torch.Tensor): Points in [0,1]² where to evaluate the CDF (rows are (u₁,u₂)), shape (n,2).
+
+        Returns:
+            torch.Tensor: CDF values at each observation, shape (n,1).
+        """
         # ! device agnostic
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
@@ -220,6 +302,15 @@ class BiCop(torch.nn.Module):
         return self._interp(grid=self._cdf_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_l(self, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Evaluate the left h-function at given points.
+        Computes H(u₂ | u₁):= ∂/∂u₁ C(u₁,u₂) for the fitted copula.
+        For independent copula, returns u₂.
+        Args:
+            obs (torch.Tensor): Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).
+        Returns:
+            torch.Tensor: Left h-function values at each observation, shape (n,1).
+        """
         # ! device agnostic
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
@@ -227,6 +318,15 @@ class BiCop(torch.nn.Module):
         return self._interp(grid=self._hfunc_l_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_r(self, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Evaluate the right h-function at given points.
+        Computes H(u₁ | u₂):= ∂/∂u₂ C(u₁,u₂) for the fitted copula.
+        For independent copula, returns u₁.
+        Args:
+            obs (torch.Tensor): Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).
+        Returns:
+            torch.Tensor: Right h-function values at each observation, shape (n,1).
+        """
         # ! device agnostic
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
@@ -235,6 +335,14 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def hinv_l(self, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Invert the left h‐function via root‐finding: find u₂ given (u₁, p).
+        Solves H(u₂ | u₁) = p by ITP between 0 and 1.
+        Args:
+            obs (torch.Tensor): Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).
+        Returns:
+            torch.Tensor: Solutions u₂ ∈ [0,1], shape (n,1).
+        """
         # ! device agnostic
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
@@ -250,6 +358,14 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def hinv_r(self, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Invert the right h‐function via root‐finding: find u₁ given (u₂, p).
+        Solves H(u₁ | u₂) = p by ITP between 0 and 1.
+        Args:
+            obs (torch.Tensor): Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).
+        Returns:
+            torch.Tensor: Solutions u₁ ∈ [0,1], shape (n,1).
+        """
         # ! device agnostic
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
@@ -264,6 +380,14 @@ class BiCop(torch.nn.Module):
         )
 
     def pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Evaluate the copula PDF at given points.
+        For independent copula, returns 1.
+        Args:
+            obs (torch.Tensor): Points in [0,1]² where to evaluate the PDF (rows are (u₁,u₂)), shape (n,2).
+        Returns:
+            torch.Tensor: PDF values at each observation, shape (n,1).
+        """
         # ! device agnostic
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
@@ -271,18 +395,33 @@ class BiCop(torch.nn.Module):
         return self._interp(grid=self._pdf_grid, obs=obs).unsqueeze(dim=1)
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        """
+        Evaluate the copula log-PDF at given points, with safe handling of inf/nan.
+        For independent copula, returns 0.
+        Args:
+            obs (torch.Tensor): Points in [0,1]² where to evaluate the log-PDF (rows are (u₁,u₂)), shape (n,2).
+        Returns:
+            torch.Tensor: log-PDF values at each observation, shape (n,1).
+        """
         # ! device agnostic
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.zeros_like(obs[:, [0]])
-        return (
-            self.pdf(obs=obs).log().nan_to_num(posinf=0.0, neginf=-13.815510557964274)
-        )
+        return self.pdf(obs=obs).log().nan_to_num(posinf=0.0, neginf=-13.815510557964274)
 
     @torch.no_grad()
-    def sample(
-        self, num_sample: int = 100, seed: int = 42, is_sobol: bool = False
-    ) -> torch.Tensor:
+    def sample(self, num_sample: int = 100, seed: int = 42, is_sobol: bool = False) -> torch.Tensor:
+        """
+        Sample from the copula by inverse Rosenblatt transform.
+        Uses Sobol sequence if `is_sobol=True`, otherwise uniform RNG.
+        For independent copula, returns uniform samples in [0,1]².
+        Args:
+            num_sample (int, optional): number of samples to generate. Defaults to 100.
+            seed (int, optional): random seed for reproducibility. Defaults to 42.
+            is_sobol (bool, optional): If True, use Sobol sampling. Defaults to False.
+        Returns:
+            torch.Tensor: Generated samples, shape (num_sample, 2).
+        """
         # ! device agnostic
         device, dtype = self.device, self.dtype
         if is_sobol:
@@ -299,6 +438,10 @@ class BiCop(torch.nn.Module):
         return obs
 
     def __str__(self) -> str:
+        """String representation of the BiCop class.
+        Returns:
+            str: String representation of the BiCop class.
+        """
         return f"{self.__class__.__name__}\n{
             pformat(
                 object={
@@ -328,13 +471,25 @@ class BiCop(torch.nn.Module):
         title: str = "Estimated bivariate copula density",
         colorbartitle: str = "Density",
         **imshow_kwargs: dict,
-    ) -> plt.Axes:
+    ) -> tuple[plt.Figure, plt.Axes]:
+        """
+        Display the (log-)PDF grid as a heatmap.
+        Args:
+            is_log_pdf (bool, optional): If True, plot log-PDF. Defaults to False.
+            ax (plt.Axes, optional): Matplotlib Axes object to plot on. If None, a new figure and axes are created. Defaults to None.
+            cmap (str, optional): Colormap for the plot. Defaults to "inferno".
+            xlabel (str, optional): X-axis label. Defaults to r"$u_{left}$".
+            ylabel (str, optional): Y-axis label. Defaults to r"$u_{right}$".
+            title (str, optional): Plot title. Defaults to "Estimated bivariate copula density".
+            colorbartitle (str, optional): Colorbar title. Defaults to "Density".
+            **imshow_kwargs: Additional keyword arguments for imshow.
+        Returns:
+            tuple[plt.Figure, plt.Axes]: The figure and axes objects.
+        """
         if ax is None:
             fig, ax = plt.subplots()
         im = ax.imshow(
-            X=self._pdf_grid.log()
-            .nan_to_num(posinf=0.0, neginf=-13.815510557964274)
-            .cpu()
+            X=self._pdf_grid.log().nan_to_num(posinf=0.0, neginf=-13.815510557964274).cpu()
             if is_log_pdf
             else self._pdf_grid.cpu(),
             extent=(0, 1, 0, 1),
@@ -352,7 +507,8 @@ class BiCop(torch.nn.Module):
 
     @staticmethod
     @torch.no_grad()
-    def get_default_xylim(margin_type: str) -> tuple[float, float]:
+    def _get_default_xylim(margin_type: str) -> tuple[float, float]:
+        """Get default x and y limits for the plot based on margin type."""
         if margin_type == "unif":
             return (1e-2, 1 - 1e-2)
         elif margin_type == "norm":
@@ -362,7 +518,8 @@ class BiCop(torch.nn.Module):
 
     @staticmethod
     @torch.no_grad()
-    def get_default_grid_size(plot_type: str) -> int:
+    def _get_default_grid_size(plot_type: str) -> int:
+        """Get default grid size for the plot based on plot type."""
         if plot_type == "contour":
             return 100
         elif plot_type == "surface":
@@ -377,7 +534,17 @@ class BiCop(torch.nn.Module):
         margin_type: str = "unif",
         xylim: Optional[tuple[float, float]] = None,
         grid_size: Optional[int] = None,
-    ) -> None:
+    ) -> tuple[plt.Figure, plt.Axes]:
+        """
+        Plot the bivariate copula density using contour or surface plot.
+        Args:
+            plot_type (str, optional): Type of plot, either "contour" or "surface". Defaults to "surface".
+            margin_type (str, optional): Type of margin, either "unif" or "norm". Defaults to "unif".
+            xylim (tuple[float, float], optional): Limits for x and y axes. Defaults to None.
+            grid_size (int, optional): Size of the grid for the plot. Defaults to None.
+        Returns:
+            tuple[plt.Figure, plt.Axes]: The figure and axes objects.
+        """
         if plot_type not in ["contour", "surface"]:
             raise ValueError("Unknown type")
 
@@ -385,10 +552,10 @@ class BiCop(torch.nn.Module):
             raise ValueError("Unknown margin type")
 
         if xylim is None:
-            xylim = self.get_default_xylim(margin_type)
+            xylim = self._get_default_xylim(margin_type)
 
         if grid_size is None:
-            grid_size = self.get_default_grid_size(plot_type)
+            grid_size = self._get_default_grid_size(plot_type)
 
         if margin_type == "unif":
             if plot_type == "contour":
@@ -413,14 +580,14 @@ class BiCop(torch.nn.Module):
         else:
             raise ValueError("Unknown margin type")
 
-        ## evaluate on grid
+        # * evaluate on grid
         g_tensor = torch.from_numpy(np.stack(g, axis=-1).reshape(-1, 2)).to(
             device=self.device, dtype=self.dtype
         )
         vals = self.pdf(g_tensor).cpu().numpy()
         cop = np.reshape(vals, (grid_size, grid_size))
 
-        ## adjust for margins
+        # * adjust for margins
         dens = cop * adj
         if len(np.unique(dens)) == 1:
             dens[0] = 1.000001 * dens[0]
@@ -430,7 +597,7 @@ class BiCop(torch.nn.Module):
         elif margin_type == "norm":
             zlim = (0, max(0.4, 1.1 * max(dens.flatten())))
 
-        # Define the colors as in the R code
+        # * colors as in the R code
         colors = [
             "#00007F",
             "blue",
@@ -443,10 +610,10 @@ class BiCop(torch.nn.Module):
             "#7F0000",
         ]
 
-        # Create the custom colormap
+        # * create a colormap
         jet_colors = LinearSegmentedColormap.from_list("jet_colors", colors, N=100)
 
-        ## plot
+        # * plot
         if plot_type == "contour":
             fig, ax = plt.subplots()
             contour = ax.contour(points, points, dens, levels=levels, cmap="gray")

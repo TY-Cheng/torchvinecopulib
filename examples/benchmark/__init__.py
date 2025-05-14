@@ -75,9 +75,7 @@ print(f"number of seeds:   {len(lst_seed)}")
 
 # %%
 for num_dim, num_obs in product(lst_num_dim, lst_num_obs):
-    print(
-        f"\n\n{time.strftime('%Y-%m-%d %H:%M:%S')}\nnum_dim: {num_dim}, num_obs: {num_obs}\n\n"
-    )
+    print(f"\n\n{time.strftime('%Y-%m-%d %H:%M:%S')}\nnum_dim: {num_dim}, num_obs: {num_obs}\n\n")
     # ! preprocess into copula scale (uniform marginals)
     torch.manual_seed(SEED)
     # * tensor on cpu
@@ -85,10 +83,7 @@ for num_dim, num_obs in product(lst_num_dim, lst_num_obs):
     R /= R.norm(dim=1, keepdim=True)
     R @= R.T
     U = ndtr(
-        (
-            torch.randn(num_obs, num_dim, dtype=torch.float64)
-            @ torch.linalg.cholesky(R, upper=True)
-        )
+        (torch.randn(num_obs, num_dim, dtype=torch.float64) @ torch.linalg.cholesky(R, upper=True))
     )
     # * tensor on cuda
     if is_cuda_avail:
@@ -106,9 +101,7 @@ for num_dim, num_obs in product(lst_num_dim, lst_num_obs):
     tvc_mdl = tvc.VineCop(num_dim=num_dim, num_step_grid=64, is_cop_scale=True)
     # ! tvc_cuda
     if is_cuda_avail:
-        tvc_mdl_cuda = tvc.VineCop(
-            num_dim=num_dim, num_step_grid=64, is_cop_scale=True
-        ).cuda()
+        tvc_mdl_cuda = tvc.VineCop(num_dim=num_dim, num_step_grid=64, is_cop_scale=True).cuda()
 
     # * fit
     print(f"\n{time.strftime('%Y-%m-%d %H:%M:%S')} Fitting...\n")

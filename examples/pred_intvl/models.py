@@ -21,7 +21,7 @@ class EncoderRegressor(nn.Module):
         p_drop: float = 0.3,
     ):
         super().__init__()
-        # a small MLP encoder mapping ℝ⁸ → ℝ^{latent_dim}
+        # * MLP encoder mapping ℝ⁸ → ℝ^{latent_dim}
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, hidden_dim1),
             nn.BatchNorm1d(hidden_dim1),
@@ -79,7 +79,7 @@ def train_epoch(model, loader, optim, criterion, device):
         x, y = x.to(device), y.to(device)
         optim.zero_grad()  # * claer out grad from last step
         y_hat, _ = model(x)
-        # if using MSELoss, we want y to be float and same shape
+        # * if using MSELoss, we want y to be float and same shape
         loss = criterion(
             y_hat,
             y.float() if isinstance(criterion, nn.MSELoss) else y,
@@ -97,7 +97,7 @@ def eval_epoch(model, loader, criterion, device):
     for x, y in loader:
         x, y = x.to(device), y.to(device)
         y_hat, _ = model(x)
-        # if using MSELoss, we want y to be float and same shape
+        # * if using MSELoss, we want y to be float and same shape
         total_loss += criterion(
             y_hat,
             y.float() if isinstance(criterion, nn.MSELoss) else y,
@@ -117,9 +117,7 @@ def train_base_model(
     patience=5,
     device=None,
 ):
-    model = EncoderRegressor(
-        input_dim=input_dim, latent_dim=latent_dim, p_drop=p_drop
-    ).to(device)
+    model = EncoderRegressor(input_dim=input_dim, latent_dim=latent_dim, p_drop=p_drop).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = nn.MSELoss()
     best_state = copy.deepcopy(model.state_dict())
@@ -214,12 +212,12 @@ def mc_dropout_pred_intvl(model, x, T=100, device=None, alpha=0.05):
     model.eval()
     x = x.to(device)
 
-    # re-enable dropout layers
+    # * re-enable dropout layers
     for m in model.modules():
         if isinstance(m, nn.Dropout):
             m.train()
 
-    # collect T predictions
+    # * collect T predictions
     preds = []
     for _ in range(T):
         y_hat, _ = model(x)  # [batch,1]
@@ -312,7 +310,7 @@ def train_bnn(
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
             optim.zero_grad()
-            # sample_elbo will call forward(x) → y
+            # * sample_elbo will call forward(x) → y
             loss = model.sample_elbo(
                 inputs=x,
                 labels=y,

@@ -158,9 +158,7 @@ def load_news_popularity(
     """
     torch.manual_seed(seed_val)
     # * fetch & split
-    X, y = fetch_openml(
-        "OnlineNewsPopularity", version=1, return_X_y=True, as_frame=False
-    )
+    X, y = fetch_openml("OnlineNewsPopularity", version=1, return_X_y=True, as_frame=False)
     X = X[:, 1:]  # ! remove the first column (website)
     y = y.astype(float).reshape(-1, 1)
     # ! test set untouched

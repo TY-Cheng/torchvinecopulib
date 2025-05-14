@@ -95,6 +95,19 @@ url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 88
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 88
+max-line-length = 100
+
 [tool.sphinx-pyproject]
 source-dir = "docs"
 build-dir = "docs/_build"
