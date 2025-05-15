@@ -202,9 +202,7 @@ class BiCop(torch.nn.Module):
                 dtype=torch.float64,
             )
             pdf_grid = (
-                torch.from_numpy(
-                    cop.pdf(torch.cartesian_prod(axis, axis).view(-1, 2).fliplr().numpy())
-                )
+                torch.from_numpy(cop.pdf(torch.cartesian_prod(axis, axis).view(-1, 2).numpy()))
                 .view(self.num_step_grid, self.num_step_grid)
                 .to(device=device, dtype=dtype)
             )
@@ -236,7 +234,7 @@ class BiCop(torch.nn.Module):
                     dim=1,
                 )
             pdf_grid = pdf_grid[: self.num_step_grid, : self.num_step_grid].clamp_min(0.0)
-            pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid)
+            pdf_grid = pdf_grid.view(self.num_step_grid, self.num_step_grid).T
             # * normalization: Sinkhorn / iterative proportional fitting (IPF)
             for _ in range(num_iter_max):
                 pdf_grid *= self._target / pdf_grid.sum(dim=0, keepdim=True)
