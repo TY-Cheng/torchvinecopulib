@@ -202,9 +202,7 @@ class BiCop(torch.nn.Module):
                 dtype=torch.float64,
             )
             pdf_grid = (
-                torch.from_numpy(
-                    cop.pdf(torch.cartesian_prod(axis, axis).view(-1, 2).fliplr().numpy())
-                )
+                torch.from_numpy(cop.pdf(torch.cartesian_prod(axis, axis).view(-1, 2).numpy()))
                 .view(self.num_step_grid, self.num_step_grid)
                 .to(device=device, dtype=dtype)
             )
