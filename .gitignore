@@ -4,8 +4,6 @@
 /Styles
 /data
 /out
-/examples/VAE*
-/examples/**/*.ipynb
 *.pkl
 *.svg
 
