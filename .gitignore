@@ -234,3 +234,6 @@ Temporary Items
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+examples/logs
+examples/MNIST
