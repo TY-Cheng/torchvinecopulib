@@ -4,13 +4,14 @@
 /Styles
 /data
 /out
-/examples/VAE*
-/examples/**/*.ipynb
 *.pkl
 *.svg
 
 # Python-generated files
 __pycache__/
+checkpoints/
+MNIST/
+logs/
 *.py[oc]
 build/
 dist/
@@ -234,3 +235,6 @@ Temporary Items
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+examples/logs
+examples/MNIST
