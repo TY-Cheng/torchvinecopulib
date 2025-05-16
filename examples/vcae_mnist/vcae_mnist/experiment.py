@@ -24,10 +24,10 @@ def run_experiment(seed: int, config: Config):
     set_seed(seed)
 
     # Instantiate the model
-    model = LitMNISTAutoencoder()
+    model_initial = LitMNISTAutoencoder()
 
     # Set up trainer
-    trainer = pl.Trainer(
+    trainer_initial = pl.Trainer(
         accelerator=config.accelerator,
         devices=config.devices,
         max_epochs=config.max_epochs,
@@ -37,16 +37,19 @@ def run_experiment(seed: int, config: Config):
     )
 
     # Train the base autoencoder
-    trainer.fit(model)
+    trainer_initial.fit(model_initial)
 
     # Stay on DEVICE
-    model.to(DEVICE)
+    model_initial.to(DEVICE)
 
     # Learn vine
-    model.learn_vine(n_samples=5000)
+    model_initial.learn_vine(n_samples=5000)
+
+    # Extract test data
+    rep_initial, _, data_initial, _, samples_initial = model_initial.get_data(stage="test")
 
     # Deepcopy for refit
-    model_refit = copy.deepcopy(model)
+    model_refit = copy.deepcopy(model_initial)
 
     # Set up trainer for refitting
     trainer_refit = pl.Trainer(
@@ -64,23 +67,22 @@ def run_experiment(seed: int, config: Config):
     # Stay on DEVICE
     model_refit.to(DEVICE)
 
-    # Evaluation
-    rep, _, data, _, samples = model.get_data(stage="test")
-    rep_r, _, data_r, _, samples_r = model_refit.get_data(stage="test")
+    # Extract test data
+    rep_refit, _, data_refit, _, samples_refit = model_refit.get_data(stage="test")
 
-    loglik = model.vine.log_pdf(rep).mean().item()
-    loglik_r = model_refit.vine.log_pdf(rep_r).mean().item()
+    loglik_initial = model_initial.vine.log_pdf(rep_initial).mean().item()
+    loglik_refit = model_refit.vine.log_pdf(rep_refit).mean().item()
 
     sigmas = [1e-3, 1e-2, 1e-1, 1, 10, 100]
-    score = compute_score(data, samples, DEVICE, sigmas=sigmas)
-    score_r = compute_score(data_r, samples_r, DEVICE, sigmas=sigmas)
+    score_initial = compute_score(data_initial, samples_initial, DEVICE, sigmas=sigmas)
+    score_refit = compute_score(data_refit, samples_refit, DEVICE, sigmas=sigmas)
 
     return {
         "seed": seed,
-        "loglik": loglik,
-        "loglik_refit": loglik_r,
-        "mmd": score.mmd,
-        "mmd_refit": score_r.mmd,
-        "fid": score.fid,
-        "fid_refit": score_r.fid,
+        "loglik": loglik_initial,
+        "loglik_refit": loglik_refit,
+        "mmd": score_initial.mmd,
+        "mmd_refit": score_refit.mmd,
+        "fid": score_initial.fid,
+        "fid_refit": score_refit.fid,
     }
