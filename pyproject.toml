@@ -67,16 +67,18 @@ dev = [
 [project.optional-dependencies]
 cpu = ["torch>=2"]
 cu126 = ["torch>=2"]
+cu124 = ["torch>=2"]
 
 [tool.uv]
 managed = true
 default-groups = ["dev"]
-conflicts = [[{ extra = "cpu" }, { extra = "cu126" }]]
+conflicts = [[{ extra = "cpu" }, { extra = "cu126" }, { extra = "cu124" }]]
 
 [tool.uv.sources]
 torch = [
     { index = "torch-cpu", extra = "cpu" },
     { index = "torch-cu126", extra = "cu126" },
+    { index = "torch-cu124", extra = "cu124" },
 ]
 
 [[tool.uv.index]]
@@ -87,6 +89,11 @@ explicit = true
 [[tool.uv.index]]
 name = "torch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "torch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [[tool.uv.index]]
