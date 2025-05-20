@@ -1,102 +1,102 @@
 name: Publish to PyPI and TestPyPI
 
-on: push
-        
-jobs:
-    build:
-        name: Build Distribution Package
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python 3.12
-              uses: actions/setup-python@v2
-              with:
-                python-version: 3.12
-            - name: Install dependencies and build package
-              run: |
-                python3 -m pip install --upgrade pip
-                python3 -m pip install poetry
-                python3 -m poetry install
-                python3 -m poetry build
-            - name: Store the distribution packages
-              uses: actions/upload-artifact@v4
-              with:
-                name: python-distribution-packages
-                path: dist/*
-    publish-testpypi:
-        name: Publish to TestPyPI
-        needs: build
-        runs-on: ubuntu-latest
-        environment:
-            name: testpypi
-            url: https://test.pypi.org/p/torchvinecopulib/
-        permissions:
-            id-token: write
-            # contents: write
-        
-        steps:
-            - name: Download the distribution packages
-              uses: actions/download-artifact@v4
-              with:
-                name: python-distribution-packages
-                path: dist/
-            - name: Publish distribution
-              uses: pypa/gh-action-pypi-publish@release/v1
-              with:
-                verbose: true
-                skip-existing: true
-                repository-url: https://test.pypi.org/legacy/
+on:
+  push:
+    branches: ["main"]
 
-    publish-pypi:
-        name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/')
-        needs: publish-testpypi
-        runs-on: ubuntu-latest
-        environment:
-            name: pypi
-            url: https://pypi.org/project/torchvinecopulib/
-        permissions:
-            id-token: write
-            # contents: write
-        
-        steps:
-            - name: Download the distribution packages
-              uses: actions/download-artifact@v4
-              with:
-                name: python-distribution-packages
-                path: dist/
-            - name: Publish distribution
-              uses: pypa/gh-action-pypi-publish@release/v1
-              with:
-                verbose: true
-                skip-existing: true
-    
-    github-release:
-      name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/')
-      needs: publish-testpypi
-      runs-on: ubuntu-latest
-      permissions:
-        id-token: write
-        contents: write
-      
-      steps:
-        - name: Download the distribution packages
-          uses: actions/download-artifact@v4
-          with:
-            name: python-distribution-packages
-            path: dist/
-        - name: Sign the distribution packages
-          uses: sigstore/gh-action-sigstore-python@v3.0.0
-          with:
-            inputs: >-
-              ./dist/*.tar.gz
-              ./dist/*.whl
-        - name: Github Release
-          env:
-            GITHUB_TOKEN: ${{ github.token }}
-          run: >-
-            gh release create
-            '${{ github.ref_name }}'
-            --repo '${{ github.repository }}'
-            --notes ""
+jobs:
+  build:
+    name: Build Distribution Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+      - name: Install dependencies and build package
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install poetry
+          python3 -m poetry install
+          python3 -m poetry build
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distribution-packages
+          path: dist/*
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/torchvinecopulib/
+    permissions:
+      id-token: write
+      # contents: write
+    steps:
+      - name: Download the distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distribution-packages
+          path: dist/
+      - name: Publish distribution
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+          skip-existing: true
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: publish-testpypi
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/torchvinecopulib/
+    permissions:
+      id-token: write
+      # contents: write
+    steps:
+      - name: Download the distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distribution-packages
+          path: dist/
+      - name: Publish distribution
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+          skip-existing: true
+
+  github-release:
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: publish-testpypi
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Download the distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distribution-packages
+          path: dist/
+      - name: Sign the distribution packages
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: >-
+            ./dist/*.tar.gz
+            ./dist/*.whl
+      - name: Github Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create
+          '${{ github.ref_name }}'
+          --repo '${{ github.repository }}'
+          --notes ""

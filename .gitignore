@@ -6,12 +6,14 @@
 /out
 *.pkl
 *.svg
-
-# Python-generated files
-__pycache__/
 checkpoints/
 MNIST/
 logs/
+examples/MNIST
+examples/logs
+
+# Python-generated files
+__pycache__/
 *.py[oc]
 build/
 dist/
@@ -235,6 +237,3 @@ Temporary Items
 
 # Built Visual Studio Code Extensions
 *.vsix
-
-examples/logs
-examples/MNIST
