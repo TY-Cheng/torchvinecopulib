@@ -116,8 +116,8 @@ class BiCop(torch.nn.Module):
         """Reinitialize state and zero all statistics and precomputed grids.
 
         Sets the bicop back to independent bicop and clears accumulated
-        metrics (`tau`, `num_obs`, `negloglik`) as well as all grid buffers
-        (`_pdf_grid`, `_cdf_grid`, `_hfunc_l_grid`, `_hfunc_r_grid`).
+        metrics (``tau``, ``num_obs``, ``negloglik``) as well as all grid buffers
+        (``_pdf_grid``, ``_cdf_grid``, ``_hfunc_l_grid``, ``_hfunc_r_grid``).
         """
         self.is_indep = True
         self.tau.zero_()
@@ -139,9 +139,8 @@ class BiCop(torch.nn.Module):
     ) -> None:
         """Estimate and cache PDF/CDF/h-function grids from bivariate copula observations.
 
-        This method computes KDE-based bicopula densities
-        on a uniform [0,1]² grid and populates internal buffers
-        (`_pdf_grid`, `_cdf_grid`, `_hfunc_l_grid`, `_hfunc_r_grid`, `negloglik`).
+        This method computes KDE-based bicopula densities on a uniform [0,1]² grid and populates internal buffers
+        (``_pdf_grid``, ``_cdf_grid``, ``_hfunc_l_grid``, ``_hfunc_r_grid``, ``negloglik``).
 
         - Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models: comparison of methods. Dependence Modeling, 5(1), 99-120.
         - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P. A fast and objective multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). http://dx.doi.org/10.1016/j.csda.2016.02.014
@@ -152,8 +151,8 @@ class BiCop(torch.nn.Module):
             obs (torch.Tensor): shape (n, 2) bicop obs in [0, 1]².
             is_tll (bool, optional): Using tll or fastKDE. Defaults to True (tll).
             mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
-            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
-            is_tau_est (bool, optional): If True, compute and store Kendall’s τ. Defaults to False.
+            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when ``is_tll=False``. Defaults to 17.
+            is_tau_est (bool, optional): If True, compute and store Kendall’s τ. Defaults to ``False``.
         """
         # ! device agnostic
         device, dtype = self.device, self.dtype
@@ -405,7 +404,7 @@ class BiCop(torch.nn.Module):
     def sample(self, num_sample: int = 100, seed: int = 42, is_sobol: bool = False) -> torch.Tensor:
         """
         Sample from the copula by inverse Rosenblatt transform.
-        Uses Sobol sequence if `is_sobol=True`, otherwise uniform RNG.
+        Uses Sobol sequence if ``is_sobol=True``, otherwise uniform RNG.
         For independent copula, returns uniform samples in [0,1]².
 
         Args:

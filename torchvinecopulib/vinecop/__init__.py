@@ -922,13 +922,13 @@ class VineCop(torch.nn.Module):
     ) -> tuple:
         """Draw the weighted undirected graph at a single level of the vine copula.
             Constructs a NetworkX graph of bivariate‐copula edges at level ``lv``,
-            where nodes represent either raw variables (lv=0), parent‐copula modules,
+            where nodes represent either raw variables (``lv=0``), parent‐copula modules,
             or pseudo‐observations, and edge widths encode dependence strength.
 
         Args:
             lv (int, optional): Level to draw. Defaults to 0.
             is_bcp (bool, optional): If True, nodes are parent‐bicop "l,r;s". Otherwise, nodes are pseudo‐obs "v|s". Defaults to True.
-            title (str | None, optional): Title of the plot. Defaults to `f"Vine level {lv}"`.
+            title (str | None, optional): Title of the plot. Defaults to ``f"Vine level {lv}"``.
             num_digit (int, optional): Number of decimal digits for edge weights. Defaults to 2.
             font_size_vertex (int, optional): Font size for vertex labels. Defaults to 8.
             font_size_edge (int, optional): Font size for edge labels. Defaults to 7.

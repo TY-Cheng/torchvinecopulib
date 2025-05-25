@@ -49,8 +49,8 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Estimate mutual information using fastKDE.
-    Moves inputs to CPU and delegates to fastKDE.pdf.
+    """Estimate mutual information using ``fastKDE``.
+    Moves inputs to CPU and delegates to ``fastKDE.pdf``.
 
     - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
     - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
