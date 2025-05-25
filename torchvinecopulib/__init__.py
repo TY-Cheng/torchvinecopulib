@@ -7,4 +7,23 @@ __all__ = [
     "VineCop",
     "util",
 ]
-__version__ = "1.0.0"
+# dynamically grab the version you just built & installed
+try:
+    from importlib.metadata import version, PackageNotFoundError
+except ImportError:
+    # Python <3.8 fallback
+    from pkg_resources import (
+        get_distribution as version,
+        DistributionNotFound as PackageNotFoundError,
+    )
+
+try:
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    # this can happen if you run from a source checkout
+    __version__ = "0+unknown"
+
+__title__ = "torchvinecopulib"  # the canonical project name
+__author__ = "Tuoyuan Cheng"
+__url__ = "https://github.com/TY-Cheng/torchvinecopulib"  # the project homepage
+__description__ = "yet another vine copula library, using PyTorch."

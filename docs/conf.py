@@ -1,18 +1,20 @@
 import sys
+from pathlib import Path
+
 from sphinx_pyproject import SphinxConfig
 
 sys.path.append(".")
+sys.path.insert(0, str(Path(__file__).parents[1]))
 # * load the pyproject.toml file using SphinxConfig
 # * using Path for better cross-platform compatibility
 try:
-    config = SphinxConfig("../pyproject.toml", globalns=globals(), style="poetry")
+    config = SphinxConfig()
 except FileNotFoundError as err:
     raise FileNotFoundError("pyproject.toml not found") from err
 
 # * project metadata
 project = config.name
 author = config.author
-copyright = "2024-, Tuoyuan Cheng, Kan Chen"
 version = release = config.version
 documentation_summary = config.description
 extensions = config.get("extensions", [])

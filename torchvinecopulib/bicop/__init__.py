@@ -5,12 +5,12 @@ Provides `BiCop` (torch.nn.Module) for estimating, evaluating, and sampling
 from bivariate copulas via `tll` or `fastKDE` approaches.
 
 Decorators
-----------
+-----------
 * torch.compile() for bilinear interpolation
 * torch.no_grad() for fit(), hinv_l(), hinv_r(), sample(), and imshow()
 
 Key Features
-----------
+-------------
 - Fits a copula density on a uniform [0,1]² grid and caches PDF/CDF/h‐functions
 - Device‐agnostic: all buffers live on the same device/dtype you fit on
 - Fast bilinear interpolation compiled with `torch.compile`
@@ -27,13 +27,10 @@ Usage
 >>> samples = cop.sample(1000, is_sobol=True)
 
 References
-----------
-Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models:
-        comparison of methods. Dependence Modeling, 5(1), 99-120.
-O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P. A fast and objective
-        multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). http://dx.doi.org/10.1016/j.csda.2016.02.014
-O’Brien, T. A., Collins, W. D., Rauscher, S. A. & Ringler, T. D. Reducing the computational cost of the ECF
-        using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). http://dx.doi.org/10.1016/j.csda.2014.06.002
+-----------
+- Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models: comparison of methods. Dependence Modeling, 5(1), 99-120.
+- O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P. A fast and objective multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). http://dx.doi.org/10.1016/j.csda.2016.02.014
+- O’Brien, T. A., Collins, W. D., Rauscher, S. A. & Ringler, T. D. Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). http://dx.doi.org/10.1016/j.csda.2014.06.002
 """
 
 from pprint import pformat
@@ -135,8 +132,6 @@ class BiCop(torch.nn.Module):
     def fit(
         self,
         obs: torch.Tensor,
-        num_obs_max: int = None,
-        seed: int = 42,
         is_tll: bool = True,
         mtd_tll: str = "constant",
         num_iter_max: int = 17,
@@ -148,18 +143,13 @@ class BiCop(torch.nn.Module):
         on a uniform [0,1]^2 grid and populates internal buffers
         (`_pdf_grid`, `_cdf_grid`, `_hfunc_l_grid`, `_hfunc_r_grid`, `negloglik`).
 
-        Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models:
-            comparison of methods. Dependence Modeling, 5(1), 99-120.
-        O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P. A fast and objective
-            multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). http://dx.doi.org/10.1016/j.csda.2016.02.014
-        O’Brien, T. A., Collins, W. D., Rauscher, S. A. & Ringler, T. D. Reducing the computational cost of the ECF
-            using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). http://dx.doi.org/10.1016/j.csda.2014.06.002
+        - Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models: comparison of methods. Dependence Modeling, 5(1), 99-120.
+        - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. & O’Brien, J. P. A fast and objective multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). http://dx.doi.org/10.1016/j.csda.2016.02.014
+        - O’Brien, T. A., Collins, W. D., Rauscher, S. A. & Ringler, T. D. Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). http://dx.doi.org/10.1016/j.csda.2014.06.002
 
 
         Args:
             obs (torch.Tensor): shape (n, 2) bicop obs in [0, 1]^2.
-            num_obs_max (int, optional): max number of obs to subsample for KDE. Defaults to None.
-            seed (int, optional): random seed for subsampling, used only when num_obs_max<obs.shape[0]. Defaults to 42.
             is_tll (bool, optional): Using tll or fastKDE. Defaults to True (tll).
             mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
             num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
@@ -183,10 +173,6 @@ class BiCop(torch.nn.Module):
         self._target = self.num_step_grid - 1.0  # * marginal target
         self.step_grid = 1.0 / self._target
         # ! pdf
-        if num_obs_max and self.num_obs > num_obs_max:
-            torch.manual_seed(seed=seed)
-            idx = torch.randperm(self.num_obs, device=device)[:num_obs_max]
-            obs = obs[idx]
         if is_tll:
             controls = pv.FitControlsBicop(
                 family_set=[pv.tll],
@@ -284,7 +270,6 @@ class BiCop(torch.nn.Module):
     def cdf(self, obs: torch.Tensor) -> torch.Tensor:
         """
         Evaluate the copula CDF at given points.
-
         For independent copula, returns u₁·u₂.
 
         Args:
@@ -304,8 +289,10 @@ class BiCop(torch.nn.Module):
         Evaluate the left h-function at given points.
         Computes H(u₂ | u₁):= ∂/∂u₁ C(u₁,u₂) for the fitted copula.
         For independent copula, returns u₂.
+
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).
+
         Returns:
             torch.Tensor: Left h-function values at each observation, shape (n,1).
         """
@@ -320,8 +307,10 @@ class BiCop(torch.nn.Module):
         Evaluate the right h-function at given points.
         Computes H(u₁ | u₂):= ∂/∂u₂ C(u₁,u₂) for the fitted copula.
         For independent copula, returns u₁.
+
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).
+
         Returns:
             torch.Tensor: Right h-function values at each observation, shape (n,1).
         """
@@ -336,8 +325,10 @@ class BiCop(torch.nn.Module):
         """
         Invert the left h‐function via root‐finding: find u₂ given (u₁, p).
         Solves H(u₂ | u₁) = p by ITP between 0 and 1.
+
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).
+
         Returns:
             torch.Tensor: Solutions u₂ ∈ [0,1], shape (n,1).
         """
@@ -346,19 +337,20 @@ class BiCop(torch.nn.Module):
         if self.is_indep:
             return obs[:, [1]]
         # * via root-finding
-        u_l = obs[:, [0]].clamp(self._EPS, 1 - self._EPS)
-        p = obs[:, [1]].clamp(self._EPS, 1 - self._EPS)
+        u_l = obs[:, [0]]
+        p = obs[:, [1]]
         return solve_ITP(
             fun=lambda u_r: self.hfunc_l(obs=torch.hstack([u_l, u_r])) - p,
             x_a=torch.zeros_like(p),
             x_b=torch.ones_like(p),
-        )
+        ).clamp(min=0.0, max=1.0)
 
     @torch.no_grad()
     def hinv_r(self, obs: torch.Tensor) -> torch.Tensor:
         """
         Invert the right h‐function via root‐finding: find u₁ given (u₂, p).
         Solves H(u₁ | u₂) = p by ITP between 0 and 1.
+
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).
         Returns:
@@ -369,18 +361,19 @@ class BiCop(torch.nn.Module):
         if self.is_indep:
             return obs[:, [0]]
         # * via root-finding
-        u_r = obs[:, [1]].clamp(self._EPS, 1 - self._EPS)
-        p = obs[:, [0]].clamp(self._EPS, 1 - self._EPS)
+        u_r = obs[:, [1]]
+        p = obs[:, [0]]
         return solve_ITP(
             fun=lambda u_l: self.hfunc_r(obs=torch.hstack([u_l, u_r])) - p,
             x_a=torch.zeros_like(p),
             x_b=torch.ones_like(p),
-        )
+        ).clamp(min=0.0, max=1.0)
 
     def pdf(self, obs: torch.Tensor) -> torch.Tensor:
         """
         Evaluate the copula PDF at given points.
         For independent copula, returns 1.
+
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the PDF (rows are (u₁,u₂)), shape (n,2).
         Returns:
@@ -396,6 +389,7 @@ class BiCop(torch.nn.Module):
         """
         Evaluate the copula log-PDF at given points, with safe handling of inf/nan.
         For independent copula, returns 0.
+
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the log-PDF (rows are (u₁,u₂)), shape (n,2).
         Returns:
@@ -413,6 +407,7 @@ class BiCop(torch.nn.Module):
         Sample from the copula by inverse Rosenblatt transform.
         Uses Sobol sequence if `is_sobol=True`, otherwise uniform RNG.
         For independent copula, returns uniform samples in [0,1]².
+
         Args:
             num_sample (int, optional): number of samples to generate. Defaults to 100.
             seed (int, optional): random seed for reproducibility. Defaults to 42.
@@ -472,6 +467,7 @@ class BiCop(torch.nn.Module):
     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Display the (log-)PDF grid as a heatmap.
+
         Args:
             is_log_pdf (bool, optional): If True, plot log-PDF. Defaults to False.
             ax (plt.Axes, optional): Matplotlib Axes object to plot on. If None, a new figure and axes are created. Defaults to None.
@@ -486,6 +482,8 @@ class BiCop(torch.nn.Module):
         """
         if ax is None:
             fig, ax = plt.subplots()
+        else:
+            fig = ax.figure
         im = ax.imshow(
             X=self._pdf_grid.log().nan_to_num(posinf=0.0, neginf=-13.815510557964274).cpu()
             if is_log_pdf
@@ -503,28 +501,6 @@ class BiCop(torch.nn.Module):
         plt.colorbar(im, ax=ax, label=colorbartitle)
         return fig, ax
 
-    @staticmethod
-    @torch.no_grad()
-    def _get_default_xylim(margin_type: str) -> tuple[float, float]:
-        """Get default x and y limits for the plot based on margin type."""
-        if margin_type == "unif":
-            return (1e-2, 1 - 1e-2)
-        elif margin_type == "norm":
-            return (-3, 3)
-        else:
-            raise ValueError("Unknown margin type")
-
-    @staticmethod
-    @torch.no_grad()
-    def _get_default_grid_size(plot_type: str) -> int:
-        """Get default grid size for the plot based on plot type."""
-        if plot_type == "contour":
-            return 100
-        elif plot_type == "surface":
-            return 40
-        else:
-            raise ValueError("Unknown plot type")
-
     @torch.no_grad()
     def plot(
         self,
@@ -534,7 +510,8 @@ class BiCop(torch.nn.Module):
         grid_size: Optional[int] = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """
-        Plot the bivariate copula density using contour or surface plot.
+        Plot the bivariate copula density.
+
         Args:
             plot_type (str, optional): Type of plot, either "contour" or "surface". Defaults to "surface".
             margin_type (str, optional): Type of margin, either "unif" or "norm". Defaults to "unif".
@@ -543,40 +520,37 @@ class BiCop(torch.nn.Module):
         Returns:
             tuple[plt.Figure, plt.Axes]: The figure and axes objects.
         """
+        # * validate inputs
         if plot_type not in ["contour", "surface"]:
             raise ValueError("Unknown type")
-
+        elif plot_type == "contour" and grid_size is None:
+            grid_size = 100
+        elif plot_type == "surface" and grid_size is None:
+            grid_size = 40
+        # * margin type and grid points
         if margin_type not in ["unif", "norm"]:
             raise ValueError("Unknown margin type")
-
-        if xylim is None:
-            xylim = self._get_default_xylim(margin_type)
-
-        if grid_size is None:
-            grid_size = self._get_default_grid_size(plot_type)
-
-        if margin_type == "unif":
+        elif margin_type == "unif":
+            if xylim is None:
+                xylim = (1e-2, 1 - 1e-2)
             if plot_type == "contour":
                 points = np.linspace(1e-5, 1 - 1e-5, grid_size)
             else:
                 points = np.linspace(1, grid_size, grid_size) / (grid_size + 1)
-
             g = np.meshgrid(points, points)
             points = g[0][0]
             adj = 1
             levels = [0.2, 0.6, 1, 1.5, 2, 3, 5, 10, 20]
-            xlabel = "u1"
-            ylabel = "u2"
+            xlabel, ylabel = "u1", "u2"
         elif margin_type == "norm":
+            if xylim is None:
+                xylim = (-3, 3)
             points = norm.cdf(np.linspace(xylim[0], xylim[1], grid_size))
             g = np.meshgrid(points, points)
             points = norm.ppf(g[0][0])
             adj = np.outer(norm.pdf(points), norm.pdf(points))
             levels = [0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]
-            xlabel = "z1"
-            ylabel = "z2"
-        else:
-            raise ValueError("Unknown margin type")
+            xlabel, ylabel = "z1", "z2"
 
         # * evaluate on grid
         g_tensor = torch.from_numpy(np.stack(g, axis=-1).reshape(-1, 2)).to(
@@ -589,59 +563,51 @@ class BiCop(torch.nn.Module):
         dens = cop * adj
         if len(np.unique(dens)) == 1:
             dens[0] = 1.000001 * dens[0]
-
         if margin_type == "unif":
-            zlim = (0, max(3, 1.1 * max(dens.flatten())))
+            zlim = (0, max(3, 1.1 * max(dens.ravel())))
         elif margin_type == "norm":
-            zlim = (0, max(0.4, 1.1 * max(dens.flatten())))
-
-        # * colors as in the R code
-        colors = [
-            "#00007F",
-            "blue",
-            "#007FFF",
-            "cyan",
-            "#7FFF7F",
-            "yellow",
-            "#FF7F00",
-            "red",
-            "#7F0000",
-        ]
+            zlim = (0, max(0.4, 1.1 * max(dens.ravel())))
 
         # * create a colormap
-        jet_colors = LinearSegmentedColormap.from_list("jet_colors", colors, N=100)
+        jet_colors = LinearSegmentedColormap.from_list(
+            name="jet_colors",
+            colors=[
+                "#00007F",
+                "blue",
+                "#007FFF",
+                "cyan",
+                "#7FFF7F",
+                "yellow",
+                "#FF7F00",
+                "red",
+                "#7F0000",
+            ],
+            N=100,
+        )
 
         # * plot
         if plot_type == "contour":
             fig, ax = plt.subplots()
             contour = ax.contour(points, points, dens, levels=levels, cmap="gray")
             ax.clabel(contour, inline=True, fontsize=8, fmt="%1.2f")
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
-            ax.set_xlim(xylim)
-            ax.set_ylim(xylim)
             ax.set_aspect("equal")
-            fig.tight_layout()
-            plt.draw_if_interactive()
-            return fig, ax
+            ax.grid(True)
         elif plot_type == "surface":
             fig = plt.figure()
             ax = cast(Axes3D, fig.add_subplot(111, projection="3d"))
             ax.view_init(elev=30, azim=-110)
             X, Y = np.meshgrid(points, points)
             ax.plot_surface(X, Y, dens, cmap=jet_colors, edgecolor="none", shade=False)
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
-            ax.set_xlim(xylim)
-            ax.set_ylim(xylim)
             ax.set_zlim(zlim)
             ax.set_box_aspect([1, 1, 1])
             ax.xaxis.pane.fill = False
             ax.yaxis.pane.fill = False
             ax.zaxis.pane.fill = False
             ax.grid(False)
-            fig.tight_layout()
-            plt.draw_if_interactive()
-            return fig, ax
-        else:
-            raise ValueError("Unknown plot type")
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_xlim(xylim)
+        ax.set_ylim(xylim)
+        fig.tight_layout()
+        plt.draw_if_interactive()
+        return fig, ax

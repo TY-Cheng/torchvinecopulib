@@ -27,6 +27,7 @@ Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started
 # inside the `./pyproject.toml` file;
 fastkde = "*"
 numpy = "*"
+pyvinecopulib = "*"
 python = ">=3.12"
 scipy = "*"
 # optional to facilitate customization

@@ -3,6 +3,7 @@ torchvinecopulib.vinecop
 ------------------------
 
 Provides `VineCop` (torch.nn.Module) for multivariate vine copula fitting, and sampling
+
 - Constructs and fits D-, C-, and R-vine copula structures via the Dissmann algorithm or user-specified tree matrices.
 - Optinally handles marginals with 1D KDE via `kdeCDFPPF1D`.
 - Employs pairwise bivariate copulas (`BiCop`).
@@ -10,7 +11,7 @@ Provides `VineCop` (torch.nn.Module) for multivariate vine copula fitting, and s
 - Offers device-agnostic `.fit()`, `.log_pdf()`, `.cdf()`, `.sample()`, and visualization helpers (`.draw_lv()`, `.draw_dag()`).
 
 Key Features
-----------------
+-------------
 - **Modular design**: `ModuleDict` of bivariate copulas + `ModuleList` of marginals.
 - **Lazy pseudo-obs**: Efficient on-the-fly computation of h-functions.
 - **Structure learning**: MST-based tree construction per vine level (DVine/CVine/RVine).
@@ -18,7 +19,7 @@ Key Features
 - **Visualization**: NetworkX-based plots of vine in trees and in DAGs.
 
 Usage
---------
+------
 >>> from torchvinecopulib.vinecop import VineCop
 >>> vc = VineCop(num_dim=4, is_cop_scale=False, num_step_grid=128)
 >>> vc.fit(obs=data_tensor, mtd_vine="rvine", mtd_bidep="chatterjee_xi")
@@ -26,11 +27,11 @@ Usage
 >>> log_liks = vc.log_pdf(obs=data_tensor)
 
 References
-----------
-Dissmann, J., Brechmann, E. C., Czado, C., & Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics & Data Analysis, 59, 52-69.
-Chang, B., & Joe, H. (2019). Prediction based on conditional distributions of vine copulas. Computational Statistics & Data Analysis, 139, 45-63.
-Zhu, K., Kurowicka, D., & Nane, G. F. (2020). Common sampling orders of regular vines with application to model selection. Computational Statistics & Data Analysis, 142, 106811.
-Czado, C., & Nagler, T. (2022). Vine copula based modeling. Annual Review of Statistics and Its Application, 9(1), 453-477.
+-----------
+* Dissmann, J., Brechmann, E. C., Czado, C., & Kurowicka, D. (2013). Selecting and estimating regular vine copulae and application to financial returns. Computational Statistics & Data Analysis, 59, 52-69.
+* Chang, B., & Joe, H. (2019). Prediction based on conditional distributions of vine copulas. Computational Statistics & Data Analysis, 139, 45-63.
+* Zhu, K., Kurowicka, D., & Nane, G. F. (2020). Common sampling orders of regular vines with application to model selection. Computational Statistics & Data Analysis, 142, 106811.
+* Czado, C., & Nagler, T. (2022). Vine copula based modeling. Annual Review of Statistics and Its Application, 9(1), 453-477.
 """
 
 import copy
@@ -127,6 +128,7 @@ class VineCop(torch.nn.Module):
             Read in row-wise: a row of (0,1,3,4,2) indicates a source vertex (0|1,2,3,4) and
             bicops (fix the leftmost, move `;` from right to left) including
             (0,2;), (0,4;2), (0,3;2,4), and (0,1;2,3,4).
+
         Returns:
             torch.Tensor: Matrix representation of the vine.
         """
@@ -405,8 +407,6 @@ class VineCop(torch.nn.Module):
         mtd_vine: str = "rvine",
         mtd_bidep: str = "chatterjee_xi",
         thresh_trunc: None | float = 0.01,
-        num_obs_max: int = None,
-        seed: int = 42,
         is_tll: bool = False,
         mtd_tll: str = "constant",
         num_iter_max: int = 17,
@@ -426,8 +426,6 @@ class VineCop(torch.nn.Module):
             mtd_vine (str, optional): method for vine structure. One of "cvine", "dvine", "rvine". Defaults to "rvine".
             mtd_bidep (str, optional): method for bivariate dependence. One of "chatterjee_xi", "ferreira_tail_dep_coeff", "kendall_tau", "mutual_info", "spearman_rho". Defaults to "chatterjee_xi".
             thresh_trunc (None | float, optional): threshold for truncating bivariate copulas using p-val from Kendall's tau stats test. Defaults to 0.01.
-            num_obs_max (int, optional): maximum number of observations for fitting BiCop (subsample if < num_obs). Defaults to None.
-            seed (int, optional): random seed for BiCop fitting, used only when `num_obs_max` < `num_obs`. Defaults to 42.
             is_tll (bool, optional): Using tll or fastKDE. Defaults to False (fastKDE).
             mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
             num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
@@ -576,8 +574,6 @@ class VineCop(torch.nn.Module):
                 if is_fitting:
                     bcp.fit(
                         obs=obs_bcp,
-                        num_obs_max=num_obs_max,
-                        seed=seed,
                         num_iter_max=num_iter_max,
                         is_tau_est=is_tau_est,
                         is_tll=is_tll,
@@ -855,7 +851,6 @@ class VineCop(torch.nn.Module):
             obs (torch.Tensor): Points at which to evaluate the CDF. Shape (num_obs, num_dim).
             num_sample (int, optional): number of samples to draw for approx. Defaults to 10007.
             seed (int, optional): random seed for Sobol engine. Defaults to 0.
-
         Returns:
             torch.Tensor: Estimated CDF values at the given observations. Shape (num_obs, 1).
         """

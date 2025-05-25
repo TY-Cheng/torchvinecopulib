@@ -10,13 +10,13 @@ Decorators
 
 References
 ----------
-O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
-O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
-Purkayastha, S., & Song, P. X. K. (2024). fastMI: A fast and consistent copula-based nonparametric estimator of mutual information. Journal of Multivariate Analysis, 201, 105270.
-Ferreira, M. S. (2013). Nonparametric estimation of the tail-dependence coefficient.
-Chatterjee, S. (2021). A new coefficient of correlation. Journal of the American Statistical Association, 116(536), 2009-2022.
-Lin, Z., & Han, F. (2023). On boosting the power of Chatterjee’s rank correlation. Biometrika, 110(2), 283-299.
-Oliveira, I. F., & Takahashi, R. H. (2020). An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), 1-24.
+- O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
+- O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
+- Purkayastha, S., & Song, P. X. K. (2024). fastMI: A fast and consistent copula-based nonparametric estimator of mutual information. Journal of Multivariate Analysis, 201, 105270.
+- Ferreira, M. S. (2013). Nonparametric estimation of the tail-dependence coefficient.
+- Chatterjee, S. (2021). A new coefficient of correlation. Journal of the American Statistical Association, 116(536), 2009-2022.
+- Lin, Z., & Han, F. (2023). On boosting the power of Chatterjee’s rank correlation. Biometrika, 110(2), 283-299.
+- Oliveira, I. F., & Takahashi, R. H. (2020). An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), 1-24.
 """
 
 import enum
@@ -38,7 +38,6 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     Args:
         x (torch.Tensor): shape (n, 1)
         y (torch.Tensor): shape (n, 1)
-
     Returns:
         torch.Tensor: Kendall's tau correlation coefficient and p-value
     """
@@ -51,23 +50,21 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Estimate mutual information using fastKDE + probit
+    """Estimate mutual information using fastKDE + probit.
     Moves inputs to CPU and delegates to fastKDE.pdf.
 
-    O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
-    O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
-    Purkayastha, S., & Song, P. X. K. (2024). fastMI: A fast and consistent copula-based nonparametric estimator of mutual information. Journal of Multivariate Analysis, 201, 105270.
+    - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
+    - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
+    - Purkayastha, S., & Song, P. X. K. (2024). fastMI: A fast and consistent copula-based nonparametric estimator of mutual information. Journal of Multivariate Analysis, 201, 105270.
 
     Args:
         x (torch.Tensor): shape (n, 1)
         y (torch.Tensor): shape (n, 1)
-
     Returns:
         torch.Tensor: Estimated mutual information
     """
-
-    x = ndtri(x.clamp(_EPS, 1.0 - _EPS)).view(-1).cpu()
-    y = ndtri(y.clamp(_EPS, 1.0 - _EPS)).view(-1).cpu()
+    x = x.clamp(_EPS, 1.0 - _EPS).view(-1).cpu()
+    y = y.clamp(_EPS, 1.0 - _EPS).view(-1).cpu()
     joint = torch.as_tensor(fastkde.pdf(x, y).values, dtype=x.dtype, device=x.device)
     margin_x = torch.as_tensor(fastkde.pdf(x).values, dtype=x.dtype, device=x.device)
     margin_y = torch.as_tensor(fastkde.pdf(y).values, dtype=x.dtype, device=x.device)
@@ -82,12 +79,11 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Estimate tail dependence coefficient (λ), modifed from Ferreira's method, symmetric for (x,y), (y,1-x), (1-x,1-y), (1-y,x), (y,x), (1-x,y), (1-y,1-x), (x,1-y).
 
-    Ferreira, M. S. (2013). Nonparametric estimation of the tail-dependence coefficient.
+    - Ferreira, M. S. (2013). Nonparametric estimation of the tail-dependence coefficient.
 
     Args:
         x (torch.Tensor): shape (n, 1)
         y (torch.Tensor): shape (n, 1)
-
     Returns:
         torch.Tensor: Estimated tail dependence coefficient
     """
@@ -107,14 +103,13 @@ def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> torch.Tensor:
     """Estimate Chatterjee's rank correlation coefficient (ξ)
 
-    Chatterjee, S. (2021). A new coefficient of correlation. Journal of the American Statistical Association, 116(536), 2009-2022.
-    Lin, Z., & Han, F. (2023). On boosting the power of Chatterjee’s rank correlation. Biometrika, 110(2), 283-299.
+    - Chatterjee, S. (2021). A new coefficient of correlation. Journal of the American Statistical Association, 116(536), 2009-2022.
+    - Lin, Z., & Han, F. (2023). On boosting the power of Chatterjee’s rank correlation. Biometrika, 110(2), 283-299.
 
     Args:
         x (torch.Tensor): shape (n, 1)
         y (torch.Tensor): shape (n, 1)
         M (int, optional): num of nearest-neighbor. Defaults to 1.
-
     Returns:
         torch.Tensor: Estimated Chatterjee's rank correlation coefficient
     """
@@ -164,17 +159,17 @@ class kdeCDFPPF1D(torch.nn.Module):
         num_step_grid: int = None,
         x_min: float = None,
         x_max: float = None,
-        pad: float = 1.0,
+        pad: float = 0.1,
     ):
         """1D KDE CDF/PPF using fastKDE + Simpson's rule.
         Given a sample `x`, fits a kernel density estimate via fastKDE on a grid of size `num_step_grid` (power of two plus one).  Precomputes PDF, CDF, and their finite‐difference slopes for fast interpolation.
 
-        O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
-        O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
+        - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
+        - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
 
         Args:
             x (torch.Tensor): input sample to fit the KDE.
-            num_step_grid (int, optional): number of grid points for the KDE. Defaults to None.
+            num_step_grid (int, optional): number of grid points for the KDE, should be power of 2 plus 1. Defaults to None.
             x_min (float, optional): minimum value of the grid. Defaults to x.min() - pad.
             x_max (float, optional): maximum value of the grid. Defaults to x.max() + pad.
             pad (float, optional): padding to extend beyond the min/max when `x_min`/`x_max` is None. Defaults to 1.0.
@@ -188,7 +183,7 @@ class kdeCDFPPF1D(torch.nn.Module):
             num_step_grid = int(2 ** torch.log2(torch.tensor(x.numel())).ceil().item()) + 1
         self.num_step_grid = num_step_grid
         # * fastkde
-        res = fastkde.pdf(x.cpu().numpy(), num_points=num_step_grid)
+        res = fastkde.pdf(x.view(-1).cpu().numpy(), num_points=num_step_grid)
         xs = torch.from_numpy(res.var0.values).to(dtype=torch.float64)
         pdfs = torch.from_numpy(res.values).to(dtype=torch.float64).clamp_min(self._EPS)
         N = pdfs.shape[0]
@@ -225,7 +220,6 @@ class kdeCDFPPF1D(torch.nn.Module):
 
         Args:
             x (torch.Tensor): Points at which to evaluate the CDF.
-
         Returns:
             torch.Tensor: CDF values at `x`, clamped to [0, 1].
         """
@@ -246,7 +240,6 @@ class kdeCDFPPF1D(torch.nn.Module):
 
         Args:
             q (torch.Tensor): Quantiles at which to evaluate the PPF.
-
         Returns:
             torch.Tensor: PPF values at `q`, clamped to [x_min, x_max].
         """
@@ -264,6 +257,7 @@ class kdeCDFPPF1D(torch.nn.Module):
 
     def pdf(self, x: torch.Tensor) -> torch.Tensor:
         """Compute the PDF of the fitted KDE at `x`.
+
         Args:
             x (torch.Tensor): Points at which to evaluate the PDF.
         Returns:
@@ -280,6 +274,7 @@ class kdeCDFPPF1D(torch.nn.Module):
 
     def log_pdf(self, x: torch.Tensor) -> torch.Tensor:
         """Compute the log PDF of the fitted KDE at `x`.
+
         Args:
             x (torch.Tensor): Points at which to evaluate the log PDF.
         Returns:
@@ -289,6 +284,7 @@ class kdeCDFPPF1D(torch.nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """average negative log-likelihood of the fitted KDE at `x`.
+
         Args:
             x (torch.Tensor): Points at which to evaluate the negative log-likelihood.
         Returns:
@@ -298,6 +294,7 @@ class kdeCDFPPF1D(torch.nn.Module):
 
     def __str__(self):
         """String representation of the kdeCDFPPF1D object.
+
         Returns:
             str: String representation of the kdeCDFPPF1D object.
         """
@@ -305,6 +302,8 @@ class kdeCDFPPF1D(torch.nn.Module):
         params = {
             "num_obs": int(self.num_obs),
             "negloglik": float(self.negloglik.round(decimals=4)),
+            "x_min": float(round(self.x_min, 4)),
+            "x_max": float(round(self.x_max, 4)),
             "num_step_grid": int(self.num_step_grid),
             "dtype": self.dtype,
             "device": self.device,
@@ -323,13 +322,12 @@ def solve_ITP(
     num_iter_max: int = 31,
     k_1: float = 0.2,
 ) -> torch.Tensor:
-    """root-finding for `fun` via the Interpolate Truncate and Project (ITP) method within [x_a, x_b].
+    """root-finding for `fun` via the Interpolate Truncate and Project (ITP) method within [x_a, x_b], with guaranteed average performance strictly better than the bisection method under any continuous distribution
 
-        guaranteed average performance strictly better than the bisection method under any continuous distribution
-
-    Oliveira, I. F., & Takahashi, R. H. (2020). An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), 1-24.
+    - Oliveira, I. F., & Takahashi, R. H. (2020). An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), 1-24.
         https://en.wikipedia.org/wiki/ITP_method
         https://docs.rs/kurbo/latest/kurbo/common/fn.solve_itp.html
+
     Args:
         fun (callable): function to find the root of.
         x_a (torch.Tensor): lower bound of the interval to search.
@@ -337,7 +335,6 @@ def solve_ITP(
         epsilon (float, optional): convergence tolerance. Defaults to _EPS.
         num_iter_max (int, optional): maximum number of iterations. Defaults to 31.
         k_1 (float, optional): scaling factor for the truncation step. Defaults to 0.2.
-
     Returns:
         torch.Tensor: approximated root of the function `fun` in the interval [x_a, x_b].
     """
