@@ -108,13 +108,9 @@ def test_kde_cdf_ppf_inverse(sample_1d):
 
 def test_kde_bounds_and_pdf(sample_1d):
     kde = kdeCDFPPF1D(sample_1d, num_step_grid=257)
-    # cdf out-of-bounds: both sides must have the same shape (2×1)
-    oob = torch.tensor([[kde.x_min - 1.0], [kde.x_max + 1.0]], dtype=torch.float64)
     # cdf out-of-bounds
-    assert torch.all(
-        kde.cdf(torch.tensor([[kde.x_min - 1.0], [kde.x_max + 1.0]]))
-        == torch.tensor([[0.0], [1.0]], dtype=torch.float64)
-    )
+    oob = torch.tensor([[kde.x_min - 1.0], [kde.x_max + 1.0]], dtype=torch.float64)
+    assert torch.all(kde.cdf(oob) == torch.tensor([[0.0], [1.0]], dtype=torch.float64))
     # ppf out-of-bounds
     assert torch.allclose(
         torch.tensor([[kde.x_min], [kde.x_max]], dtype=torch.float64),

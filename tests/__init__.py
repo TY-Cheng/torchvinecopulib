@@ -7,8 +7,8 @@ import torch
 import torchvinecopulib as tvc
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SEEDS = list(range(5))
 N_SIM = 2000
+SEEDS = list(range(5))
 EPS = tvc.util._EPS
 # List the (family, true-parameter) pairs you want to test
 FAMILIES = [
@@ -50,7 +50,7 @@ def bicop_pair(request):
 
 @pytest.fixture(scope="module")
 def U_tensor():
-    #  a moderately‐sized random [0,1]^2 sample
+    #  a moderately‐sized random [0,1]² sample
     return torch.rand(500, 2, dtype=torch.float64)
 
 

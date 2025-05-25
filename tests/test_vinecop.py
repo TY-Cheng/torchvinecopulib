@@ -41,8 +41,8 @@ def test_device_and_dtype_after_cuda():
 def test_fit_sample_logpdf_cdf_forward(mtd_vine, mtd_bidep):
     num_dim = 5
     torch.manual_seed(0)
-    U = torch.rand(200, num_dim, dtype=torch.float64)
-    vc = VineCop(num_dim=num_dim, is_cop_scale=True, num_step_grid=32)
+    U = torch.special.ndtri(torch.rand(200, num_dim, dtype=torch.float64))
+    vc = VineCop(num_dim=num_dim, is_cop_scale=False, num_step_grid=32)
     # fit in copula-scale
     vc.fit(
         obs=U,
@@ -58,7 +58,6 @@ def test_fit_sample_logpdf_cdf_forward(mtd_vine, mtd_bidep):
     # sampling
     samp = vc.sample(num_sample=50, seed=1, is_sobol=False)
     assert samp.shape == (50, num_dim)
-    assert samp.min() >= 0.0 and samp.max() <= 1.0
 
     # log_pdf
     lp = vc.log_pdf(U)
@@ -103,6 +102,39 @@ def test_matrix_diagonal_matches_sample_order(mtd_vine, mtd_bidep):
         assert M[i, i].item() == vc.sample_order[i]
 
 
+def test_fit_with_explicit_matrix_uses_exact_edges():
+    num_dim = 5
+    torch.manual_seed(1)
+    U = torch.rand(200, num_dim, dtype=torch.float64)
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    vc.fit(U, is_tll=True, is_dissmann=True)
+    M = vc.matrix
+    # M is a square matrix with num_dim rows and columns
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    # fit with our explicit matrix
+    vc.fit(U, is_dissmann=False, matrix=M)
+    # now verify that for each level lv, and each idx in [0..num_dim-lv-2],
+    # the edge (v_l, v_r, *cond) comes out exactly as we encoded it in M
+    for lv in range(num_dim - 1):
+        tree = vc.tree_bidep[lv]
+        # must have exactly num_dim-lv-1 edges
+        assert len(tree) == num_dim - lv - 1
+
+        for idx in range(num_dim - lv - 1):
+            # the two “free” spots in row idx of M
+            a = int(M[idx, idx])
+            b = int(M[idx, num_dim - lv - 1])
+            v_l, v_r = sorted((a, b))
+            # any remaining entries in that row form the conditioning set
+            cond = sorted([int(_) for _ in M[idx, num_dim - lv :].tolist()])
+            expected_edge = (v_l, v_r, *cond)
+
+            # check that this exact tuple is a key in tree_bidep[lv]
+            assert expected_edge in tree, (
+                f"Expected edge {expected_edge} at level {lv} but got {list(tree)}"
+            )
+
+
 def test_reset_clears_all_levels_and_bicops():
     num_dim = 5
     vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
@@ -124,6 +156,36 @@ def test_reset_clears_all_levels_and_bicops():
     assert vc.tree_bidep == [{} for _ in range(num_dim - 1)]
     # all BiCop should be independent again
     assert all(bc.is_indep for bc in vc.bicops.values())
+
+
+def test_reset_and_str():
+    num_dim = 5
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    torch.manual_seed(0)
+    U = torch.rand(50, num_dim, dtype=torch.float64)
+    # fit with Dissmann algorithm
+    vc.fit(
+        U,
+        is_dissmann=True,
+        is_tll=True,
+        mtd_vine="rvine",
+        mtd_bidep="kendall_tau",
+        thresh_trunc=None,
+    )
+    # __str__ contains key fields
+    s = str(vc)
+    for key in [
+        "num_dim",
+        "num_obs",
+        "is_cop_scale",
+        "num_step_grid",
+        "mtd_bidep",
+        "negloglik",
+        "dtype",
+        "device",
+        "sample_order",
+    ]:
+        assert key in s, f"'{key}' not found in VineCop string representation"
 
 
 @pytest.mark.parametrize("mtd_vine", ["dvine", "cvine", "rvine"])
@@ -179,9 +241,14 @@ def test_draw_lv_and_draw_dag(tmp_path):
     assert isinstance(G, nx.Graph)
     assert G.number_of_nodes() > 0
 
-    # save level-0 bicop view
-    fpath_lv = tmp_path / "level0.png"
-    fig2, ax2, G2, outpath_lv = vc.draw_lv(lv=0, is_bcp=True, f_path=fpath_lv)
+    # save level-1 bicop view
+    fpath_lv = tmp_path / "level1.png"
+    fig2, ax2, G2, outpath_lv = vc.draw_lv(lv=1, is_bcp=True, f_path=fpath_lv)
+    assert outpath_lv == fpath_lv
+    assert fpath_lv.exists()
+    # save level-1 pseudo-obs view
+    fpath_lv = tmp_path / "level1.png"
+    fig2, ax2, G2, outpath_lv = vc.draw_lv(lv=1, is_bcp=False, f_path=fpath_lv)
     assert outpath_lv == fpath_lv
     assert fpath_lv.exists()
 

@@ -6,6 +6,7 @@ import torch
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 torch.set_float32_matmul_precision("medium")
 
+
 @dataclass
 class Config:
     data_dir: str = os.environ.get("PATH_DATASETS", ".")

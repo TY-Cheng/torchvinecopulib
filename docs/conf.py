@@ -15,6 +15,8 @@ except FileNotFoundError as err:
 # * project metadata
 project = config.name
 author = config.author
+maintainer = config.get("maintainer", author)
+copyright = config.get("copyright", f"2024-, {author}")
 version = release = config.version
 documentation_summary = config.description
 extensions = config.get("extensions", [])

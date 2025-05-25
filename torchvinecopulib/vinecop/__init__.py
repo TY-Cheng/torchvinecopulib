@@ -1,18 +1,18 @@
 """
 torchvinecopulib.vinecop
-------------------------
+-------------------------
 
-Provides `VineCop` (torch.nn.Module) for multivariate vine copula fitting, and sampling
+Provides ``VineCop`` (``torch.nn.Module``) for multivariate vine copula fitting, and sampling
 
 - Constructs and fits D-, C-, and R-vine copula structures via the Dissmann algorithm or user-specified tree matrices.
-- Optinally handles marginals with 1D KDE via `kdeCDFPPF1D`.
-- Employs pairwise bivariate copulas (`BiCop`).
-- Supports a variety of dependence measures (`ENUM_FUNC_BIDEP`) such as Kendall’s τ and Chatterjee’s ξ for edge weighting.
-- Offers device-agnostic `.fit()`, `.log_pdf()`, `.cdf()`, `.sample()`, and visualization helpers (`.draw_lv()`, `.draw_dag()`).
+- Optinally handles marginals with 1D KDE via ``kdeCDFPPF1D``.
+- Employs pairwise bivariate copulas (``BiCop``).
+- Supports a variety of dependence measures (``ENUM_FUNC_BIDEP``) such as Kendall’s τ and Chatterjee’s ξ for edge weighting.
+- Offers device-agnostic ``.fit()``, ``.log_pdf()``, ``.cdf()``, ``.sample()``, and visualization helpers (``.draw_lv()``, ``.draw_dag()``).
 
 Key Features
 -------------
-- **Modular design**: `ModuleDict` of bivariate copulas + `ModuleList` of marginals.
+- **Modular design**: ``ModuleDict`` of bivariate copulas + ``ModuleList`` of marginals.
 - **Lazy pseudo-obs**: Efficient on-the-fly computation of h-functions.
 - **Structure learning**: MST-based tree construction per vine level (DVine/CVine/RVine).
 - **Sampling**: Inverse Rosenblatt using reference counting and ITP root-finding.
@@ -108,7 +108,7 @@ class VineCop(torch.nn.Module):
         self.tree_bidep = [{} for _ in range(num_dim - 1)]
         self.num_step_grid = num_step_grid
         self.sample_order = tuple(_ for _ in range(num_dim))
-        self.register_buffer("num_obs", torch.empty((), dtype=torch.int))
+        self.register_buffer("num_obs", torch.zeros((), dtype=torch.int))
         # ! device agnostic
         self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))
 
@@ -235,7 +235,7 @@ class VineCop(torch.nn.Module):
         """Schedule an optimized sampling order to minimize h‐function calls.
 
         Returns:
-            tuple[int, ...]: New `sample_order` of variable indices for inverse Rosenblatt sampling.
+            tuple[int, ...]: New ``sample_order`` of variable indices for inverse Rosenblatt sampling.
         """
         last_tree_vertex = set(range(self.num_dim)) - set(self.first_tree_vertex)
         sample_order = []
@@ -419,19 +419,19 @@ class VineCop(torch.nn.Module):
             and fits all bivariate copulas and 1D marginals (if needed).
 
         Args:
-            obs (torch.Tensor): observations of shape (num_obs, num_dim). If `is_cop_scale=False`, raw data; otherwise assumed already uniform.
+            obs (torch.Tensor): observations of shape (num_obs, num_dim). If ``is_cop_scale=False``, raw data; otherwise assumed already uniform.
             is_dissmann (bool, optional): if True, use Dissmann's algorithm to learn the vine structure. Otherwise, use the provided matrix. Defaults to True.
             matrix (torch.Tensor, optional): matrix representation of the vine structure. Defaults to None.
             first_tree_vertex (tuple, optional): vertices of the first tree (set of conditioning variables). Defaults to ().
             mtd_vine (str, optional): method for vine structure. One of "cvine", "dvine", "rvine". Defaults to "rvine".
             mtd_bidep (str, optional): method for bivariate dependence. One of "chatterjee_xi", "ferreira_tail_dep_coeff", "kendall_tau", "mutual_info", "spearman_rho". Defaults to "chatterjee_xi".
             thresh_trunc (None | float, optional): threshold for truncating bivariate copulas using p-val from Kendall's tau stats test. Defaults to 0.01.
-            is_tll (bool, optional): Using tll or fastKDE. Defaults to False (fastKDE).
+            is_tll (bool, optional): Using ``tll`` or ``fastKDE``. Defaults to False (``fastKDE``).
             mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
             num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
             is_tau_est (bool, optional): If True, compute and store Kendall’s τ inside BiCop. Defaults to False.
             num_step_grid_kde1d (int, optional): Grid resolution for each marginal KDE. Defaults to None.
-            **kde_kwargs: additional keyword arguments for kdeCDFPPF1D.
+            **kde_kwargs: additional keyword arguments for ``kdeCDFPPF1D``.
 
         Raises:
             ValueError: if `mtd_vine` is not one of "cvine", "dvine", or "rvine".
@@ -704,7 +704,7 @@ class VineCop(torch.nn.Module):
     ) -> torch.Tensor:
         """Draw random samples from the fitted vine copula via inverse Rosenblatt.
 
-        Generates `num_sample` joint samples in original or copula scale by
+        Generates ``num_sample`` joint samples in original or copula scale by
         (1) sampling independent uniforms for each “source” pseudo-obs,
         (2) recursively applying h-functions and their inverses following the
         vine structure, and (3) optionally transforming back through 1D marginal PPFs.
@@ -720,7 +720,7 @@ class VineCop(torch.nn.Module):
                 Pseudo-obs at deeper levels are assumed to be in copula scale [0,1].
 
         Returns:
-            torch.Tensor: sampled observations in original scale if `self.is_cop_scale=False`, otherwise in [0,1]^d.
+            torch.Tensor: sampled observations in original scale if ``self.is_cop_scale=False``, otherwise in [0,1]^d.
         """
 
         def _ref_count_decrement(v_s) -> None:
@@ -796,7 +796,7 @@ class VineCop(torch.nn.Module):
                 v, *s = v_s
                 # ! sorted !
                 v_s = (v, *sorted(s))
-                # TODO: if top lv then marginal cdf, else nothing happen (quantile regression for experienced users)
+                # NOTE: if top lv then marginal cdf, else nothing happen (quantile regression for experienced users)
                 if not s:
                     dct_obs[v_s] = self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
                 else:
@@ -844,8 +844,8 @@ class VineCop(torch.nn.Module):
     @torch.no_grad()
     def cdf(self, obs: torch.Tensor, num_sample: int = 10007, seed: int = 42) -> torch.Tensor:
         """Estimate the multivariate CDF via Monte Carlo of the vine copula.
-            Approximates C(u) = P(U ≤ u) by drawing `num_sample` Sobol samples in copula scale
-            and computing the proportion that lie below `obs`.
+            Approximates C(u) = P(U ≤ u) by drawing ``num_sample`` Sobol samples in copula scale
+            and computing the proportion that lie below ``obs``.
 
         Args:
             obs (torch.Tensor): Points at which to evaluate the CDF. Shape (num_obs, num_dim).
@@ -885,10 +885,10 @@ class VineCop(torch.nn.Module):
         ).to(device=device, dtype=dtype)
 
     def __str__(self) -> str:
-        """String representation of the VineCop object.
+        """String representation of the ``VineCop`` object.
 
         Returns:
-            str: String representation of the VineCop object.
+            str: String representation of the ``VineCop`` object.
         """
         header = self.__class__.__name__
         params = {
@@ -921,7 +921,7 @@ class VineCop(torch.nn.Module):
         fig_size: tuple = None,
     ) -> tuple:
         """Draw the weighted undirected graph at a single level of the vine copula.
-            Constructs a NetworkX graph of bivariate‐copula edges at level `lv`,
+            Constructs a NetworkX graph of bivariate‐copula edges at level ``lv``,
             where nodes represent either raw variables (lv=0), parent‐copula modules,
             or pseudo‐observations, and edge widths encode dependence strength.
 

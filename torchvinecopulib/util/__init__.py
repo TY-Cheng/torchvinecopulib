@@ -4,12 +4,12 @@ torchvinecopulib.util
 Utility routines for copula‐based dependence measures, 1D KDE CDF/PPF, and root-finding via the Interpolate Truncate and Project (ITP) method.
 
 Decorators
-----------
+-----------
 * torch.compile() for solve_ITP()
 * torch.no_grad() for solve_ITP(), kendall_tau(), mutual_info(), ferreira_tail_dep_coeff(), chatterjee_xi()
 
 References
-----------
+-----------
 - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
 - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
 - Purkayastha, S., & Song, P. X. K. (2024). fastMI: A fast and consistent copula-based nonparametric estimator of mutual information. Journal of Multivariate Analysis, 201, 105270.
@@ -25,7 +25,6 @@ from pprint import pformat
 import fastkde
 import torch
 from scipy.stats import kendalltau
-from torch.special import ndtri
 
 _EPS = 1e-10
 
@@ -33,7 +32,7 @@ _EPS = 1e-10
 @torch.no_grad()
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Compute Kendall's tau correlation coefficient and p-value.
-    Moves inputs to CPU and delegates to SciPy’s `kendalltau`.
+    Moves inputs to CPU and delegates to SciPy’s ``kendalltau``.
 
     Args:
         x (torch.Tensor): shape (n, 1)
@@ -50,7 +49,7 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Estimate mutual information using fastKDE + probit.
+    """Estimate mutual information using fastKDE.
     Moves inputs to CPU and delegates to fastKDE.pdf.
 
     - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
@@ -161,8 +160,8 @@ class kdeCDFPPF1D(torch.nn.Module):
         x_max: float = None,
         pad: float = 0.1,
     ):
-        """1D KDE CDF/PPF using fastKDE + Simpson's rule.
-        Given a sample `x`, fits a kernel density estimate via fastKDE on a grid of size `num_step_grid` (power of two plus one).  Precomputes PDF, CDF, and their finite‐difference slopes for fast interpolation.
+        """1D KDE CDF/PPF using ``fastKDE`` + Simpson's rule.
+        Given a sample ``x``, fits a kernel density estimate via ``fastKDE`` on a grid of size ``num_step_grid`` (power of two plus one).  Precomputes PDF, CDF, and their finite‐difference slopes for fast interpolation.
 
         - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
         - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
@@ -172,7 +171,7 @@ class kdeCDFPPF1D(torch.nn.Module):
             num_step_grid (int, optional): number of grid points for the KDE, should be power of 2 plus 1. Defaults to None.
             x_min (float, optional): minimum value of the grid. Defaults to x.min() - pad.
             x_max (float, optional): maximum value of the grid. Defaults to x.max() + pad.
-            pad (float, optional): padding to extend beyond the min/max when `x_min`/`x_max` is None. Defaults to 1.0.
+            pad (float, optional): padding to extend beyond the min/max when ``x_min``/``x_max`` is None. Defaults to 1.0.
         """
         super().__init__()
         self.num_obs = x.shape[0]
@@ -216,12 +215,12 @@ class kdeCDFPPF1D(torch.nn.Module):
         return self._dd.dtype
 
     def cdf(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute the CDF of the fitted KDE at `x`.
+        """Compute the CDF of the fitted KDE at ``x``.
 
         Args:
             x (torch.Tensor): Points at which to evaluate the CDF.
         Returns:
-            torch.Tensor: CDF values at `x`, clamped to [0, 1].
+            torch.Tensor: CDF values at ``x``, clamped to [0, 1].
         """
         # ! device agnostic
         x = x.to(device=self.device, dtype=self.dtype)
@@ -236,12 +235,12 @@ class kdeCDFPPF1D(torch.nn.Module):
         return y.clamp(0.0, 1.0)
 
     def ppf(self, q: torch.Tensor) -> torch.Tensor:
-        """Compute the PPF (quantile function) of the fitted KDE at `q`.
+        """Compute the PPF (quantile function) of the fitted KDE at ``q``.
 
         Args:
             q (torch.Tensor): Quantiles at which to evaluate the PPF.
         Returns:
-            torch.Tensor: PPF values at `q`, clamped to [x_min, x_max].
+            torch.Tensor: PPF values at ``q``, clamped to [x_min, x_max].
         """
         # ! device agnostic
         q = q.to(device=self.device, dtype=self.dtype)
@@ -256,12 +255,12 @@ class kdeCDFPPF1D(torch.nn.Module):
         return x.clamp(self.x_min, self.x_max)
 
     def pdf(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute the PDF of the fitted KDE at `x`.
+        """Compute the PDF of the fitted KDE at ``x``.
 
         Args:
             x (torch.Tensor): Points at which to evaluate the PDF.
         Returns:
-            torch.Tensor: PDF values at `x`, clamped to [0, ∞).
+            torch.Tensor: PDF values at ``x``, clamped to [0, ∞).
         """
         # ! device agnostic
         x = x.to(device=self.device, dtype=self.dtype)
@@ -273,30 +272,30 @@ class kdeCDFPPF1D(torch.nn.Module):
         return f.clamp_min(0.0)
 
     def log_pdf(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute the log PDF of the fitted KDE at `x`.
+        """Compute the log PDF of the fitted KDE at ``x``.
 
         Args:
             x (torch.Tensor): Points at which to evaluate the log PDF.
         Returns:
-            torch.Tensor: Log PDF values at `x`, guaranteed to be finite.
+            torch.Tensor: Log PDF values at ``x``, guaranteed to be finite.
         """
         return self.pdf(x).log().nan_to_num(posinf=0.0, neginf=-13.815510557964274)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """average negative log-likelihood of the fitted KDE at `x`.
+        """average negative log-likelihood of the fitted KDE at ``x``.
 
         Args:
             x (torch.Tensor): Points at which to evaluate the negative log-likelihood.
         Returns:
-            torch.Tensor: Negative log-likelihood values at `x`, averaged over the batch.
+            torch.Tensor: Negative log-likelihood values at ``x``, averaged over the batch.
         """
         return -self.log_pdf(x).mean()
 
     def __str__(self):
-        """String representation of the kdeCDFPPF1D object.
+        """String representation of the ``kdeCDFPPF1D`` object.
 
         Returns:
-            str: String representation of the kdeCDFPPF1D object.
+            str: String representation of the ``kdeCDFPPF1D`` object.
         """
         header = self.__class__.__name__
         params = {
@@ -322,7 +321,7 @@ def solve_ITP(
     num_iter_max: int = 31,
     k_1: float = 0.2,
 ) -> torch.Tensor:
-    """root-finding for `fun` via the Interpolate Truncate and Project (ITP) method within [x_a, x_b], with guaranteed average performance strictly better than the bisection method under any continuous distribution
+    """root-finding for ``fun`` via the Interpolate Truncate and Project (ITP) method within [``x_a``, ``x_b``], with guaranteed average performance strictly better than the bisection method under any continuous distribution
 
     - Oliveira, I. F., & Takahashi, R. H. (2020). An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), 1-24.
         https://en.wikipedia.org/wiki/ITP_method

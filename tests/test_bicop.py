@@ -70,9 +70,9 @@ def test_inversion(bicop_pair):
 def test_pdf_integrates_to_one(bicop_pair):
     family, params, rotation, U, bc_fast, bc_tll = bicop_pair
     for cop in (bc_fast, bc_tll):
-        # our grid is uniform on [0,1]^2 with spacing Δ = 1/(N−1)
+        # our grid is uniform on [0,1]² with spacing Δ = 1/(N−1)
         Δ = 1.0 / (cop.num_step_grid - 1)
-        # approximate ∫ pdf(u,v) du dv ≈ Σ_pdf_grid * Δ^2
+        # approximate ∫ pdf(u,v) du dv ≈ Σ_pdf_grid * Δ²
         approx_mass = (cop._pdf_grid.sum() * Δ**2).item()
         assert pytest.approx(expected=1.0, rel=1e-2) == approx_mass
         # non-negativity

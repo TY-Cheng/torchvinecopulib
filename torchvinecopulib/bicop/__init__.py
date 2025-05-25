@@ -1,8 +1,8 @@
 """
 torchvinecopulib.bicop
-----------------------
-Provides `BiCop` (torch.nn.Module) for estimating, evaluating, and sampling
-from bivariate copulas via `tll` or `fastKDE` approaches.
+-----------------------
+Provides ``BiCop`` (``torch.nn.Module``) for estimating, evaluating, and sampling
+from bivariate copulas via ``tll`` or ``fastKDE`` approaches.
 
 Decorators
 -----------
@@ -13,9 +13,9 @@ Key Features
 -------------
 - Fits a copula density on a uniform [0,1]² grid and caches PDF/CDF/h‐functions
 - Device‐agnostic: all buffers live on the same device/dtype you fit on
-- Fast bilinear interpolation compiled with `torch.compile`
-- Convenient `.cdf()`, `.pdf()`, `.hfunc_*()`, `.hinv_*()`, and `.sample()` APIs
-- Plotting helpers: `.imshow()` and `.plot(contour|surface)`
+- Fast bilinear interpolation compiled with ``torch.compile``
+- Convenient ``.cdf()``, ``.pdf()``, ``.hfunc_*()``, ``.hinv_*()``, and ``.sample()`` APIs
+- Plotting helpers: ``.imshow()`` and ``.plot(contour|surface)``
 
 Usage
 ------
@@ -140,7 +140,7 @@ class BiCop(torch.nn.Module):
         """Estimate and cache PDF/CDF/h-function grids from bivariate copula observations.
 
         This method computes KDE-based bicopula densities
-        on a uniform [0,1]^2 grid and populates internal buffers
+        on a uniform [0,1]² grid and populates internal buffers
         (`_pdf_grid`, `_cdf_grid`, `_hfunc_l_grid`, `_hfunc_r_grid`, `negloglik`).
 
         - Nagler, T., Schellhase, C., & Czado, C. (2017). Nonparametric estimation of simplified vine copula models: comparison of methods. Dependence Modeling, 5(1), 99-120.
@@ -149,7 +149,7 @@ class BiCop(torch.nn.Module):
 
 
         Args:
-            obs (torch.Tensor): shape (n, 2) bicop obs in [0, 1]^2.
+            obs (torch.Tensor): shape (n, 2) bicop obs in [0, 1]².
             is_tll (bool, optional): Using tll or fastKDE. Defaults to True (tll).
             mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
             num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
