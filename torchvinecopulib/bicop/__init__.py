@@ -237,7 +237,7 @@ class BiCop(torch.nn.Module):
         self._hfunc_l_grid = (self._pdf_grid * self.step_grid).cumsum(dim=1).clamp_(0.0, 1.0)
         self._hfunc_r_grid = (self._pdf_grid * self.step_grid).cumsum(dim=0).clamp_(0.0, 1.0)
 
-    @torch.compile
+    # @torch.compile
     def _interp(self, grid: torch.Tensor, obs: torch.Tensor) -> torch.Tensor:
         """
         Bilinearly interpolate values on a 2D grid at given sample points.

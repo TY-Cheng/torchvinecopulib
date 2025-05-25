@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import torch
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
+torch.set_float32_matmul_precision("medium")
 
 @dataclass
 class Config:

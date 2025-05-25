@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import os
 import sys
 
 import pandas as pd
@@ -34,20 +35,22 @@ def suppress_output():
 
 results = []
 
+output_path = f"results_{start}_{end}.csv"
+
 for seed in tqdm(range(start, end), desc=f"Seeds {start}-{end}", file=log_file):
     try:
         with suppress_output():
             result = run_experiment(seed, config)
-        results.append(result)
+        df = pd.DataFrame([result])
+
+        # Write headers only once
+        if not os.path.exists(output_path):
+            df.to_csv(output_path, index=False, mode="w")
+        else:
+            df.to_csv(output_path, index=False, mode="a", header=False)
+
     except Exception:
         logging.exception(f"Exception while running seed {seed}")
 
-# Save results if any
-try:
-    df_results = pd.DataFrame(results)
-    df_results.to_csv(f"results_{start}_{end}.csv", index=False)
-    logging.info(f"Saved results to results_{start}_{end}.csv")
-except Exception:
-    logging.exception("Failed to save results.")
-
+logging.info(f"All done. Results saved to {output_path}")
 log_file.close()

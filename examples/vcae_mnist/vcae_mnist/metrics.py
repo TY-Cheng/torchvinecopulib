@@ -99,13 +99,15 @@ class Score:
 
 
 def compute_score(real, fake, device, k=1, sigmas=[1e-3, 1e-2, 1e-1, 1, 10, 100], sqrt=True):
-    Mxx = distance(real, real, False, device)
-    Mxy = distance(real, fake, False, device)
-    Myy = distance(fake, fake, False, device)
+    real = real.to("cpu")
+    fake = fake.to("cpu")
+    Mxx = distance(real, real, False, "cpu")
+    Mxy = distance(real, fake, False, "cpu")
+    Myy = distance(fake, fake, False, "cpu")
 
     s = Score()
     s.mmd = sum(mmd(Mxx, Mxy, Myy, sigma) for sigma in sigmas)
     # s.knn = knn(Mxx, Mxy, Myy, k, sqrt)
-    s.fid = fid(real, fake)
+    s.fid = fid(real, fake).numpy()
 
     return s

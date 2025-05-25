@@ -312,7 +312,7 @@ class kdeCDFPPF1D(torch.nn.Module):
         return f"{header}\n{params_str[1:-1]}\n\n"
 
 
-@torch.compile
+# @torch.compile
 @torch.no_grad()
 def solve_ITP(
     fun: callable,
