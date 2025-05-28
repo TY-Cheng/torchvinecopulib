@@ -17,7 +17,7 @@ documentation = "https://ty-cheng.github.io/torchvinecopulib/"
 
 [project]
 name = "torchvinecopulib"
-version = "1.0.3"
+version = "1.0.4"
 requires-python = ">=3.12"
 authors = [{ name = "Tuoyuan Cheng", email = "tuoyuan.cheng@nus.edu.sg" }]
 maintainers = [

@@ -123,10 +123,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            --repo ${{ github.repository }} \ # Explicitly good practice, though often inferred
+            --repo "${{ github.repository }}" \
             --title "Release ${{ github.ref_name }}" \
             --notes "Automated release for ${{ github.ref_name }}. Signed artifacts are attached." \
-            # Use --generate-notes if you prefer automatic notes from PRs
-            # --draft \ # Uncomment if you want to create a draft
-            # --prerelease \ # Uncomment if this is a pre-release
-            dist/* # This uploads all files from the dist/ directory as assets
+            dist/*

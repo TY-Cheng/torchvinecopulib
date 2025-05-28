@@ -61,9 +61,9 @@ pip install torchvinecopulib torch
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-1.0.3-py3-none-any.whl
+pip install ./dist/torchvinecopulib-1.0.4-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-1.0.3.tar.gz
+pip install ./dist/torchvinecopulib-1.0.4.tar.gz
 ```
 
 ### (Optional) [uv](https://docs.astral.sh/uv/getting-started/) for Dependency Management and Packaging
