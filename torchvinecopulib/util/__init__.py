@@ -31,8 +31,8 @@ _EPS = 1e-10
 
 @torch.no_grad()
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Compute Kendall's tau correlation coefficient and p-value.
-    Moves inputs to CPU and delegates to SciPy’s ``kendalltau``.
+    """Compute Kendall's tau correlation coefficient and p-value. Moves inputs to CPU and delegates
+    to SciPy’s ``kendalltau``.
 
     Args:
         x (torch.Tensor): shape (n, 1)
@@ -49,8 +49,8 @@ def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Estimate mutual information using ``fastKDE``.
-    Moves inputs to CPU and delegates to ``fastKDE.pdf``.
+    """Estimate mutual information using ``fastKDE``. Moves inputs to CPU and delegates to
+    ``fastKDE.pdf``.
 
     - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
     - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
@@ -76,7 +76,8 @@ def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def ferreira_tail_dep_coeff(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Estimate tail dependence coefficient (λ), modifed from Ferreira's method, symmetric for (x,y), (y,1-x), (1-x,1-y), (1-y,x), (y,x), (1-x,y), (1-y,1-x), (x,1-y).
+    """Estimate tail dependence coefficient (λ), modifed from Ferreira's method, symmetric for
+    (x,y), (y,1-x), (1-x,1-y), (1-y,x), (y,x), (1-x,y), (1-y,1-x), (x,1-y).
 
     - Ferreira, M. S. (2013). Nonparametric estimation of the tail-dependence coefficient.
 
@@ -138,7 +139,9 @@ def chatterjee_xi(x: torch.Tensor, y: torch.Tensor, M: int = 1) -> torch.Tensor:
 
 
 class ENUM_FUNC_BIDEP(enum.Enum):
-    """Enum wrapper for bivariate dependence functions."""
+    """
+    Enum wrapper for bivariate dependence functions.
+    """
 
     chatterjee_xi = enum.member(chatterjee_xi)
     ferreira_tail_dep_coeff = enum.member(ferreira_tail_dep_coeff)
@@ -160,8 +163,9 @@ class kdeCDFPPF1D(torch.nn.Module):
         x_max: float = None,
         pad: float = 0.1,
     ):
-        """1D KDE CDF/PPF using ``fastKDE`` + Simpson's rule.
-        Given a sample ``x``, fits a kernel density estimate via ``fastKDE`` on a grid of size ``num_step_grid`` (power of two plus one).  Precomputes PDF, CDF, and their finite‐difference slopes for fast interpolation.
+        """1D KDE CDF/PPF using ``fastKDE`` + Simpson's rule. Given a sample ``x``, fits a kernel
+        density estimate via ``fastKDE`` on a grid of size ``num_step_grid`` (power of two plus
+        one).  Precomputes PDF, CDF, and their finite‐difference slopes for fast interpolation.
 
         - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
         - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
@@ -282,7 +286,7 @@ class kdeCDFPPF1D(torch.nn.Module):
         return self.pdf(x).log().nan_to_num(posinf=0.0, neginf=-13.815510557964274)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """average negative log-likelihood of the fitted KDE at ``x``.
+        """Average negative log-likelihood of the fitted KDE at ``x``.
 
         Args:
             x (torch.Tensor): Points at which to evaluate the negative log-likelihood.
@@ -321,7 +325,9 @@ def solve_ITP(
     num_iter_max: int = 31,
     k_1: float = 0.2,
 ) -> torch.Tensor:
-    """root-finding for ``fun`` via the Interpolate Truncate and Project (ITP) method within [``x_a``, ``x_b``], with guaranteed average performance strictly better than the bisection method under any continuous distribution
+    """Root-finding for ``fun`` via the Interpolate Truncate and Project (ITP) method within
+    [``x_a``, ``x_b``], with guaranteed average performance strictly better than the bisection
+    method under any continuous distribution.
 
     - Oliveira, I. F., & Takahashi, R. H. (2020). An enhancement of the bisection method average performance preserving minmax optimality. ACM Transactions on Mathematical Software (TOMS), 47(1), 1-24.
         https://en.wikipedia.org/wiki/ITP_method

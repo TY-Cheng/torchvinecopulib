@@ -114,12 +114,16 @@ class VineCop(torch.nn.Module):
 
     @property
     def device(self):
-        """Device of internal buffers."""
+        """
+        Device of internal buffers.
+        """
         return self._dd.device
 
     @property
     def dtype(self):
-        """Data type of internal buffers."""
+        """
+        Data type of internal buffers.
+        """
         return self._dd.dtype
 
     @property
@@ -153,7 +157,9 @@ class VineCop(torch.nn.Module):
 
     @torch.no_grad()
     def reset(self) -> None:
-        """Reset the VineCop object to its initial state."""
+        """
+        Reset the VineCop object to its initial state.
+        """
         self.num_obs.zero_()
         for i in range(self.num_dim):
             self.struct_obs[0][(i,)] = ""
@@ -353,13 +359,17 @@ class VineCop(torch.nn.Module):
         mst = []
 
         def find(v):
-            """path compression"""
+            """
+            Path compression.
+            """
             if parent[v] != v:
                 parent[v] = find(parent[v])
             return parent[v]
 
         def union(x, y):
-            """union by rank"""
+            """
+            Union by rank.
+            """
             rx, ry = find(x), find(y)
             if rx == ry:
                 return False
@@ -414,9 +424,9 @@ class VineCop(torch.nn.Module):
         num_step_grid_kde1d: int = None,
         **kde_kwargs,
     ) -> None:
-        """Fit the VineCop object to multivariate data.
-            Learns both the vine structure (via Dissmann’s greedy MST or a provided matrix)
-            and fits all bivariate copulas and 1D marginals (if needed).
+        """Fit the VineCop object to multivariate data. Learns both the vine structure (via
+        Dissmann’s greedy MST or a provided matrix) and fits all bivariate copulas and 1D marginals
+        (if needed).
 
         Args:
             obs (torch.Tensor): observations of shape (num_obs, num_dim). If ``is_cop_scale=False``, raw data; otherwise assumed already uniform.
@@ -466,7 +476,9 @@ class VineCop(torch.nn.Module):
         }
 
         def _visit_hfunc(lv: int, v_s: tuple) -> None:
-            """lazy hfunc for pseudo-obs at this v_s"""
+            """
+            Lazy hfunc for pseudo-obs at this v_s.
+            """
             lv_up = lv - 1
             cond_ed = self.struct_obs[lv][v_s]
             v_l, v_r = map(int, cond_ed.split(","))
@@ -605,7 +617,8 @@ class VineCop(torch.nn.Module):
         self._sample_order()
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
-        """Compute the log-density function of the vine copula at the given observations (including marginals).
+        """Compute the log-density function of the vine copula at the given observations (including
+        marginals).
 
         Args:
             obs (torch.Tensor): Points at which to evaluate the log-density function. Shape (num_obs, num_dim).
@@ -629,7 +642,9 @@ class VineCop(torch.nn.Module):
             dct_obs[0][(idx,)] = obs_mvcp[:, [idx]]
 
         def _visit_hfunc(lv: int, v_s: tuple) -> None:
-            """lazy hfunc for pseudo-obs at this v_s"""
+            """
+            Lazy hfunc for pseudo-obs at this v_s.
+            """
             lv_up = lv - 1
             cond_ed = self.struct_obs[lv][v_s]
             v_l, v_r = map(int, cond_ed.split(","))
@@ -676,7 +691,7 @@ class VineCop(torch.nn.Module):
         return lpdf
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """neg average log-likelihood function for the given observations.
+        """Neg average log-likelihood function for the given observations.
 
         Args:
             x (torch.Tensor): Points at which to evaluate. Shape (num_obs, num_dim).
@@ -688,6 +703,7 @@ class VineCop(torch.nn.Module):
 
     def rosenblatt(self, obs: torch.Tensor, sample_order: tuple | None = None) -> torch.Tensor:
         """Compute the Rosenblatt transform of observations.
+
         Maps input `obs` into uniform pseudo‐observations via successive conditional CDFs (Rosenblatt).
         # TODO, needs grad as residuals
         """
@@ -843,9 +859,9 @@ class VineCop(torch.nn.Module):
 
     @torch.no_grad()
     def cdf(self, obs: torch.Tensor, num_sample: int = 10007, seed: int = 42) -> torch.Tensor:
-        """Estimate the multivariate CDF via Monte Carlo of the vine copula.
-            Approximates C(u) = P(U ≤ u) by drawing ``num_sample`` Sobol samples in copula scale
-            and computing the proportion that lie below ``obs``.
+        """Estimate the multivariate CDF via Monte Carlo of the vine copula. Approximates C(u) = P(U
+        ≤ u) by drawing ``num_sample`` Sobol samples in copula scale and computing the proportion
+        that lie below ``obs``.
 
         Args:
             obs (torch.Tensor): Points at which to evaluate the CDF. Shape (num_obs, num_dim).
@@ -920,10 +936,10 @@ class VineCop(torch.nn.Module):
         f_path: Path = None,
         fig_size: tuple = None,
     ) -> tuple:
-        """Draw the weighted undirected graph at a single level of the vine copula.
-            Constructs a NetworkX graph of bivariate‐copula edges at level ``lv``,
-            where nodes represent either raw variables (``lv=0``), parent‐copula modules,
-            or pseudo‐observations, and edge widths encode dependence strength.
+        """Draw the weighted undirected graph at a single level of the vine copula. Constructs a
+        NetworkX graph of bivariate‐copula edges at level ``lv``, where nodes represent either raw
+        variables (``lv=0``), parent‐copula modules, or pseudo‐observations, and edge widths encode
+        dependence strength.
 
         Args:
             lv (int, optional): Level to draw. Defaults to 0.
@@ -1024,9 +1040,9 @@ class VineCop(torch.nn.Module):
         f_path: Path = None,
         fig_size: tuple = None,
     ) -> tuple:
-        """Draw the computational graph (DAG) of the vine copula.
-            Creates a directed graph where edges flow from upstream pseudo‐obs
-            and bicop modules to downstream pseudo‐obs, laid out by vine levels.
+        """Draw the computational graph (DAG) of the vine copula. Creates a directed graph where
+        edges flow from upstream pseudo‐obs and bicop modules to downstream pseudo‐obs, laid out by
+        vine levels.
 
         Args:
             sample_order (tuple[int, ...], optional): Variable sampling order. Defaults to `self.sample_order`.

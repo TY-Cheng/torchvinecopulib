@@ -292,9 +292,10 @@ def train_bnn(
     device=None,
     patience=5,
 ):
-    """
-    Trains one BayesianEncoderRegressor with ELBO-loss and early stopping
-    on validation MSE. Returns the model with best val-MSE.
+    """Trains one BayesianEncoderRegressor with ELBO-loss and early stopping on
+    validation MSE.
+
+    Returns the model with best val-MSE.
     """
     model = BayesianEncoderRegressor(
         input_dim=input_dim,

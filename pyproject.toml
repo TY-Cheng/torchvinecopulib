@@ -43,19 +43,21 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = ["numpy>=2", "scipy", "fastkde", "pyvinecopulib"]
+
 [dependency-groups]
 dev = [
     "blitz-bayesian-pytorch",
     "coverage",
     "datasets",
+    "docformatter",
     "flake8",
     "furo",
     "ipykernel",
     "kagglehub",
     "matplotlib",
     "pandas",
-    "pytest",
     "pytest-cov",
+    "pytest",
     "python-dotenv",
     "ruff",
     "scikit-learn",
@@ -112,11 +114,31 @@ line-length = 100
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
-docstring-code-line-length = 88
+docstring-code-line-length = 100
 
 [tool.ruff.lint.pycodestyle]
-max-doc-length = 88
+max-doc-length = 100
 max-line-length = 100
+
+[tool.docformatter]
+wrap-summaries = 100
+wrap-descriptions = 100
+blank-lines-around-summary = true
+in-place = true
+make-summary-multi-line = true
+pre-summary-space = true
+recursive = true
+skip-ignore = false
+
+[tool.flake8]
+max-line-length = 127
+extend-ignore = ["E203", "W503"]
+exclude = [".venv", "build", "dist", "docs"]
+per-file-ignores = [
+    "torchvinecopulib/vinecop/__init__.py: E501, C901",
+    "torchvinecopulib/bicop/__init__.py: E501, C901",
+    "torchvinecopulib/util/__init__.py: E501, C901",
+]
 
 [tool.sphinx-pyproject]
 source-dir = "docs"

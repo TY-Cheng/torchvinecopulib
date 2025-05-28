@@ -34,7 +34,7 @@ References
 """
 
 from pprint import pformat
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -60,8 +60,7 @@ class BiCop(torch.nn.Module):
         self,
         num_step_grid: int = 128,
     ):
-        """
-        Initializes the bivariate copula (BiCop) class. By default an independent bicop.
+        """Initializes the bivariate copula (BiCop) class. By default an independent bicop.
 
         Args:
             num_step_grid (int, optional): number of steps per dimension for the precomputed grids (must be a power of 2). Defaults to 128.
@@ -238,8 +237,7 @@ class BiCop(torch.nn.Module):
 
     # @torch.compile
     def _interp(self, grid: torch.Tensor, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Bilinearly interpolate values on a 2D grid at given sample points.
+        """Bilinearly interpolate values on a 2D grid at given sample points.
 
         Args:
             grid (torch.Tensor): Precomputed grid of values (e.g., PDF/CDF/h‐function), shape (m,m).
@@ -267,9 +265,7 @@ class BiCop(torch.nn.Module):
         ).clamp_min(0.0)
 
     def cdf(self, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Evaluate the copula CDF at given points.
-        For independent copula, returns u₁·u₂.
+        """Evaluate the copula CDF at given points. For independent copula, returns u₁·u₂.
 
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the CDF (rows are (u₁,u₂)), shape (n,2).
@@ -284,10 +280,8 @@ class BiCop(torch.nn.Module):
         return self._interp(grid=self._cdf_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_l(self, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Evaluate the left h-function at given points.
-        Computes H(u₂ | u₁):= ∂/∂u₁ C(u₁,u₂) for the fitted copula.
-        For independent copula, returns u₂.
+        """Evaluate the left h-function at given points. Computes H(u₂ | u₁):= ∂/∂u₁ C(u₁,u₂) for
+        the fitted copula. For independent copula, returns u₂.
 
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).
@@ -302,10 +296,8 @@ class BiCop(torch.nn.Module):
         return self._interp(grid=self._hfunc_l_grid, obs=obs).unsqueeze(dim=1)
 
     def hfunc_r(self, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Evaluate the right h-function at given points.
-        Computes H(u₁ | u₂):= ∂/∂u₂ C(u₁,u₂) for the fitted copula.
-        For independent copula, returns u₁.
+        """Evaluate the right h-function at given points. Computes H(u₁ | u₂):= ∂/∂u₂ C(u₁,u₂) for
+        the fitted copula. For independent copula, returns u₁.
 
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).
@@ -321,9 +313,8 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def hinv_l(self, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Invert the left h‐function via root‐finding: find u₂ given (u₁, p).
-        Solves H(u₂ | u₁) = p by ITP between 0 and 1.
+        """Invert the left h‐function via root‐finding: find u₂ given (u₁, p). Solves H(u₂ | u₁) = p
+        by ITP between 0 and 1.
 
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).
@@ -346,9 +337,8 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def hinv_r(self, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Invert the right h‐function via root‐finding: find u₁ given (u₂, p).
-        Solves H(u₁ | u₂) = p by ITP between 0 and 1.
+        """Invert the right h‐function via root‐finding: find u₁ given (u₂, p). Solves H(u₁ | u₂) =
+        p by ITP between 0 and 1.
 
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).
@@ -369,9 +359,7 @@ class BiCop(torch.nn.Module):
         ).clamp(min=0.0, max=1.0)
 
     def pdf(self, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Evaluate the copula PDF at given points.
-        For independent copula, returns 1.
+        """Evaluate the copula PDF at given points. For independent copula, returns 1.
 
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the PDF (rows are (u₁,u₂)), shape (n,2).
@@ -385,9 +373,8 @@ class BiCop(torch.nn.Module):
         return self._interp(grid=self._pdf_grid, obs=obs).unsqueeze(dim=1)
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
-        """
-        Evaluate the copula log-PDF at given points, with safe handling of inf/nan.
-        For independent copula, returns 0.
+        """Evaluate the copula log-PDF at given points, with safe handling of inf/nan. For
+        independent copula, returns 0.
 
         Args:
             obs (torch.Tensor): Points in [0,1]² where to evaluate the log-PDF (rows are (u₁,u₂)), shape (n,2).
@@ -402,10 +389,9 @@ class BiCop(torch.nn.Module):
 
     @torch.no_grad()
     def sample(self, num_sample: int = 100, seed: int = 42, is_sobol: bool = False) -> torch.Tensor:
-        """
-        Sample from the copula by inverse Rosenblatt transform.
-        Uses Sobol sequence if ``is_sobol=True``, otherwise uniform RNG.
-        For independent copula, returns uniform samples in [0,1]².
+        """Sample from the copula by inverse Rosenblatt transform. Uses Sobol sequence if
+        ``is_sobol=True``, otherwise uniform RNG. For independent copula, returns uniform samples in
+        [0,1]².
 
         Args:
             num_sample (int, optional): number of samples to generate. Defaults to 100.
@@ -431,6 +417,7 @@ class BiCop(torch.nn.Module):
 
     def __str__(self) -> str:
         """String representation of the BiCop class.
+
         Returns:
             str: String representation of the BiCop class.
         """
@@ -464,8 +451,7 @@ class BiCop(torch.nn.Module):
         colorbartitle: str = "Density",
         **imshow_kwargs: dict,
     ) -> tuple[plt.Figure, plt.Axes]:
-        """
-        Display the (log-)PDF grid as a heatmap.
+        """Display the (log-)PDF grid as a heatmap.
 
         Args:
             is_log_pdf (bool, optional): If True, plot log-PDF. Defaults to False.
@@ -508,8 +494,7 @@ class BiCop(torch.nn.Module):
         xylim: Optional[tuple[float, float]] = None,
         grid_size: Optional[int] = None,
     ) -> tuple[plt.Figure, plt.Axes]:
-        """
-        Plot the bivariate copula density.
+        """Plot the bivariate copula density.
 
         Args:
             plot_type (str, optional): Type of plot, either "contour" or "surface". Defaults to "surface".

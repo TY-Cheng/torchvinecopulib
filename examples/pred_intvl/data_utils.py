@@ -31,8 +31,8 @@ def get_logger(
     fmt_file: str = "%(asctime)s - %(name)s - %(levelname)s - [%(pathname)s:%(lineno)d] - %(message)s",
     name: str | None = None,
 ) -> logging.Logger:
-    """
-    Create (or retrieve) a module‐level logger that writes INFO+ to console and WARNING+ to file.
+    """Create (or retrieve) a module‐level logger that writes INFO+ to console and
+    WARNING+ to file.
 
     Args:
         log_file: path to the file where warnings+ should be logged.
@@ -84,9 +84,9 @@ def load_california_housing(
     num_workers: int = 4,
     pin_memory: bool = True,
 ):
-    """
-    Fetch California Housing, split into train/val/test,
-    scale (features & target) on train only, and wrap in PyTorch DataLoaders.
+    """Fetch California Housing, split into train/val/test, scale (features & target) on
+    train only, and wrap in PyTorch DataLoaders.
+
     Returns: train_loader, val_loader, test_loader, x_scaler, y_scaler
     """
     torch.manual_seed(seed_val)
@@ -152,8 +152,8 @@ def load_news_popularity(
     num_workers: int = 4,
     pin_memory: bool = True,
 ):
-    """
-    Online News Popularity regression (UCI).
+    """Online News Popularity regression (UCI).
+
     Splits into train/val/test, scales on train only, wraps in DataLoaders.
     """
     torch.manual_seed(seed_val)
