@@ -117,37 +117,16 @@ jobs:
           inputs: |
             ./dist/*.tar.gz
             ./dist/*.whl
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - id: create_release
-        name: Create GitHub Release and Upload Assets
-        uses: actions/create-release@v1
+      - name: Create GitHub Release and Upload Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: Automated release for ${{ github.ref_name }}. Signed artifacts are attached.
-          draft: false
-          prerelease: false
-
-      - name: Upload source tar.gz
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/*.tar.gz
-          asset_name: torchvinecopulib-${{ github.ref_name }}.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload wheel
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/*.whl
-          asset_name: torchvinecopulib-${{ github.ref_name }}-py3-none-any.whl
-          asset_content_type: application/zip
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --repo ${{ github.repository }} \ # Explicitly good practice, though often inferred
+            --title "Release ${{ github.ref_name }}" \
+            --notes "Automated release for ${{ github.ref_name }}. Signed artifacts are attached." \
+            # Use --generate-notes if you prefer automatic notes from PRs
+            # --draft \ # Uncomment if you want to create a draft
+            # --prerelease \ # Uncomment if this is a pre-release
+            dist/* # This uploads all files from the dist/ directory as assets
