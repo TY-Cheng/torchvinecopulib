@@ -58,8 +58,7 @@ jobs:
 
       - name: Upload coverage to Codacy
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}
-        env:
-          CODACY_API_BASE_URL: ${{ secrets.CODACY_API_BASE_URL }}
-          CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
         run: |
+          export CODACY_API_BASE_URL=${{ secrets.CODACY_API_BASE_URL }}
+          export CODACY_PROJECT_TOKEN=${{ secrets.CODACY_PROJECT_TOKEN }}
           bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r ./coverage.xml
