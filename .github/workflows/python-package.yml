@@ -18,37 +18,48 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.12", "3.13"]
     steps:
-      - name: Check out repository
+      - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
         run: |
-          python -m pip install --upgrade pip
-          pythom -m pip install uv
-          python -m uv self update uv
-          python -m uv pip install "pyvinecopulib==0.6.6"
-          python -m uv pip install flake8 pytest numpy scipy torch pot matplotlib scikit-learn pandas coverage
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
           # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --ignore=E203,W503 --statistics
+
       - name: Test with pytest
         run: |
           python -c "import sys; print(sys.version)"
           python -c "import torch; print(torch.cuda.is_available())"
-          uv run coverage run --source=torchvinecopulib -m pytest ./tests
-          uv run coverage report -m
-      - name: Upload test coverage to Codacy
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' }}
+          uv run coverage run --source=torchvinecopulib -m pytest tests
+          uv run coverage report
+          uv run coverage xml -o coverage.xml
+
+      - name: Upload coverage to Codacy
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}
+        env:
+          CODACY_API_BASE_URL: ${{ secrets.CODACY_API_BASE_URL }}
+          CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
         run: |
-          export CODACY_API_BASE_URL=${{ secrets.CODACY_API_BASE_URL }}
-          export CODACY_PROJECT_TOKEN=${{ secrets.CODACY_PROJECT_TOKEN }}
           bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r ./coverage.xml

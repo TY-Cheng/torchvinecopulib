@@ -48,6 +48,7 @@ dev = [
     "blitz-bayesian-pytorch",
     "coverage",
     "datasets",
+    "flake8",
     "furo",
     "ipykernel",
     "kagglehub",
