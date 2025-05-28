@@ -3,13 +3,13 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e8a7a7448b2043d9bbefafc5a3ec14f7)](https://app.codacy.com/gh/TY-Cheng/torchvinecopulib/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/e8a7a7448b2043d9bbefafc5a3ec14f7)](https://app.codacy.com?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 [![Lint Pytest](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
-[![Deploy Docs](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml)
+[![Deploy Docs](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml/badge.svg?branch=main)](https://ty-cheng.github.io/torchvinecopulib/)
 
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/torchvinecopulib)
 [![OS](https://img.shields.io/badge/OS-Windows%7CmacOS%7CUbuntu-blue)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
 
-![GitHub License](https://img.shields.io/github/license/ty-cheng/torchvinecopulib)
-![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/TY-Cheng/torchvinecopulib/blob/main/LICENSE)
+[![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib)](https://pypi.org/project/torchvinecopulib/)
 [![DOI](https://zenodo.org/badge/768037665.svg)](https://zenodo.org/doi/10.5281/zenodo.10836953)
 
 Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started/locally/).
@@ -20,6 +20,39 @@ Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started
 - Shorter runtimes for higher dimension simulations
 - Pure `Python` library, inspired by [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
 - IO and visualization support
+
+## Examples
+
+Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main/examples) folder for `.ipynb` Jupyter notebooks.
+
+## Installation
+
+- By `pip` from [`PyPI`](https://pypi.org/project/torchvinecopulib/):
+
+```bash
+pip install torchvinecopulib torch
+```
+
+- Or `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
+  Need to use proper file name.
+
+```bash
+# inside project root folder
+pip install ./dist/torchvinecopulib-1.0.4-py3-none-any.whl
+# or
+pip install ./dist/torchvinecopulib-1.0.4.tar.gz
+```
+
+### (Recommended) [uv](https://docs.astral.sh/uv/getting-started/) for Dependency Management and Packaging
+
+After `git clone https://github.com/TY-Cheng/torchvinecopulib.git`, `cd` into the project root where [`pyproject.toml`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/pyproject.toml) exists,
+
+```bash
+# inside project root folder
+uv sync --extra cpu -U
+# or
+uv sync --extra cu126 -U
+```
 
 ## Dependencies
 
@@ -48,39 +81,6 @@ python -c "import torch; print(torch.cuda.is_available())"
 > [!TIP]
 > macOS users should set `device='cpu'` at this stage, for using `device='mps'` won't support `dtype=torch.float64`.
 
-## Installation
-
-- By `pip` from [`PyPI`](https://pypi.org/project/torchvinecopulib/):
-
-```bash
-pip install torchvinecopulib torch
-```
-
-- Or `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
-  Need to use proper file name.
-
-```bash
-# inside project root folder
-pip install ./dist/torchvinecopulib-1.0.4-py3-none-any.whl
-# or
-pip install ./dist/torchvinecopulib-1.0.4.tar.gz
-```
-
-### (Optional) [uv](https://docs.astral.sh/uv/getting-started/) for Dependency Management and Packaging
-
-After `git clone https://github.com/TY-Cheng/torchvinecopulib.git`, `cd` into the project root where [`pyproject.toml`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/pyproject.toml) exists,
-
-```bash
-# inside project root folder
-uv sync --extra cpu -U
-# or
-uv sync --extra cu126 -U
-```
-
-## Examples
-
-Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main/examples) folder for `.ipynb` Jupyter notebooks.
-
 ## Documentation
 
 - Visit [GitHub Pages website](https://ty-cheng.github.io/torchvinecopulib/)
@@ -90,6 +90,9 @@ Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main
 ```bash
 # inside project root folder
 sphinx-apidoc -o ./docs ./torchvinecopulib && cd ./docs && make html && cd ..
+# if using uv
+uv run sphinx-apidoc -o docs torchvinecopulib/ --separate
+uv run sphinx-build docs docs/_build/html
 ```
 
 ## Tests
@@ -99,6 +102,9 @@ sphinx-apidoc -o ./docs ./torchvinecopulib && cd ./docs && make html && cd ..
 python -m pytest ./tests
 # coverage report
 coverage run -m pytest ./tests && coverage html
+# if using uv
+uv run coverage run --source=torchvinecopulib -m pytest ./tests
+uv run coverage report -m
 ```
 
 ## TODO
