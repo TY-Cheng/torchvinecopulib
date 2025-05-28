@@ -1,99 +1,60 @@
-import logging
-from pathlib import Path
-
-import matplotlib.pyplot as plt
+# conftest.py
 import numpy as np
-import pandas as pd
+import pytest
+import pyvinecopulib as pvc
 import torch
-from pyvinecopulib import BicopFamily
 
-# build & install before test
-from torchvinecopulib import bicop
+import torchvinecopulib as tvc
 
-DIR_OUT_TEST = Path(".") / "out"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-logging.info(f"cuda (GPU) avail? {torch.cuda.is_available()}\n")
-LST_MTD_FIT = ["itau", "mle"]
-LST_MTD_SEL = ["aic", "bic"]
-LST_MTD_BIDEP = [
-    "kendall_tau",
-    "ferreira_tail_dep_coeff",
-    "chatterjee_xi",
-    "wasserstein_dist_ind",
-    "mutual_info",
+N_SIM = 2000
+SEEDS = list(range(5))
+EPS = tvc.util._EPS
+# List the (family, true-parameter) pairs you want to test
+FAMILIES = [
+    (pvc.gaussian, np.array([[0.7]]), 0),  # rotation 0
+    (pvc.clayton, np.array([[0.9]]), 0),
+    (pvc.clayton, np.array([[0.9]]), 90),
+    (pvc.clayton, np.array([[0.9]]), 180),
+    (pvc.clayton, np.array([[0.9]]), 270),
+    (pvc.frank, np.array([[3.0]]), 0),
+    (pvc.frank, np.array([[-3.0]]), 0),
+    # …add more if you like…
 ]
-DCT_FAM = {
-    "Clayton": (BicopFamily.clayton, bicop.Clayton),
-    "Frank": (BicopFamily.frank, bicop.Frank),
-    "Gaussian": (BicopFamily.gaussian, bicop.Gaussian),
-    "Gumbel": (BicopFamily.gumbel, bicop.Gumbel),
-    "Independent": (BicopFamily.indep, bicop.Independent),
-    "Joe": (BicopFamily.joe, bicop.Joe),
-    "StudentT": (BicopFamily.student, bicop.StudentT),
-}
 
 
-def sim_from_bcp(
-    bcp_tvc,
-    par: tuple | None = None,
-    seed: int = 0,
-    rot: int = 0,
-    num_sim: int = 10000,
-    device: str = DEVICE,
-    dtype=torch.float64,
-) -> torch.Tensor:
-    """Simulates bivariate copula data."""
-    if par is None:
-        par = tuple((_ / 10 for _ in bcp_tvc._PAR_MAX))
-    return bcp_tvc.sim(rot=rot, num_sim=num_sim, seed=seed, device=device, dtype=dtype, par=par)
-
-
-def sim_vcp_from_bcp(
-    bcp_tvc,
-    num_dim: int = 6,
-    num_sim: int = 10000,
-    device: str = DEVICE,
-    dtype=torch.float64,
-) -> torch.Tensor:
-    return torch.hstack(
-        [
-            sim_from_bcp(
-                bcp_tvc,
-                par=tuple((pm / (2 + np.log1p(_)) for pm in bcp_tvc._PAR_MAX)),
-                seed=_,
-                num_sim=num_sim,
-                device=device,
-                dtype=dtype,
-            )
-            for _ in range(num_dim // 2 + 1)
-        ]
-    )[:, :num_dim]
-
-
-def compare_chart_vec(
-    vec_pvc: np.ndarray,
-    vec_tvc: np.ndarray,
-    rtol: float = 1e-4,
-    atol: float = 1e-4,
-    title: str | None = None,
-    label: str | None = None,
-    xlabel: str = "Data Points",
-    ylabel: str = "Diff",
-) -> None | AssertionError:
+@pytest.fixture(scope="module", params=FAMILIES, ids=lambda f: f[0].name)
+def bicop_pair(request):
     """
-    chart the differences with proper fig title
-    mkdir 'out/test' only when necessary
+    Returns a tuple:
+      ( family, true_params, U_tensor, bicop_fastkde, bicop_tll )
+
+    notice the scope="module" so that the fixture is created only once and reused in all tests that use it.
     """
-    if np.allclose(a=vec_pvc, b=vec_tvc, rtol=rtol, atol=atol):
-        return None
-    else:
-        DIR_OUT_TEST.mkdir(parents=True, exist_ok=True)
-        _, ax = plt.subplots(figsize=(10, 6))
-        pd.Series(vec_pvc - vec_tvc).plot(
-            ax=ax, title=title, label=label, grid=True, alpha=0.7, linewidth=0.5
-        )
-        plt.xlabel(xlabel=xlabel)
-        plt.ylabel(ylabel=ylabel)
-        plt.savefig(DIR_OUT_TEST / f"{title}.png")
-        plt.close()
-        return AssertionError(f"{title} failed!")
+    family, true_params, rotation = request.param
+
+    # 1) build the 'true' copula and simulate U
+    true_bc = pvc.Bicop(family=family, parameters=true_params, rotation=rotation)
+    U = true_bc.simulate(n=N_SIM, seeds=SEEDS)  # shape (N_SIM, 2)
+    U_tensor = torch.tensor(U, device=DEVICE, dtype=torch.float64)
+
+    # 2) fit two torchvinecopulib instances (fast KDE and TLL)
+    bc_fast = tvc.BiCop(num_step_grid=512).to(DEVICE)
+    bc_fast.fit(U_tensor, is_tll=False)
+
+    bc_tll = tvc.BiCop(num_step_grid=512).to(DEVICE)
+    bc_tll.fit(U_tensor, is_tll=True)
+
+    return family, true_params, rotation, U_tensor, bc_fast, bc_tll
+
+
+@pytest.fixture(scope="module")
+def U_tensor():
+    #  a moderately‐sized random [0,1]² sample
+    return torch.rand(500, 2, dtype=torch.float64)
+
+
+@pytest.fixture(scope="module")
+def sample_1d():
+    torch.manual_seed(0)
+    return torch.randn(1024, 1)  # standard normal

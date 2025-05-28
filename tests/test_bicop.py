@@ -1,218 +1,281 @@
-import logging
-import unittest
+import matplotlib
+import matplotlib.pyplot as plt
+import pytest
+import torch
 
-import numpy as np
-from pyvinecopulib import Bicop, FitControlsBicop
+import torchvinecopulib as tvc
 
-from torchvinecopulib.bicop import SET_FAMnROT, bcp_from_obs
-from torchvinecopulib.util import _TAU_MAX, _TAU_MIN
-
-from . import DCT_FAM, LST_MTD_FIT, compare_chart_vec, sim_from_bcp
+from . import EPS, U_tensor, bicop_pair
 
 
-def calc_fit_par(bcp_pvc, bcp_tvc, rot: int, mtd_fit: str | None = None) -> tuple | None:
-    """
-    given bcp, fam, rot, prepare vector of parameters to fit
-    simulate based on fam/rot/par, then compare the fitted parameters given mtd_fit
-    """
-    if bcp_tvc.__name__ == "Independent":
-        assert (
-            bcp_from_obs(sim_from_bcp(bcp_tvc=bcp_tvc), tpl_fam=(bcp_tvc.__name__,)).par == tuple()
+def test_device_and_dtype():
+    cop = tvc.BiCop(num_step_grid=16)
+    # by default on CPU float64
+    assert cop.device.type == "cpu"
+    assert cop.dtype is torch.float64
+
+    if torch.cuda.is_available():
+        cop = tvc.BiCop(num_step_grid=16).cuda()
+        assert cop.device.type == "cuda"
+
+
+def test_monotonicity_and_range(bicop_pair):
+    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+
+    # pick one of the two implementations or loop both
+    for bicop in (bc_fast, bc_tll):
+        # * simple diagonal check
+        grid = torch.linspace(EPS, 1.0 - EPS, 100, device=U.device, dtype=torch.float64).unsqueeze(
+            1
         )
-        return None
-    elif bcp_tvc.__name__ == "StudentT":
-        vec_par = np.array(
-            tuple(
-                zip(
-                    np.linspace(-0.83, 0.83, 13),
-                    # * nu from both int and float
-                    np.concatenate([np.arange(2, 8), np.linspace(2.1, 10, 7)]),
-                )
-            )
-        )
-    else:
-        vec_par = np.linspace(
-            (bcp_tvc._PAR_MIN[0] + bcp_tvc._PAR_MAX[0] * 0.02) / 2,
-            bcp_tvc._PAR_MAX[0] / 5.5,
-            13,
-        )
-    temp_fcb = FitControlsBicop(family_set=[bcp_pvc], parametric_method=mtd_fit)
-    lst_pvc = []
-    lst_tvc = []
-    for i_par in vec_par:
-        if bcp_tvc.__name__ == "StudentT":
-            obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=i_par, rot=rot, num_sim=2000)
-            lst_pvc.append(np.abs(Bicop(data=obs.cpu(), controls=temp_fcb).parameters).sum())
-            lst_tvc.append(
-                np.abs(
-                    bcp_from_obs(
-                        obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
-                    ).par
-                ).sum()
-            )
-        else:
-            obs = sim_from_bcp(bcp_tvc=bcp_tvc, par=(i_par,), rot=rot, num_sim=2000)
-            lst_pvc.append(Bicop(data=obs.cpu(), controls=temp_fcb).parameters.item())
-            lst_tvc.append(
-                bcp_from_obs(
-                    obs_bcp=obs, thresh_trunc=1, mtd_fit=mtd_fit, tpl_fam=[bcp_tvc.__name__]
-                ).par[0]
-            )
-    return np.array(lst_pvc), np.array(lst_tvc)
+        pts = torch.hstack([grid, grid])
+        out = bicop.cdf(pts)
+        assert out.min() >= -EPS and out.max() <= 1 + EPS
+        assert out.diff(0).min() >= -EPS
+
+        # * row slices + left/right variants
+        for u in grid:
+            pts = torch.hstack([grid, u.repeat(grid.size(0), 1)])
+            for pts in (pts, pts.flip(1)):
+                for fn in (bicop.cdf, bicop.hfunc_r, bicop.hinv_r):
+                    v = fn(pts)
+                    assert v.min() >= -EPS and v.max() <= 1 + EPS
+                    assert v.diff(0).min() >= -EPS
 
 
-def calc_cdfhfunchinvlpdf(
-    bcp_pvc,
-    bcp_tvc,
-    obs_bcp,
-    func_name: str = None,
-) -> tuple:
-    """compare instance methods from fitted bcp_pvc and static methods from bcp_tvc"""
-    par = tuple(bcp_pvc.parameters.flatten())
-    rot = bcp_pvc.rotation
-    if func_name == "l_pdf":
-        vec_pvc = np.log(bcp_pvc.pdf(obs_bcp.cpu()))
-        vec_tvc = bcp_tvc.l_pdf(obs=obs_bcp, par=par, rot=rot).flatten().cpu().numpy()
-    elif func_name in ("cdf", "hfunc1", "hinv1", "hfunc2", "hinv2"):
-        vec_pvc = getattr(bcp_pvc, func_name)(obs_bcp.cpu())
-        vec_tvc = (
-            getattr(bcp_tvc, func_name)(obs=obs_bcp, par=par, rot=rot).flatten().cpu().numpy()
-        )
-    else:
-        raise ValueError("Unknown test type")
-    return vec_pvc, vec_tvc
+def test_inversion(bicop_pair):
+    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+
+    for bicop in (bc_fast, bc_tll):
+        grid = torch.linspace(0.1, 0.9, 50, device=U.device, dtype=torch.float64).unsqueeze(1)
+        for u in grid:
+            pts = torch.hstack([grid, u.repeat(grid.size(0), 1)])
+
+            # * right‐side inverse
+            rec0 = bicop.hinv_r(torch.hstack([bicop.hfunc_r(pts), pts[:, [1]]]))
+            assert torch.allclose(rec0, pts[:, [0]], atol=1e-3)
+
+            rec1 = bicop.hfunc_r(torch.hstack([bicop.hinv_r(pts), pts[:, [1]]]))
+            assert torch.allclose(rec1, pts[:, [0]], atol=1e-3)
+
+            # * left‐side inverse
+            pts_rev = pts.flip(1)
+            rec2 = bicop.hinv_l(torch.hstack([pts_rev[:, [0]], bicop.hfunc_l(pts_rev)]))
+            assert torch.allclose(rec2, pts_rev[:, [1]], atol=1e-3)
+
+            rec3 = bicop.hfunc_l(torch.hstack([pts_rev[:, [0]], bicop.hinv_l(pts_rev)]))
+            assert torch.allclose(rec3, pts_rev[:, [1]], atol=1e-3)
 
 
-def calc_tau2par2tau(bcp_pvc, bcp_tvc, func_name: str = None, rot: int = 0) -> tuple:
-    """two-pass test for 'tau2par' and 'par2tau'
-    start from a range of tau2par for 'tau2par', append par2tau further for 'par2tau'
-    'tau2par' skipped for StudentT and Independent
-    """
-    if func_name in ("tau2par", "par2tau"):
-        # ! notice the range of tau
-        vec_tau = np.linspace(_TAU_MIN / 1.2, _TAU_MAX / 1.2, 100)
-        if bcp_tvc.__name__ in ("StudentT", "Independent"):
-            vec_pvc = vec_tau
-            vec_tvc = vec_tau
-        else:
-            vec_pvc = np.array(tuple(map(bcp_pvc.tau_to_parameters, vec_tau))).flatten()
-            vec_tvc = np.array(
-                tuple(map(lambda tau: bcp_tvc.tau2par(tau=tau, rot=rot)[0], vec_tau))
-            )
-        if func_name == "par2tau":
-            vec_pvc = np.array(
-                tuple(map(lambda par: bcp_pvc.parameters_to_tau(np.array([par])), vec_pvc))
-            ).flatten()
-            vec_tvc = np.array(
-                tuple(map(lambda par: bcp_tvc.par2tau(par=(par,), rot=rot), vec_tvc))
-            )
-        return vec_pvc, vec_tvc
-    else:
-        raise ValueError("Unknown test type")
+def test_pdf_integrates_to_one(bicop_pair):
+    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+    for cop in (bc_fast, bc_tll):
+        # our grid is uniform on [0,1]² with spacing Δ = 1/(N−1)
+        Δ = 1.0 / (cop.num_step_grid - 1)
+        # approximate ∫ pdf(u,v) du dv ≈ Σ_pdf_grid * Δ²
+        approx_mass = (cop._pdf_grid.sum() * Δ**2).item()
+        assert pytest.approx(expected=1.0, rel=1e-2) == approx_mass
+        # non-negativity
+        assert (cop._pdf_grid >= -EPS).all()
 
 
-class TestBiCop(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_fit(self):
-        """test the fit results (parameter, rotation) given obs"""
-        for fam, rot in SET_FAMnROT:
-            bcp_pvc, bcp_tvc = DCT_FAM[fam]
-            for mtd_fit in LST_MTD_FIT:
-                logging.info(
-                    msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}"
-                )
-                title = f"{fam}_{rot}_{mtd_fit}"
-
-                res = calc_fit_par(
-                    bcp_pvc=bcp_pvc,
-                    bcp_tvc=bcp_tvc,
-                    rot=rot,
-                    mtd_fit=mtd_fit,
-                )
-                if res:
-                    vec_pvc, vec_tvc = res
-                    if err := compare_chart_vec(
-                        vec_pvc=vec_pvc,
-                        vec_tvc=vec_tvc,
-                        rtol=0.01,
-                        atol=1.0,
-                        title=title,
-                        label=mtd_fit,
-                    ):
-                        logging.error(msg=err)
-                        raise err
-
-    def test_bcp_cdfhfunc1hinv1lpdf(self):
-        """test the BiCop methods (cdf, hfunc1, hinv1, l_pdf) given obs"""
-        for fam, rot in SET_FAMnROT:
-            bcp_pvc, bcp_tvc = DCT_FAM[fam]
-            obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)
-            obs_bcp_clone = obs_bcp.clone()
-            mtd_fit = LST_MTD_FIT[1]
-            logging.info(msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}")
-
-            temp_fcb = FitControlsBicop(family_set=[bcp_pvc], parametric_method=mtd_fit)
-            data_pvc = Bicop(data=obs_bcp.cpu(), controls=temp_fcb)
-
-            for func_name in [
-                "cdf",
-                "hfunc1",
-                "hinv1",
-                "hfunc2",
-                "hinv2",
-                "l_pdf",
-            ]:
-                logging.debug(msg=f"{func_name}")
-                title = f"{fam}_{rot}_{mtd_fit}_{func_name}"
-                vec_pvc, vec_tvc = calc_cdfhfunchinvlpdf(
-                    bcp_pvc=data_pvc,
-                    bcp_tvc=bcp_tvc,
-                    obs_bcp=obs_bcp,
-                    func_name=func_name,
-                )
-                assert (obs_bcp == obs_bcp_clone).all()
-                if err := compare_chart_vec(
-                    vec_pvc=vec_pvc,
-                    vec_tvc=vec_tvc,
-                    title=title,
-                    label=func_name,
-                ):
-                    logging.error(msg=err)
-                    raise err
-
-    def test_bcp_tau2par2tau(self):
-        """test the BiCop methods (tau2par, par2tau)"""
-        for fam, rot in SET_FAMnROT:
-            if fam == "Independent":
-                continue
-            bcp_pvc, bcp_tvc = DCT_FAM[fam]
-            obs_bcp = sim_from_bcp(bcp_tvc=bcp_tvc, rot=rot)
-            obs_bcp_clone = obs_bcp.clone()
-            mtd_fit = LST_MTD_FIT[1]
-            logging.info(msg=f"\nTesting:\t{fam} {rot}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}")
-            temp_fcb = FitControlsBicop(family_set=[bcp_pvc], parametric_method=mtd_fit)
-            data_pvc = Bicop(data=obs_bcp.cpu(), controls=temp_fcb)
-            for func_name in ("tau2par", "par2tau"):
-                logging.debug(msg=f"{func_name}")
-                title = f"{fam}_{rot}_{mtd_fit}_{func_name}"
-                vec_pvc, vec_tvc = calc_tau2par2tau(
-                    bcp_pvc=data_pvc,
-                    bcp_tvc=bcp_tvc,
-                    func_name=func_name,
-                    rot=rot,
-                )
-                assert (obs_bcp == obs_bcp_clone).all()
-                if err := compare_chart_vec(
-                    vec_pvc=vec_pvc,
-                    vec_tvc=vec_tvc,
-                    title=title,
-                    label=func_name,
-                ):
-                    logging.error(msg=err)
-                    raise err
+def test_log_pdf_matches_log_of_pdf(bicop_pair):
+    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+    for cop in (bc_fast, bc_tll):
+        pts = torch.rand(500, 2, dtype=torch.float64, device=cop.device)
+        pdf = cop.pdf(pts)
+        logp = cop.log_pdf(pts)
+        # where pdf>0, log_pdf == log(pdf)
+        mask = pdf.squeeze(1) > 0
+        assert torch.allclose(logp[mask], pdf[mask].log(), atol=1e-6)
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_log_pdf_handles_zero():
+    cop = tvc.BiCop(num_step_grid=4)
+    cop.is_indep = False
+    # ! monkey‐patch pdf to always return zero
+    cop.pdf = lambda obs: torch.zeros(obs.shape[0], 1, dtype=torch.float64)
+    pts = torch.rand(100, 2, dtype=torch.float64)
+    logp = cop.log_pdf(pts)
+    # every entry should equal the neg‐infinity replacement
+    assert torch.all(logp == -13.815510557964274)
+
+
+def test_sample_marginals(bicop_pair):
+    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+    for cop in (bc_fast, bc_tll):
+        for is_sobol in (False, True):
+            samp = cop.sample(2000, seed=0, is_sobol=is_sobol)
+            # samples lie in [0,1]
+            assert samp.min() >= 0.0 and samp.max() <= 1.0
+            # * marginal histograms should be roughly uniform
+            counts_u = torch.histc(samp[:, 0], bins=10, min=0, max=1)
+            counts_v = torch.histc(samp[:, 1], bins=10, min=0, max=1)
+            # each bin ~200 ± 5 σ  (σ≈√(N·p·(1−p))≈√(2000·0.1·0.9)≈13.4)
+            assert counts_u.std() < 20
+            assert counts_v.std() < 20
+
+
+def test_internal_buffers_and_flags(bicop_pair):
+    _, _, _, U, bc_fast, bc_tll = bicop_pair
+    for cop, expect_tll in [(bc_fast, False), (bc_tll, True)]:
+        print(cop)
+        assert not cop.is_indep
+        assert cop.is_tll is expect_tll
+        assert cop.num_obs == U.shape[0]
+        # all the pre‐computed grids are the right shape
+        m = cop.num_step_grid
+        for name in ("_pdf_grid", "_cdf_grid", "_hfunc_l_grid", "_hfunc_r_grid"):
+            grid = getattr(cop, name)
+            assert grid.shape == (m, m)
+
+
+def test_tau_estimation(bicop_pair):
+    _, _, _, U, bc_fast, bc_tll = bicop_pair
+    # re‐fit with tau estimation
+    bc = tvc.BiCop(num_step_grid=64)
+    bc.fit(U, is_tll=True, is_tau_est=True)
+    # kendalltau must be nonzero for dependent data
+    assert bc.tau[0].abs().item() > 0
+    assert bc.tau[1].abs().item() >= 0
+
+
+def test_sample_shape_and_dtype_on_tll(bicop_pair):
+    _, _, _, U, bc_fast, bc_tll = bicop_pair
+    for cop in (bc_fast, bc_tll):
+        s = cop.sample(123, seed=7, is_sobol=True)
+        assert s.shape == (123, 2)
+        assert s.dtype is cop.dtype
+        assert s.device == cop.device
+
+
+def test_imshow_and_plot_api(bicop_pair):
+    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+    cop = bc_fast
+    # imshow
+    fig, ax = cop.imshow(is_log_pdf=True)
+    assert isinstance(fig, matplotlib.figure.Figure)
+    assert isinstance(ax, matplotlib.axes.Axes)
+    # contour
+    fig2, ax2 = cop.plot(plot_type="contour", margin_type="unif")
+    assert isinstance(fig2, matplotlib.figure.Figure)
+    assert isinstance(ax2, matplotlib.axes.Axes)
+    fig2, ax2 = cop.plot(plot_type="contour", margin_type="norm")
+    assert isinstance(fig2, matplotlib.figure.Figure)
+    assert isinstance(ax2, matplotlib.axes.Axes)
+    # surface
+    fig3, ax3 = cop.plot(plot_type="surface", margin_type="unif")
+    assert isinstance(fig3, matplotlib.figure.Figure)
+    assert isinstance(ax3, matplotlib.axes.Axes)
+    fig3, ax3 = cop.plot(plot_type="surface", margin_type="norm")
+    assert isinstance(fig3, matplotlib.figure.Figure)
+    assert isinstance(ax3, matplotlib.axes.Axes)
+    # invalid args
+    with pytest.raises(ValueError):
+        cop.plot(plot_type="foo")
+    with pytest.raises(ValueError):
+        cop.plot(margin_type="bar")
+
+
+def test_plot_accepts_unused_kwargs(bicop_pair):
+    _, _, _, U, bc_fast, _ = bicop_pair
+    # just ensure it doesn’t crash
+    bc_fast.plot(plot_type="contour", margin_type="norm", xylim=(0, 1), grid_size=50)
+    bc_fast.plot(plot_type="surface", margin_type="unif", xylim=(0, 1), grid_size=20)
+
+
+def test_reset_and_str(bicop_pair):
+    # ! notice scope="module" so we put this test at the end
+    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+    for cop in (bc_fast, bc_tll):
+        cop.reset()
+        # should go back to independent
+        assert cop.is_indep
+        assert cop.num_obs == 0
+        # __str__ contains key fields
+        s = str(cop)
+        assert "is_indep" in s and "num_obs" in s and "is_tll" in s
+
+
+@pytest.mark.parametrize("method", ["constant", "linear", "quadratic"])
+def test_tll_methods_do_not_crash(U_tensor, method):
+    cop = tvc.BiCop(num_step_grid=32)
+    # should _not_ raise for any of the valid nonparametric_method names
+    cop.fit(U_tensor, is_tll=True, mtd_tll=method)
+
+
+def test_fit_invalid_method_raises(U_tensor):
+    cop = tvc.BiCop(num_step_grid=32)
+    with pytest.raises(RuntimeError):
+        # pick something bogus
+        cop.fit(U_tensor, is_tll=True, mtd_tll="no_such_method")
+
+
+def test_interp_on_trivial_grid():
+    # make a BiCop with a 2×2 grid
+    bc = tvc.BiCop(num_step_grid=2)
+    # override the geometry so that step_grid == 1.0 and target == 1
+    bc.step_grid = 1.0
+    bc._target = 1.0
+    bc._EPS = 0.0  # so we don't get any clamping at the edges
+
+    # grid:
+    #   g00 = 0,  g01 = 1
+    #   g10 = 2,  g11 = 3
+    grid = torch.tensor([[0.0, 1.0], [2.0, 3.0]], dtype=torch.float64)
+
+    # corners should map exactly:
+    pts = torch.tensor(
+        [
+            [0.0, 0.0],  # g00
+            [0.0, 1.0],  # g01
+            [1.0, 0.0],  # g10
+            [1.0, 1.0],  # g11
+        ],
+        dtype=torch.float64,
+    )
+    out = bc._interp(grid, pts)
+    assert torch.allclose(out, torch.tensor([0.0, 1.0, 2.0, 3.0], dtype=torch.float64))
+
+    # center point should average correctly:
+    center = torch.tensor([[0.5, 0.5]], dtype=torch.float64)
+    val = bc._interp(grid, center)
+    # manual bilinear: 0 + (2−0)*.5 + (1−0)*.5 + (3−1−2+0)*.5*.5 = 1.5
+    assert torch.allclose(val, torch.tensor([[1.5]], dtype=torch.float64))
+
+    # if you ask for out-of-bounds it should clamp to [0,1] and then pick the corner:
+    # e.g. (−1, −1)→(0,0), (2,3)→(1,1)
+    oob = torch.tensor([[-1.0, -1.0], [2.0, 3.0]], dtype=torch.float64)
+    val_oob = bc._interp(grid, oob)
+    assert torch.allclose(val_oob, torch.tensor([0.0, 3.0], dtype=torch.float64))
+
+
+def test_imshow_with_existing_axes():
+    cop = tvc.BiCop(num_step_grid=32)
+    us = torch.rand(100, 2)
+    cop.fit(us, is_tll=False)
+    fig, outer_ax = plt.subplots()
+    fig2, ax2 = cop.imshow(is_log_pdf=False, ax=outer_ax, cmap="viridis")
+    # should have returned the same axes object
+    assert ax2 is outer_ax
+
+
+def test_independent_copula_properties():
+    for cop in (tvc.BiCop(num_step_grid=64), tvc.BiCop(num_step_grid=16)):
+        # before fit, should be independent
+        #   CDF(u,v) = u·v,   PDF(u,v)=1,    hfunc_r(u,v)=u,  hfunc_l(u,v)=v
+        us = torch.rand(1000, 2, dtype=torch.float64)
+        cdf = cop.cdf(us)
+        assert torch.allclose(cdf, (us[:, 0] * us[:, 1]).unsqueeze(1))
+        pdf = cop.pdf(us)
+        assert torch.allclose(pdf, torch.ones_like(pdf))
+        logpdf = cop.log_pdf(us)
+        assert torch.allclose(logpdf, torch.zeros_like(logpdf))
+        hr = cop.hfunc_r(us)
+        hl = cop.hfunc_l(us)
+        assert torch.allclose(hr, us[:, [0]])
+        assert torch.allclose(hl, us[:, [1]])
+        hir = cop.hinv_r(us)
+        hil = cop.hinv_l(us)
+        assert torch.allclose(hir, us[:, [0]])
+        assert torch.allclose(hil, us[:, [1]])

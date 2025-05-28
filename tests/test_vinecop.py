@@ -1,285 +1,264 @@
-import logging
-import os
-import random
-import unittest
-from itertools import combinations
-
 import networkx as nx
-import pyvinecopulib as pvc
+import pytest
 import torch
-from scipy.stats import kendalltau
 
-from torchvinecopulib.vinecop import vcp_from_json, vcp_from_obs, vcp_from_pth, vcp_from_sim
-
-from . import DCT_FAM, DEVICE, LST_MTD_FIT, LST_MTD_SEL, compare_chart_vec, sim_vcp_from_bcp
+from torchvinecopulib.vinecop import VineCop
 
 
-class TestVineCop(unittest.TestCase):
-    def setUp(self):
-        pass
+def test_init_attributes_and_defaults():
+    num_dim = 5
+    vc = VineCop(num_dim=num_dim, is_cop_scale=True, num_step_grid=32)
+    # basic attrs
+    assert vc.num_dim == num_dim
+    assert vc.is_cop_scale is True
+    assert vc.num_step_grid == 32
+    # empty structures
+    assert isinstance(vc.marginals, torch.nn.ModuleList)
+    assert len(vc.marginals) == num_dim
+    assert isinstance(vc.bicops, torch.nn.ModuleDict)
+    # number of pair-copulas = n(n-1)/2
+    assert len(vc.bicops) == num_dim * (num_dim - 1) // 2
+    assert vc.tree_bidep == [{} for _ in range(num_dim - 1)]
+    assert vc.sample_order == tuple(range(num_dim))
+    # no data yet
+    assert vc.num_obs.item() == 0
 
-    def test_first(self):
-        """test vcp_from_obs given tpl_first when fitting cvine/dvine, check if they are prioritized"""
-        mtd_fit = "itau"
-        mtd_sel = "aic"
-        num_dim = 10
-        for len_first in (1, 3):
-            for fam, (_, bcp_tvc) in DCT_FAM.items():
-                V_mvcp = vcp_from_sim(num_dim=num_dim, seed=0).sim(num_sim=1000, device=DEVICE)
-                for mtd_bidep in [
-                    "kendall_tau",
-                    "ferreira_tail_dep_coeff",
-                    "chatterjee_xi",
-                    "wasserstein_dist_ind",
-                ]:
-                    for mtd_vine in ("cvine", "dvine", "rvine"):
-                        tpl_first = tuple(
-                            {random.randint(0, num_dim - 1) for _ in range(len_first)}
-                        )
-                        len_first = len(tpl_first)
-                        if fam in ("StudentT", "Independent") or mtd_bidep == "mutual_info":
-                            continue
-                        logging.info(
-                            msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
-                        )
-                        res_tvc = vcp_from_obs(
-                            obs_mvcp=V_mvcp,
-                            is_Dissmann=True,
-                            mtd_vine=mtd_vine,
-                            tpl_first=tpl_first,
-                            mtd_bidep=mtd_bidep,
-                            thresh_trunc=1,
-                            mtd_fit=mtd_fit,
-                            mtd_sel=mtd_sel,
-                            tpl_fam=(fam, "Independent"),
-                        )
-                        assert set(res_tvc.tpl_sim[-len_first:]) == set(tpl_first)
 
-    def test_sim_lpdf_pvc_cdf(self):
-        """test the simulation, diagonal of structure matrix, l_pdf and cdf"""
-        mtd_fit = "itau"
-        mtd_bidep, tree_criterion = "kendall_tau", "tau"
-        mtd_sel, selection_criterion = "aic", "aic"
-        for fam, (bcp_pvc, bcp_tvc) in DCT_FAM.items():
-            if fam in ("StudentT", "Independent"):
-                continue
-            logging.info(msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc} {bcp_pvc} {mtd_fit}")
-            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
-            num_dim = V_mvcp.shape[1]
-            # * struct: sim, cvine
-            res_tvc = vcp_from_obs(
-                obs_mvcp=V_mvcp,
-                is_Dissmann=True,
-                mtd_vine="cvine",
-                tpl_first=[],
-                matrix=None,
-                mtd_bidep=mtd_bidep,
-                thresh_trunc=1,
-                mtd_fit=mtd_fit,
-                mtd_sel=mtd_sel,
-                tpl_fam=(fam, "Independent"),
-            )
-            res_sim = vcp_from_obs(
-                obs_mvcp=res_tvc.sim(num_sim=20000, device=DEVICE),
-                is_Dissmann=True,
-                mtd_vine="cvine",
-                tpl_first=[],
-                matrix=None,
-                mtd_bidep=mtd_bidep,
-                thresh_trunc=1,
-                mtd_fit=mtd_fit,
-                mtd_sel=mtd_sel,
-                tpl_fam=(fam, "Independent"),
-            )
-            assert sum([(a - b) for a, b in zip(res_tvc.tpl_sim, res_sim.tpl_sim)]) <= 1
-            # * struct: sim, dvine
-            res_tvc = vcp_from_obs(
-                obs_mvcp=V_mvcp,
-                is_Dissmann=True,
-                mtd_vine="dvine",
-                tpl_first=[],
-                matrix=None,
-                mtd_bidep=mtd_bidep,
-                thresh_trunc=1,
-                mtd_fit=mtd_fit,
-                mtd_sel=mtd_sel,
-                tpl_fam=(fam, "Independent"),
-            )
-            res_sim = vcp_from_obs(
-                obs_mvcp=res_tvc.sim(num_sim=20000, device=DEVICE),
-                is_Dissmann=True,
-                mtd_vine="dvine",
-                tpl_first=[],
-                matrix=None,
-                mtd_bidep=mtd_bidep,
-                thresh_trunc=1,
-                mtd_fit=mtd_fit,
-                mtd_sel=mtd_sel,
-                tpl_fam=(fam, "Independent"),
-            )
-            assert sum([(a - b) for a, b in zip(res_tvc.tpl_sim, res_sim.tpl_sim)]) <= 1
-            # * l_pdf, rvine
-            res_tvc = vcp_from_obs(
-                obs_mvcp=V_mvcp,
-                is_Dissmann=True,
-                mtd_vine="rvine",
-                tpl_first=[],
-                matrix=None,
-                mtd_bidep=mtd_bidep,
-                thresh_trunc=1,
-                mtd_fit=mtd_fit,
-                mtd_sel=mtd_sel,
-                tpl_fam=(fam, "Independent"),
-            )
-            assert abs(res_tvc.negloglik + res_tvc.l_pdf(V_mvcp).sum()) <= 1e-6
-            # * struct: pvc, rvine
-            res_pvc = pvc.Vinecop(
-                data=V_mvcp.cpu(),
-                controls=pvc.FitControlsVinecop(
-                    family_set=[bcp_pvc, pvc.BicopFamily.indep],
-                    parametric_method=mtd_fit,
-                    tree_criterion=tree_criterion,
-                    selection_criterion=selection_criterion,
-                ),
-            )
-            # ! notice the order of the diagonal elements, and indexing starts from 1
-            diag_pvc = [res_pvc.matrix[num_dim - 1 - i, i] for i in range(num_dim)]
-            diag_tvc = [res_tvc.matrix[i, i] for i in range(num_dim)]
-            assert sum([(1 + a - b) for a, b in zip(diag_tvc, diag_pvc)]) <= 1
-            # * cdf: pvc, rvine
-            vec_tvc = res_tvc.cdf(obs_mvcp=V_mvcp, num_sim=30000).cpu().numpy().flatten()
-            vec_pvc = res_pvc.cdf(V_mvcp.cpu(), N=20000, num_threads=4)
-            if err := compare_chart_vec(
-                vec_pvc=vec_pvc,
-                vec_tvc=vec_tvc,
-                atol=6e-2,
-                title=f"vinecop_cdf_{fam}_{mtd_fit}",
-                label="cdf",
-            ):
-                logging.error(msg=err)
-                raise err
-        return None
+def test_device_and_dtype_after_cuda():
+    vc = VineCop(3).to("cpu")
+    assert vc.device.type == "cpu"
+    assert vc.dtype is torch.float64
+    if torch.cuda.is_available():
+        vc2 = VineCop(3).cuda()
+        assert vc2.device.type == "cuda"
 
-    def test_from_matrix(self):
-        """test vcp_from_obs with tree indicated by matrix"""
-        mtd_bidep = "kendall_tau"
-        for fam, (_, bcp_tvc) in DCT_FAM.items():
-            V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_sim=1000)
-            for mtd_fit in LST_MTD_FIT:
-                for mtd_sel in LST_MTD_SEL:
-                    if fam in ("StudentT", "Independent"):
-                        continue
-                    logging.info(
-                        msg=f"\nTesting:\t{fam}\nComparing:\t{bcp_tvc}, {mtd_fit} {mtd_sel} {mtd_bidep}"
-                    )
-                    res_tvc = vcp_from_obs(
-                        obs_mvcp=V_mvcp,
-                        is_Dissmann=True,
-                        matrix=None,
-                        mtd_bidep=mtd_bidep,
-                        thresh_trunc=1,
-                        mtd_fit=mtd_fit,
-                        mtd_sel=mtd_sel,
-                        tpl_fam=(fam, "Independent"),
-                    )
-                    assert res_tvc == vcp_from_obs(
-                        obs_mvcp=V_mvcp,
-                        is_Dissmann=False,
-                        matrix=res_tvc.matrix,
-                        mtd_bidep=mtd_bidep,
-                        thresh_trunc=1,
-                        mtd_fit=mtd_fit,
-                        mtd_sel=mtd_sel,
-                        tpl_fam=(fam, "Independent"),
-                    )
 
-    def test_io(self):
-        """test vcp_from_json, vcp_from_pth and vcp_to_json, vcp_to_pth"""
-        fam = "Clayton"
-        bcp_tvc = DCT_FAM[fam][1]
-        mtd_fit = "itau"
-        mtd_sel = "aic"
-        num_dim = 6
-        num_obs = 1000
-        mtd_bidep = "kendall_tau"
-        tpl_first = (3, 5)
-        len_first = len(tpl_first)
-        V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_dim=num_dim, num_sim=num_obs)
-        for mtd_vine in ("cvine", "dvine", "rvine"):
-            logging.info(
-                msg=f"\nTesting:\t\nComparing:\t{bcp_tvc}, {mtd_vine} {mtd_fit} {mtd_sel} {mtd_bidep}"
-            )
-            res_tvc = vcp_from_obs(
-                obs_mvcp=V_mvcp,
-                is_Dissmann=True,
-                mtd_vine=mtd_vine,
-                tpl_first=tpl_first,
-                matrix=None,
-                mtd_bidep=mtd_bidep,
-                thresh_trunc=1,
-                mtd_fit=mtd_fit,
-                mtd_sel=mtd_sel,
-            )
-            # __str__
-            dct_str = eval(str(res_tvc))
-            assert dct_str["mtd_bidep"] == mtd_bidep
-            assert dct_str["num_dim"] == num_dim
-            assert dct_str["num_obs"] == num_obs
-            if mtd_vine in ("cvine", "dvine"):
-                assert set(dct_str["tpl_sim"][-len_first:]) == set(tpl_first)
-        # draw
-        path = "./vcp.png"
-        fig, ax, G, tmp_p = res_tvc.draw_lv(f_path=path)
-        assert isinstance(G, nx.Graph)
-        os.remove(tmp_p)
-        fig, ax, G, path = res_tvc.draw_dag(f_path=path)
-        assert isinstance(G, nx.DiGraph)
-        os.remove(path)
-        # json
-        path = "./vcp.json"
-        tmp_p = res_tvc.vcp_to_json(f_path=path)
-        tmp_f = vcp_from_json(tmp_p)
-        assert tmp_f == res_tvc
-        os.remove(tmp_p)
-        # pth
-        path = "./vcp.pth"
-        tmp_p = res_tvc.vcp_to_pth(f_path=path)
-        tmp_f = vcp_from_pth(tmp_p)
-        assert tmp_f == res_tvc
-        os.remove(tmp_p)
+@pytest.mark.parametrize("mtd_vine", ["dvine", "cvine", "rvine"])
+@pytest.mark.parametrize(
+    "mtd_bidep",
+    ["kendall_tau", "mutual_info", "chatterjee_xi", "ferreira_tail_dep_coeff"],
+)
+def test_fit_sample_logpdf_cdf_forward(mtd_vine, mtd_bidep):
+    num_dim = 5
+    torch.manual_seed(0)
+    U = torch.special.ndtri(torch.rand(200, num_dim, dtype=torch.float64))
+    vc = VineCop(num_dim=num_dim, is_cop_scale=False, num_step_grid=32)
+    # fit in copula-scale
+    vc.fit(
+        obs=U,
+        is_tll=True,  # use TLL for bidep estimation
+        is_dissmann=True,
+        mtd_vine=mtd_vine,
+        mtd_bidep=mtd_bidep,
+        thresh_trunc=None,  # no truncation
+    )
+    # num_obs must be updated
+    assert vc.num_obs.item() == 200
 
-    def test_rosenblatt(self):
-        fam = "Clayton"
-        bcp_tvc = DCT_FAM[fam][1]
-        mtd_fit = "itau"
-        mtd_sel = "aic"
-        num_dim = 10
-        num_obs = 10000
-        mtd_bidep = "kendall_tau"
-        tpl_first = (3, 5)
-        V_mvcp = sim_vcp_from_bcp(bcp_tvc=bcp_tvc, num_dim=num_dim, num_sim=num_obs)
-        res_tvc = vcp_from_obs(
-            obs_mvcp=V_mvcp,
-            is_Dissmann=True,
-            tpl_first=tpl_first,
-            mtd_bidep=mtd_bidep,
-            thresh_trunc=0.1,
-            mtd_fit=mtd_fit,
-            mtd_sel=mtd_sel,
-        )
-        V_mvcp_rosenblatt = res_tvc.rosenblatt_transform(V_mvcp)
-        V_mvcp_rosenblatt = torch.hstack(
-            [V_mvcp_rosenblatt[_] for _ in sorted(V_mvcp_rosenblatt.keys())]
-        )
+    # sampling
+    samp = vc.sample(num_sample=50, seed=1, is_sobol=False)
+    assert samp.shape == (50, num_dim)
 
-        for col_i, col_j in combinations(range(V_mvcp_rosenblatt.shape[1]), 2):
-            assert (
-                kendalltau(
-                    x=V_mvcp_rosenblatt[:, col_i].cpu(), y=V_mvcp_rosenblatt[:, col_j].cpu()
-                ).pvalue
-                > 0.1
+    # log_pdf
+    lp = vc.log_pdf(U)
+    assert lp.shape == (200, 1)
+    # forward = neg average log-lik
+    fwd = vc.forward(U)
+    assert fwd.dim() == 0
+
+    # cdf approximation in [0,1]
+    cdf_vals = vc.cdf(U[:10], num_sample=1000, seed=2)
+    assert cdf_vals.shape == (10, 1)
+    assert (cdf_vals >= 0).all() and (cdf_vals <= 1).all()
+
+
+@pytest.mark.parametrize("mtd_vine", ["dvine", "cvine", "rvine"])
+@pytest.mark.parametrize(
+    "mtd_bidep",
+    ["kendall_tau", "mutual_info", "chatterjee_xi", "ferreira_tail_dep_coeff"],
+)
+def test_matrix_diagonal_matches_sample_order(mtd_vine, mtd_bidep):
+    num_dim = 5
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    torch.manual_seed(1)
+    U = torch.rand(100, num_dim, dtype=torch.float64)
+    vc.fit(
+        U,
+        is_tll=True,
+        is_dissmann=True,
+        mtd_vine=mtd_vine,
+        mtd_bidep=mtd_bidep,
+    )
+    M = vc.matrix
+    # must be square
+    assert M.shape == (num_dim, num_dim)
+    # * d unique elements in each row
+    for i in range(num_dim):
+        elems = set(M[i, :].tolist())
+        elems.discard(-1)  # discard -1
+        assert len(elems) == num_dim - i, f"Row {i} has incorrect unique elements"
+    # diag = sample_order
+    for i in range(num_dim):
+        assert M[i, i].item() == vc.sample_order[i]
+
+
+def test_fit_with_explicit_matrix_uses_exact_edges():
+    num_dim = 5
+    torch.manual_seed(1)
+    U = torch.rand(200, num_dim, dtype=torch.float64)
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    vc.fit(U, is_tll=True, is_dissmann=True)
+    M = vc.matrix
+    # M is a square matrix with num_dim rows and columns
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    # fit with our explicit matrix
+    vc.fit(U, is_dissmann=False, matrix=M)
+    # now verify that for each level lv, and each idx in [0..num_dim-lv-2],
+    # the edge (v_l, v_r, *cond) comes out exactly as we encoded it in M
+    for lv in range(num_dim - 1):
+        tree = vc.tree_bidep[lv]
+        # must have exactly num_dim-lv-1 edges
+        assert len(tree) == num_dim - lv - 1
+
+        for idx in range(num_dim - lv - 1):
+            # the two “free” spots in row idx of M
+            a = int(M[idx, idx])
+            b = int(M[idx, num_dim - lv - 1])
+            v_l, v_r = sorted((a, b))
+            # any remaining entries in that row form the conditioning set
+            cond = sorted([int(_) for _ in M[idx, num_dim - lv :].tolist()])
+            expected_edge = (v_l, v_r, *cond)
+
+            # check that this exact tuple is a key in tree_bidep[lv]
+            assert expected_edge in tree, (
+                f"Expected edge {expected_edge} at level {lv} but got {list(tree)}"
             )
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_reset_clears_all_levels_and_bicops():
+    num_dim = 5
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    torch.manual_seed(0)
+    U = torch.rand(50, num_dim, dtype=torch.float64)
+    # fit with Dissmann algorithm
+    vc.fit(
+        U,
+        is_dissmann=True,
+        is_tll=True,
+        mtd_vine="rvine",
+        mtd_bidep="kendall_tau",
+        thresh_trunc=None,
+    )
+    assert vc.num_obs.item() > 0
+    # now reset
+    vc.reset()
+    assert vc.num_obs.item() == 0
+    assert vc.tree_bidep == [{} for _ in range(num_dim - 1)]
+    # all BiCop should be independent again
+    assert all(bc.is_indep for bc in vc.bicops.values())
+
+
+def test_reset_and_str():
+    num_dim = 5
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    torch.manual_seed(0)
+    U = torch.rand(50, num_dim, dtype=torch.float64)
+    # fit with Dissmann algorithm
+    vc.fit(
+        U,
+        is_dissmann=True,
+        is_tll=True,
+        mtd_vine="rvine",
+        mtd_bidep="kendall_tau",
+        thresh_trunc=None,
+    )
+    # __str__ contains key fields
+    s = str(vc)
+    for key in [
+        "num_dim",
+        "num_obs",
+        "is_cop_scale",
+        "num_step_grid",
+        "mtd_bidep",
+        "negloglik",
+        "dtype",
+        "device",
+        "sample_order",
+    ]:
+        assert key in s, f"'{key}' not found in VineCop string representation"
+
+
+@pytest.mark.parametrize("mtd_vine", ["dvine", "cvine", "rvine"])
+@pytest.mark.parametrize(
+    "mtd_bidep",
+    ["kendall_tau", "mutual_info", "chatterjee_xi", "ferreira_tail_dep_coeff"],
+)
+def test_ref_count_hfunc_on_fitted_vine(mtd_vine, mtd_bidep):
+    num_dim = 5
+    torch.manual_seed(0)
+    U = torch.rand(100, num_dim, dtype=torch.float64)
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
+    vc.fit(
+        U,
+        is_tll=True,
+        is_dissmann=True,
+        mtd_vine=mtd_vine,
+        mtd_bidep=mtd_bidep,
+        thresh_trunc=0.1,
+    )
+    # test static ref_count_hfunc
+    ref_cnt, sources, num_hfunc = VineCop.ref_count_hfunc(
+        num_dim=vc.num_dim,
+        struct_obs=vc.struct_obs,
+        sample_order=vc.sample_order,
+    )
+    assert isinstance(ref_cnt, dict)
+    assert isinstance(sources, list)
+    assert isinstance(num_hfunc, int)
+    if mtd_vine == "cvine":
+        # for cvine, we expect 0 hfuncs
+        assert num_hfunc == 0
+    else:
+        assert num_hfunc >= 0
+
+
+def test_draw_lv_and_draw_dag(tmp_path):
+    num_dim = 5
+    torch.manual_seed(0)
+    U = torch.rand(100, num_dim, dtype=torch.float64)
+    vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=32)
+    vc.fit(
+        U,
+        is_tll=True,
+        is_dissmann=True,
+        mtd_vine="rvine",
+        mtd_bidep="kendall_tau",
+        thresh_trunc=None,
+    )
+
+    # draw level-0 with pseudo-obs nodes
+    fig, ax, G = vc.draw_lv(lv=0, is_bcp=False)
+    assert isinstance(G, nx.Graph)
+    assert G.number_of_nodes() > 0
+
+    # save level-1 bicop view
+    fpath_lv = tmp_path / "level1.png"
+    fig2, ax2, G2, outpath_lv = vc.draw_lv(lv=1, is_bcp=True, f_path=fpath_lv)
+    assert outpath_lv == fpath_lv
+    assert fpath_lv.exists()
+    # save level-1 pseudo-obs view
+    fpath_lv = tmp_path / "level1.png"
+    fig2, ax2, G2, outpath_lv = vc.draw_lv(lv=1, is_bcp=False, f_path=fpath_lv)
+    assert outpath_lv == fpath_lv
+    assert fpath_lv.exists()
+
+    # draw the DAG
+    fig3, ax3, G3 = vc.draw_dag()
+    assert isinstance(G3, nx.DiGraph)
+    assert len(G3.nodes) > 0
+
+    # save DAG
+    fpath_dag = tmp_path / "dag.png"
+    fig4, ax4, G4, outpath_dag = vc.draw_dag(f_path=fpath_dag)
+    assert outpath_dag == fpath_dag
+    assert fpath_dag.exists()
