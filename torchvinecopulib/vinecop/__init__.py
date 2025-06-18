@@ -417,7 +417,7 @@ class VineCop(torch.nn.Module):
         mtd_vine: str = "rvine",
         mtd_bidep: str = "chatterjee_xi",
         thresh_trunc: None | float = 0.01,
-        is_tll: bool = False,
+        mtd_kde: str = "fastKDE",
         mtd_tll: str = "constant",
         num_iter_max: int = 17,
         is_tau_est: bool = False,
@@ -436,9 +436,9 @@ class VineCop(torch.nn.Module):
             mtd_vine (str, optional): method for vine structure. One of "cvine", "dvine", "rvine". Defaults to "rvine".
             mtd_bidep (str, optional): method for bivariate dependence. One of "chatterjee_xi", "ferreira_tail_dep_coeff", "kendall_tau", "mutual_info", "spearman_rho". Defaults to "chatterjee_xi".
             thresh_trunc (None | float, optional): threshold for truncating bivariate copulas using p-val from Kendall's tau stats test. Defaults to 0.01.
-            is_tll (bool, optional): Using ``tll`` or ``fastKDE``. Defaults to False (``fastKDE``).
+            mtd_kde (str, optional): method for bicop KDE. One of "fastKDE" or "tll". Defaults to "fastKDE".
             mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
-            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when is_tll=False. Defaults to 17.
+            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when `mtd_kde` is "fastKDE". Defaults to 17.
             is_tau_est (bool, optional): If True, compute and store Kendall’s τ inside BiCop. Defaults to False.
             num_step_grid_kde1d (int, optional): Grid resolution for each marginal KDE. Defaults to None.
             **kde_kwargs: additional keyword arguments for ``kdeCDFPPF1D``.
@@ -588,7 +588,7 @@ class VineCop(torch.nn.Module):
                         obs=obs_bcp,
                         num_iter_max=num_iter_max,
                         is_tau_est=is_tau_est,
-                        is_tll=is_tll,
+                        mtd_kde=mtd_kde,
                         mtd_tll=mtd_tll,
                     )
                     self.struct_bcp[cond_ed]["is_indep"] = False
@@ -978,12 +978,12 @@ class VineCop(torch.nn.Module):
                 label_v = self.struct_obs[lv][(v, *s)]
                 # * append the cond_ing set
                 sep = "" if lv == 1 else "\n"
-                label_u = f"{label_u};{sep}{
-                    ','.join(str(x) for x in sorted(self.struct_bcp[label_u]['cond_ing']))
-                }"
-                label_v = f"{label_v};{sep}{
-                    ','.join(str(x) for x in sorted(self.struct_bcp[label_v]['cond_ing']))
-                }"
+                label_u = f"""{label_u};{sep}{
+                    ",".join(str(x) for x in sorted(self.struct_bcp[label_u]["cond_ing"]))
+                }"""
+                label_v = f"""{label_v};{sep}{
+                    ",".join(str(x) for x in sorted(self.struct_bcp[label_v]["cond_ing"]))
+                }"""
                 edge_weight.append((label_u, label_v, round(w.item(), num_digit)))
         else:
             # ! nodes are pseudo‐obs "v|s"

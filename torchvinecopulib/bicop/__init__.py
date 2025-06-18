@@ -68,7 +68,7 @@ class BiCop(torch.nn.Module):
         super().__init__()
         # * by default an independent bicop, otherwise cache grids from KDE
         self.is_indep = True
-        self.is_tll = False
+        self.mtd_kde = "tll"  # default method for estimating the copula density
         self.num_step_grid = num_step_grid
         self.register_buffer("tau", torch.zeros(2, dtype=torch.float64))
         self.register_buffer("num_obs", torch.empty((), dtype=torch.int))
@@ -131,7 +131,7 @@ class BiCop(torch.nn.Module):
     def fit(
         self,
         obs: torch.Tensor,
-        is_tll: bool = True,
+        mtd_kde: bool = "tll",
         mtd_tll: str = "constant",
         num_iter_max: int = 17,
         is_tau_est: bool = False,
@@ -148,15 +148,15 @@ class BiCop(torch.nn.Module):
 
         Args:
             obs (torch.Tensor): shape (n, 2) bicop obs in [0, 1]².
-            is_tll (bool, optional): Using tll or fastKDE. Defaults to True (tll).
-            mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
-            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when ``is_tll=False``. Defaults to 17.
+            mtd_kde (str, optional): Method for estimating the copula density. One of ("tll", "fastKDE"). Defaults to "tll".
+            mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, used only when ``mtd_kde="tll"``, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
+            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when ``mtd_kde="fastKDE"``. Defaults to 17.
             is_tau_est (bool, optional): If True, compute and store Kendall’s τ. Defaults to ``False``.
         """
         # ! device agnostic
         device, dtype = self.device, self.dtype
         self.is_indep = False
-        self.is_tll = is_tll
+        self.mtd_kde = mtd_kde
         self.num_obs.copy_(obs.shape[0])
         # * assuming already in [0, 1]
         obs = obs.clamp(min=0.0, max=1.0)
@@ -171,7 +171,7 @@ class BiCop(torch.nn.Module):
         self._target = self.num_step_grid - 1.0  # * marginal target
         self.step_grid = 1.0 / self._target
         # ! pdf
-        if is_tll:
+        if mtd_kde == "tll":
             controls = pv.FitControlsBicop(
                 family_set=[pv.tll],
                 num_threads=torch.get_num_threads(),
@@ -190,7 +190,7 @@ class BiCop(torch.nn.Module):
                 .view(self.num_step_grid, self.num_step_grid)
                 .to(device=device, dtype=dtype)
             )
-        else:
+        elif mtd_kde == "fastKDE":
             pdf_grid = torch.from_numpy(
                 fkpdf(
                     obs[:, 0].cpu(),
@@ -224,6 +224,8 @@ class BiCop(torch.nn.Module):
                 pdf_grid *= self._target / pdf_grid.sum(dim=0, keepdim=True)
                 pdf_grid *= self._target / pdf_grid.sum(dim=1, keepdim=True)
             pdf_grid /= pdf_grid.sum() * self.step_grid**2
+        else:
+            raise NotImplementedError
         self._pdf_grid = pdf_grid
         # * negloglik
         self.negloglik = -self.log_pdf(obs=obs).nan_to_num(posinf=0.0, neginf=0.0).sum()
@@ -421,23 +423,23 @@ class BiCop(torch.nn.Module):
         Returns:
             str: String representation of the BiCop class.
         """
-        return f"{self.__class__.__name__}\n{
+        return f"""{self.__class__.__name__}\n{
             pformat(
                 object={
-                    'is_indep': self.is_indep,
-                    'num_obs': self.num_obs,
-                    'negloglik': self.negloglik.round(decimals=4),
-                    'num_step_grid': self.num_step_grid,
-                    'tau': self.tau.round(decimals=4),
-                    'is_tll': self.is_tll,
-                    'dtype': self._dd.dtype,
-                    'device': self._dd.device,
+                    "is_indep": self.is_indep,
+                    "num_obs": self.num_obs,
+                    "negloglik": self.negloglik.round(decimals=4),
+                    "num_step_grid": self.num_step_grid,
+                    "tau": self.tau.round(decimals=4),
+                    "mtd_kde": self.mtd_kde,
+                    "dtype": self._dd.dtype,
+                    "device": self._dd.device,
                 },
                 compact=True,
                 sort_dicts=False,
                 underscore_numbers=True,
             )
-        }"
+        }"""
 
     @torch.no_grad()
     def imshow(

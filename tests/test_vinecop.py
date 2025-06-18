@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 import torch
@@ -46,7 +47,7 @@ def test_fit_sample_logpdf_cdf_forward(mtd_vine, mtd_bidep):
     # fit in copula-scale
     vc.fit(
         obs=U,
-        is_tll=True,  # use TLL for bidep estimation
+        mtd_kde="tll",  # use TLL for bidep estimation
         is_dissmann=True,
         mtd_vine=mtd_vine,
         mtd_bidep=mtd_bidep,
@@ -84,7 +85,7 @@ def test_matrix_diagonal_matches_sample_order(mtd_vine, mtd_bidep):
     U = torch.rand(100, num_dim, dtype=torch.float64)
     vc.fit(
         U,
-        is_tll=True,
+        mtd_kde="tll",
         is_dissmann=True,
         mtd_vine=mtd_vine,
         mtd_bidep=mtd_bidep,
@@ -107,7 +108,7 @@ def test_fit_with_explicit_matrix_uses_exact_edges():
     torch.manual_seed(1)
     U = torch.rand(200, num_dim, dtype=torch.float64)
     vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
-    vc.fit(U, is_tll=True, is_dissmann=True)
+    vc.fit(U, mtd_kde="tll", is_dissmann=True)
     M = vc.matrix
     # M is a square matrix with num_dim rows and columns
     vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
@@ -144,7 +145,7 @@ def test_reset_clears_all_levels_and_bicops():
     vc.fit(
         U,
         is_dissmann=True,
-        is_tll=True,
+        mtd_kde="tll",
         mtd_vine="rvine",
         mtd_bidep="kendall_tau",
         thresh_trunc=None,
@@ -167,7 +168,7 @@ def test_reset_and_str():
     vc.fit(
         U,
         is_dissmann=True,
-        is_tll=True,
+        mtd_kde="tll",
         mtd_vine="rvine",
         mtd_bidep="kendall_tau",
         thresh_trunc=None,
@@ -200,7 +201,7 @@ def test_ref_count_hfunc_on_fitted_vine(mtd_vine, mtd_bidep):
     vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=16)
     vc.fit(
         U,
-        is_tll=True,
+        mtd_kde="tll",
         is_dissmann=True,
         mtd_vine=mtd_vine,
         mtd_bidep=mtd_bidep,
@@ -229,7 +230,7 @@ def test_draw_lv_and_draw_dag(tmp_path):
     vc = VineCop(num_dim, is_cop_scale=True, num_step_grid=32)
     vc.fit(
         U,
-        is_tll=True,
+        mtd_kde="tll",
         is_dissmann=True,
         mtd_vine="rvine",
         mtd_bidep="kendall_tau",
@@ -240,25 +241,30 @@ def test_draw_lv_and_draw_dag(tmp_path):
     fig, ax, G = vc.draw_lv(lv=0, is_bcp=False)
     assert isinstance(G, nx.Graph)
     assert G.number_of_nodes() > 0
+    plt.close(fig)
 
     # save level-1 bicop view
     fpath_lv = tmp_path / "level1.png"
     fig2, ax2, G2, outpath_lv = vc.draw_lv(lv=1, is_bcp=True, f_path=fpath_lv)
     assert outpath_lv == fpath_lv
     assert fpath_lv.exists()
+    plt.close(fig2)
     # save level-1 pseudo-obs view
     fpath_lv = tmp_path / "level1.png"
     fig2, ax2, G2, outpath_lv = vc.draw_lv(lv=1, is_bcp=False, f_path=fpath_lv)
     assert outpath_lv == fpath_lv
     assert fpath_lv.exists()
+    plt.close(fig2)
 
     # draw the DAG
     fig3, ax3, G3 = vc.draw_dag()
     assert isinstance(G3, nx.DiGraph)
     assert len(G3.nodes) > 0
+    plt.close(fig3)
 
     # save DAG
     fpath_dag = tmp_path / "dag.png"
     fig4, ax4, G4, outpath_dag = vc.draw_dag(f_path=fpath_dag)
     assert outpath_dag == fpath_dag
     assert fpath_dag.exists()
+    plt.close(fig4)

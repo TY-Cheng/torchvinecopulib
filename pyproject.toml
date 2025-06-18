@@ -17,8 +17,8 @@ documentation = "https://ty-cheng.github.io/torchvinecopulib/"
 
 [project]
 name = "torchvinecopulib"
-version = "1.0.4"
-requires-python = ">=3.12"
+version = "1.1.0"
+requires-python = ">=3.11"
 authors = [{ name = "Tuoyuan Cheng", email = "tuoyuan.cheng@nus.edu.sg" }]
 maintainers = [
     { name = "Saikiran Reddy Poreddy", email = "saikiran.poreddy@u.nus.edu" },
@@ -39,6 +39,7 @@ classifiers = [
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
