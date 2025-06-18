@@ -16,7 +16,7 @@ def train_vine(Z_train, Y_train, seed=42, device="cpu"):
         obs=ZY_train,
         first_tree_vertex=first_tree_vertex,
         mtd_bidep="ferreira_tail_dep_coeff",
-        is_tll=True,
+        mtd_kde="tll",
         mtd_tll="quadratic",
         seed=seed,
     )

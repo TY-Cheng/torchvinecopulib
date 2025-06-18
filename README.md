@@ -38,9 +38,9 @@ pip install torchvinecopulib torch
 
 ```bash
 # inside project root folder
-pip install ./dist/torchvinecopulib-1.0.4-py3-none-any.whl
+pip install ./dist/torchvinecopulib-1.1.0-py3-none-any.whl
 # or
-pip install ./dist/torchvinecopulib-1.0.4.tar.gz
+pip install ./dist/torchvinecopulib-1.1.0.tar.gz
 ```
 
 ### (Recommended) [uv](https://docs.astral.sh/uv/getting-started/) for Dependency Management and Packaging
@@ -61,7 +61,7 @@ uv sync --extra cu126 -U
 fastkde = "*"
 numpy = "*"
 pyvinecopulib = "*"
-python = ">=3.12"
+python = ">=3.11"
 scipy = "*"
 # optional to facilitate customization
 torch = [

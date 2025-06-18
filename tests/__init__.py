@@ -40,10 +40,10 @@ def bicop_pair(request):
 
     # 2) fit two torchvinecopulib instances (fast KDE and TLL)
     bc_fast = tvc.BiCop(num_step_grid=512).to(DEVICE)
-    bc_fast.fit(U_tensor, is_tll=False)
+    bc_fast.fit(U_tensor, mtd_kde="fastKDE")
 
     bc_tll = tvc.BiCop(num_step_grid=512).to(DEVICE)
-    bc_tll.fit(U_tensor, is_tll=True)
+    bc_tll.fit(U_tensor, mtd_kde="tll")
 
     return family, true_params, rotation, U_tensor, bc_fast, bc_tll
 

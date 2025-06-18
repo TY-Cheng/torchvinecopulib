@@ -210,7 +210,7 @@ class LitMNISTAutoencoder(pl.LightningModule):
         ).to(DEVICE)
         vine_tvc.fit(
             obs=representations_subset,
-            is_tll=True,
+            mtd_kde="tll",
         )
         self.set_vine(vine_tvc)
         self.use_vine = True

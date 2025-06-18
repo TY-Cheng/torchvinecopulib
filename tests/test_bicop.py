@@ -118,10 +118,10 @@ def test_sample_marginals(bicop_pair):
 
 def test_internal_buffers_and_flags(bicop_pair):
     _, _, _, U, bc_fast, bc_tll = bicop_pair
-    for cop, expect_tll in [(bc_fast, False), (bc_tll, True)]:
+    for cop, mtd_kde in [(bc_fast, "fastKDE"), (bc_tll, "tll")]:
         print(cop)
         assert not cop.is_indep
-        assert cop.is_tll is expect_tll
+        assert cop.mtd_kde == mtd_kde
         assert cop.num_obs == U.shape[0]
         # all the pre‐computed grids are the right shape
         m = cop.num_step_grid
@@ -131,10 +131,10 @@ def test_internal_buffers_and_flags(bicop_pair):
 
 
 def test_tau_estimation(bicop_pair):
-    _, _, _, U, bc_fast, bc_tll = bicop_pair
+    _, _, _, U, bc_fast, bc_mtd_kde = bicop_pair
     # re‐fit with tau estimation
     bc = tvc.BiCop(num_step_grid=64)
-    bc.fit(U, is_tll=True, is_tau_est=True)
+    bc.fit(U, mtd_kde="tll", is_tau_est=True)
     # kendalltau must be nonzero for dependent data
     assert bc.tau[0].abs().item() > 0
     assert bc.tau[1].abs().item() >= 0
@@ -156,20 +156,28 @@ def test_imshow_and_plot_api(bicop_pair):
     fig, ax = cop.imshow(is_log_pdf=True)
     assert isinstance(fig, matplotlib.figure.Figure)
     assert isinstance(ax, matplotlib.axes.Axes)
+    plt.close(fig)
+
     # contour
     fig2, ax2 = cop.plot(plot_type="contour", margin_type="unif")
     assert isinstance(fig2, matplotlib.figure.Figure)
     assert isinstance(ax2, matplotlib.axes.Axes)
+    plt.close(fig2)
     fig2, ax2 = cop.plot(plot_type="contour", margin_type="norm")
     assert isinstance(fig2, matplotlib.figure.Figure)
     assert isinstance(ax2, matplotlib.axes.Axes)
+    plt.close(fig2)
+
     # surface
     fig3, ax3 = cop.plot(plot_type="surface", margin_type="unif")
     assert isinstance(fig3, matplotlib.figure.Figure)
     assert isinstance(ax3, matplotlib.axes.Axes)
+    plt.close(fig3)
     fig3, ax3 = cop.plot(plot_type="surface", margin_type="norm")
     assert isinstance(fig3, matplotlib.figure.Figure)
     assert isinstance(ax3, matplotlib.axes.Axes)
+    plt.close(fig3)
+
     # invalid args
     with pytest.raises(ValueError):
         cop.plot(plot_type="foo")
@@ -194,21 +202,21 @@ def test_reset_and_str(bicop_pair):
         assert cop.num_obs == 0
         # __str__ contains key fields
         s = str(cop)
-        assert "is_indep" in s and "num_obs" in s and "is_tll" in s
+        assert "is_indep" in s and "num_obs" in s and "mtd_kde" in s
 
 
 @pytest.mark.parametrize("method", ["constant", "linear", "quadratic"])
 def test_tll_methods_do_not_crash(U_tensor, method):
     cop = tvc.BiCop(num_step_grid=32)
     # should _not_ raise for any of the valid nonparametric_method names
-    cop.fit(U_tensor, is_tll=True, mtd_tll=method)
+    cop.fit(U_tensor, mtd_kde="tll", mtd_tll=method)
 
 
 def test_fit_invalid_method_raises(U_tensor):
     cop = tvc.BiCop(num_step_grid=32)
     with pytest.raises(RuntimeError):
         # pick something bogus
-        cop.fit(U_tensor, is_tll=True, mtd_tll="no_such_method")
+        cop.fit(U_tensor, mtd_kde="tll", mtd_tll="no_such_method")
 
 
 def test_interp_on_trivial_grid():
@@ -253,11 +261,13 @@ def test_interp_on_trivial_grid():
 def test_imshow_with_existing_axes():
     cop = tvc.BiCop(num_step_grid=32)
     us = torch.rand(100, 2)
-    cop.fit(us, is_tll=False)
+    cop.fit(us, mtd_kde="fastKDE")
     fig, outer_ax = plt.subplots()
     fig2, ax2 = cop.imshow(is_log_pdf=False, ax=outer_ax, cmap="viridis")
     # should have returned the same axes object
     assert ax2 is outer_ax
+    plt.close(fig)
+    plt.close(fig2)
 
 
 def test_independent_copula_properties():
