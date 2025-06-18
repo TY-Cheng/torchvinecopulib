@@ -131,7 +131,7 @@ class BiCop(torch.nn.Module):
     def fit(
         self,
         obs: torch.Tensor,
-        mtd_kde: bool = "tll",
+        mtd_kde: str = "tll",
         mtd_tll: str = "constant",
         num_iter_max: int = 17,
         is_tau_est: bool = False,
