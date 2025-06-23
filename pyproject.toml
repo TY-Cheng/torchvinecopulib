@@ -42,8 +42,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering",
 ]
 dependencies = ["numpy>=2", "scipy", "fastkde", "pyvinecopulib"]
@@ -76,18 +74,18 @@ dev = [
 [project.optional-dependencies]
 cpu = ["torch>=2"]
 cu126 = ["torch>=2"]
-cu124 = ["torch>=2"]
+cu128 = ["torch>=2"]
 
 [tool.uv]
 managed = true
 default-groups = ["dev"]
-conflicts = [[{ extra = "cpu" }, { extra = "cu126" }, { extra = "cu124" }]]
+conflicts = [[{ extra = "cpu" }, { extra = "cu126" }, { extra = "cu128" }]]
 
 [tool.uv.sources]
 torch = [
     { index = "torch-cpu", extra = "cpu" },
     { index = "torch-cu126", extra = "cu126" },
-    { index = "torch-cu124", extra = "cu124" },
+    { index = "torch-cu128", extra = "cu128" },
 ]
 
 [[tool.uv.index]]
@@ -101,8 +99,8 @@ url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 [[tool.uv.index]]
-name = "torch-cu124"
-url = "https://download.pytorch.org/whl/cu124"
+name = "torch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [[tool.uv.index]]
