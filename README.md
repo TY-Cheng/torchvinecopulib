@@ -21,6 +21,21 @@ Yet another vine copula package, using [PyTorch](https://pytorch.org/get-started
 - Pure `Python` library, inspired by [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
 - IO and visualization support
 
+## Citation
+If you use `TorchVineCopuLib` in your work, please cite:
+
+> Cheng, Tuoyuan, Thibault Vatter, Thomas Nagler, and Kan Chen. "Vine Copulas as Differentiable Computational Graphs." arXiv preprint arXiv:2506.13318 (2025).
+
+```latex
+@article{cheng2025vine,
+  title={Vine Copulas as Differentiable Computational Graphs},
+  author={Cheng, Tuoyuan and Vatter, Thibault and Nagler, Thomas and Chen, Kan},
+  journal={arXiv preprint arXiv:2506.13318},
+  year={2025},
+  url={https://arxiv.org/abs/2506.13318},
+}
+```
+
 ## Examples
 
 Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main/examples) folder for `.ipynb` Jupyter notebooks.
