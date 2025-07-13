@@ -434,7 +434,7 @@ class VineCop(torch.nn.Module):
             matrix (torch.Tensor, optional): matrix representation of the vine structure. Defaults to None.
             first_tree_vertex (tuple, optional): vertices of the first tree (set of conditioning variables). Defaults to ().
             mtd_vine (str, optional): method for vine structure. One of "cvine", "dvine", "rvine". Defaults to "rvine".
-            mtd_bidep (str, optional): method for bivariate dependence. One of "chatterjee_xi", "ferreira_tail_dep_coeff", "kendall_tau", "mutual_info", "spearman_rho". Defaults to "chatterjee_xi".
+            mtd_bidep (str, optional): method for bivariate dependence. One of "chatterjee_xi", "ferreira_tail_dep_coeff", "kendall_tau", "mutual_info". Defaults to "chatterjee_xi".
             thresh_trunc (None | float, optional): threshold for truncating bivariate copulas using p-val from Kendall's tau stats test. Defaults to 0.01.
             mtd_kde (str, optional): method for bicop KDE. One of "fastKDE" or "tll". Defaults to "fastKDE".
             mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".

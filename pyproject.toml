@@ -25,13 +25,7 @@ maintainers = [
 ]
 description = "yet another vine copula library, using PyTorch."
 readme = "README.md"
-keywords = [
-    "vine copula",
-    "copula",
-    "torch",
-    "conditional simulation",
-    "fastkde",
-]
+keywords = ["vine copula", "copula", "torch", "conditional simulation"]
 classifiers = [
     # "Private :: Do Not Upload",
     "License :: OSI Approved :: MIT License",
@@ -44,10 +38,12 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["numpy>=2", "scipy", "fastkde", "pyvinecopulib"]
+dependencies = ["numpy>=2", "scipy", "fastkde==2.1.3", "pyvinecopulib"]
 
 [dependency-groups]
 dev = [
+    "ccxt",
+    "missingno",
     "blitz-bayesian-pytorch",
     "coverage",
     "datasets",
