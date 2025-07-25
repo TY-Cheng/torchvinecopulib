@@ -417,7 +417,7 @@ class VineCop(torch.nn.Module):
         mtd_vine: str = "rvine",
         mtd_bidep: str = "chatterjee_xi",
         thresh_trunc: None | float = 0.01,
-        mtd_kde: str = "fastKDE",
+        mtd_kde: str = "tll",
         mtd_tll: str = "constant",
         num_iter_max: int = 17,
         is_tau_est: bool = False,
