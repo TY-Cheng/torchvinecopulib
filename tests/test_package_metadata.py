@@ -19,5 +19,4 @@ def test_metadata_fields():
     assert isinstance(tvc.__version__, str) and len(tvc.__version__) > 0
     assert tvc.__title__ == "torchvinecopulib"
     assert isinstance(tvc.__author__, str) and len(tvc.__author__) > 10
-    assert tvc.__url__.startswith("https://github.com/TY-Cheng/torchvinecopulib")
     assert isinstance(tvc.__description__, str) and len(tvc.__description__) > 10

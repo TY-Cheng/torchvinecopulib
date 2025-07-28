@@ -24,6 +24,5 @@ except PackageNotFoundError:
     __version__ = "0+unknown"
 
 __title__ = "torchvinecopulib"  # the canonical project name
-__author__ = "Tuoyuan Cheng"
-__url__ = "https://github.com/TY-Cheng/torchvinecopulib"  # the project homepage
-__description__ = "yet another vine copula library, using PyTorch."
+__author__ = "Anonymous"
+__description__ = "Anonymous"

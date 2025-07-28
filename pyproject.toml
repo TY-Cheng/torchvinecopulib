@@ -9,21 +9,18 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[project.urls]
+# [project.urls]
 # homepage = ""
-repository = "https://github.com/TY-Cheng/torchvinecopulib"
-documentation = "https://ty-cheng.github.io/torchvinecopulib/"
+# repository = ""
+# documentation = ""
 # "Bug Tracker" = ""
 
 [project]
 name = "torchvinecopulib"
 version = "1.1.0"
 requires-python = ">=3.11"
-authors = [{ name = "Tuoyuan Cheng", email = "tuoyuan.cheng@nus.edu.sg" }]
-maintainers = [
-    { name = "Saikiran Reddy Poreddy", email = "saikiran.poreddy@u.nus.edu" },
-]
-description = "yet another vine copula library, using PyTorch."
+authors = [{ name = "Anonymous", email = "Anonymous@Anonymous.com" }]
+description = "Anonymous"
 readme = "README.md"
 keywords = ["vine copula", "copula", "torch", "conditional simulation"]
 classifiers = [

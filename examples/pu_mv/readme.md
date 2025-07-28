@@ -22,5 +22,5 @@ uv sync --extra cu126 -U
 `cd` into project root folder, trigger by:
 
 ```bash
-uv run ./examples/pred_intvl/experiments.py
+uv run ./examples/pu_mv/script/__main__.py
 ```
