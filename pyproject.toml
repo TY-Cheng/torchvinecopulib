@@ -39,7 +39,6 @@ dependencies = ["numpy>=2", "scipy", "fastkde==2.1.3", "pyvinecopulib"]
 [dependency-groups]
 dev = [
     "blitz-bayesian-pytorch",
-    "ccxt",
     "coverage",
     "datasets",
     "docformatter",
@@ -48,7 +47,6 @@ dev = [
     "ipykernel",
     "kagglehub",
     "matplotlib",
-    "missingno",
     "pandas",
     "pytest-cov",
     "pytest",
@@ -60,7 +58,6 @@ dev = [
     "tokenize-rt",
     "torchvision",
     "ucimlrepo",
-    "yfinance",
 ]
 
 [project.optional-dependencies]

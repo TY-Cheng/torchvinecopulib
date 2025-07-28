@@ -710,8 +710,73 @@ class VineCop(torch.nn.Module):
 
         Maps input `obs` into uniform pseudo‐observations via successive conditional CDFs (Rosenblatt).
         # TODO, needs grad as residuals
+        # TODO: tests, docstring
         """
-        raise NotImplementedError
+        # ! device agnostic
+        device, dtype = self.device, self.dtype
+        if self.is_cop_scale:
+            obs_mvcp = obs.to(device=device, dtype=dtype)
+        else:
+            obs_mvcp = torch.hstack(
+                [self.marginals[v].cdf(obs[:, [v]]) for v in range(self.num_dim)]
+            ).to(device=device, dtype=dtype)
+        if sample_order is None:
+            sample_order = self.sample_order
+        dct_obs = [dict() for _ in range(self.num_dim)]
+        dct_obs[0] = {(idx,): obs_mvcp[:, [idx]] for idx in range(self.num_dim)}
+        lst_source = []
+        for idx, v in enumerate(sample_order):
+            # * source pseudo-obs, sorted by cond-ing set
+            s = set(sample_order[idx + 1 :])
+            lst_source.append((v, *sorted(s)))
+
+        def _visit_hfunc(lv: int, v_s: tuple) -> None:
+            """
+            Lazy hfunc for pseudo-obs at this v_s.
+            """
+            lv_up = lv - 1
+            cond_ed = self.struct_obs[lv][v_s]
+            v_l, v_r = map(int, cond_ed.split(","))
+            # * v_down (cond_ed) and s_down (cond_ing) of child pseudo obs
+            # * s_up (cond_ing) of parent bicop
+            s_up = self.struct_bcp[cond_ed]["cond_ing"]
+            bcp = self.bicops[cond_ed]
+
+            if bcp.is_indep:
+                dct_obs[lv][v_s] = dct_obs[lv_up][v_s[0], *s_up]
+            else:
+                dct_obs[lv][v_s] = (bcp.hinv_r if v_s[0] == v_l else bcp.hinv_l)(
+                    obs=torch.hstack(
+                        [
+                            dct_obs[lv_up][(v_l, *s_up)],
+                            dct_obs[lv_up][(v_r, *s_up)],
+                        ]
+                    ),
+                )
+
+        for lv in range(1, self.num_dim - 1):
+            # * every bicop's parents must be visited
+            for (v_l, v_r, *s), _ in self.tree_bidep[lv].items():
+                s = tuple(s)
+                for v in (v_l, v_r):
+                    if (v, *s) not in dct_obs[lv]:
+                        _visit_hfunc(lv=lv, v_s=(v, *s))
+            # ! the source vertex at prev level may not be visited yet
+            if lst_source[self.num_dim - 1 - lv] not in dct_obs[lv]:
+                _visit_hfunc(lv=lv, v_s=lst_source[self.num_dim - 1 - lv])
+            if lv > 0:
+                # * free prev lv dict
+                with torch.no_grad():
+                    for v_s in list(dct_obs[lv - 1].keys()):
+                        if v_s not in lst_source:
+                            # * only free if not a source pseudo-obs
+                            del dct_obs[lv - 1][v_s]
+        # ! last level
+        _visit_hfunc(lv=self.num_dim - 1, v_s=lst_source[0])
+        # ! gather pseudo-obs by v
+        return torch.hstack(
+            [dct_obs[len(s)][(v, *sorted(s))] for (v, *s) in sorted(lst_source)]
+        ).to(device=device, dtype=dtype)
 
     @torch.no_grad()
     def sample(
