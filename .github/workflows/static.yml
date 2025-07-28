@@ -1,0 +1,62 @@
+# This workflow builds and deploys the documentation to GitHub Pages
+name: Deploy Docs
+
+on:
+  # Trigger after your Lint Pytest workflow completes on main branch
+  workflow_run:
+    workflows: ["Lint Pytest"]
+    types: [completed]
+    branches: ["main"]
+
+  # ALso allow manual dispatch
+  workflow_dispatch:
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # for pushing to gh-pages branch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
+
+      - name: Build Sphinx docs
+        # regenerate module RST files (force) and build HTML docs
+        run: |
+          uv run sphinx-apidoc --force -o docs torchvinecopulib/ --separate
+          uv run sphinx-build -b html docs/ docs/_build/html
+
+          # Deploy to gh-pages branch
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          force_orphan: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: docs/_build/html
