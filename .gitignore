@@ -242,3 +242,4 @@ Temporary Items
 *.vsix
 
 *.csv
+*.mat

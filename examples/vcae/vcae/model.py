@@ -201,9 +201,9 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
         # Concatenate into a single tensor
         representations_tensor = torch.cat(representations, dim=0)
         labels_tensor = torch.cat(labels, dim=0)
-        data_tensor = torch.cat(data, dim=0).flatten(start_dim=1)
-        decoded_tensor = torch.cat(decoded, dim=0)
-        samples_tensor = torch.cat(samples, dim=0) if self.use_vine else None
+        data_tensor = torch.cat(data, dim=0).flatten(start_dim=1).flatten(start_dim=1)
+        decoded_tensor = torch.cat(decoded, dim=0).flatten(start_dim=1)
+        samples_tensor = torch.cat(samples, dim=0).flatten(start_dim=1) if self.use_vine else None
 
         return representations_tensor, labels_tensor, data_tensor, decoded_tensor, samples_tensor
 

@@ -51,7 +51,7 @@ def run_experiment(seed: int, config: Config, dataset: str = "MNIST", use_mmd: b
     model_initial.learn_vine(n_samples=5000)
 
     # Extract test data
-    rep_initial, _, data_initial, decodec_initial, samples_initial = model_initial.get_data(
+    rep_initial, _, data_initial, decoded_initial, samples_initial = model_initial.get_data(
         stage="test"
     )
 
@@ -82,7 +82,7 @@ def run_experiment(seed: int, config: Config, dataset: str = "MNIST", use_mmd: b
     loglik_initial = model_initial.vine.log_pdf(rep_initial).mean().item()
     loglik_refit = model_refit.vine.log_pdf(rep_refit).mean().item()
 
-    mse_initial = torch.nn.functional.mse_loss(decodec_initial, data_initial).item()
+    mse_initial = torch.nn.functional.mse_loss(decoded_initial, data_initial).item()
     mse_refit = torch.nn.functional.mse_loss(decoded_refit, data_refit).item()
 
     sigmas = [1e-3, 1e-2, 1e-1, 1, 10, 100]
