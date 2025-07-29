@@ -58,6 +58,7 @@ dev = [
     "tokenize-rt",
     "torchvision",
     "ucimlrepo",
+    "gdown"
 ]
 
 [project.optional-dependencies]

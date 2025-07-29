@@ -1,0 +1,213 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+import torchvinecopulib as tvc
+
+
+class VineCopAutoEncoder(nn.Module):
+    def __init__(
+        self,
+        model_type: str = "mlp",
+        input_shape=(1, 28, 28),
+        hidden_size=64,
+        latent_dim=10,
+        has_vine=False,
+        mtd_vine="rvine",
+        mtd_bidep="chatterjee_xi",
+        mtd_kde="tll",
+        tau_thresh=0.01,
+        num_step_grid=256,
+        device="cpu",
+    ):
+        super().__init__()
+        self.model_type = model_type.lower()
+        self.device = device
+        self.has_vine = has_vine
+        self.latent_dim = latent_dim
+        self.mtd_vine = mtd_vine
+        self.mtd_bidep = mtd_bidep
+        self.mtd_kde = mtd_kde
+        self.tau_thresh = tau_thresh
+        self.num_step_grid = num_step_grid
+        self.vine = nn.Identity()  # * placeholder for vine model
+
+        # * flatten input shape
+        channels, width, height = input_shape
+        flat_dim = channels * width * height
+        self.input_shape = input_shape
+        self.flat_dim = flat_dim
+
+        if self.model_type == "mlp":
+            # * MNIST
+            # * encoder
+            self.encoder = nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(flat_dim, hidden_size),
+                nn.LeakyReLU(),
+                nn.Linear(hidden_size, hidden_size // 2),
+                nn.LeakyReLU(),
+                nn.Linear(hidden_size // 2, latent_dim),
+            )
+            # * decoder
+            self.decoder = nn.Sequential(
+                nn.Linear(latent_dim, hidden_size // 2),
+                nn.LeakyReLU(),
+                nn.Linear(hidden_size // 2, hidden_size),
+                nn.LeakyReLU(),
+                nn.Linear(hidden_size, flat_dim),
+                nn.Sigmoid(),
+            )
+
+        elif self.model_type == "conv":
+            # * celebA
+            # * encoder
+            self.encoder = nn.Sequential(
+                nn.Conv2d(
+                    in_channels=channels, out_channels=64, kernel_size=4, stride=2, padding=1
+                ),  # 64×64 → 32×32
+                nn.BatchNorm2d(64),
+                nn.LeakyReLU(inplace=True),
+                #
+                nn.Conv2d(
+                    in_channels=64, out_channels=128, kernel_size=4, stride=2, padding=1
+                ),  # 32×32 → 16×16
+                nn.BatchNorm2d(128),
+                nn.LeakyReLU(inplace=True),
+                #
+                nn.Conv2d(
+                    in_channels=128, out_channels=256, kernel_size=4, stride=2, padding=1
+                ),  # 16×16 → 8×8
+                nn.BatchNorm2d(256),
+                nn.LeakyReLU(inplace=True),
+                #
+                nn.Conv2d(
+                    in_channels=256, out_channels=512, kernel_size=4, stride=2, padding=1
+                ),  # 8×8 → 4×4
+                nn.BatchNorm2d(512),
+                nn.LeakyReLU(inplace=True),
+                #
+                nn.Flatten(),
+            )
+            self.encoder_out_shape = (512, 4, 4)  # shape after conv layers
+            self.encoder_out_dim = 512 * 4 * 4  # flattened size after conv layers
+            self.fc_mu = nn.Linear(self.encoder_out_dim, latent_dim)
+
+            # * decoder
+            self.decoder_fc = nn.Sequential(
+                nn.Linear(latent_dim, self.encoder_out_dim),
+                nn.ReLU(inplace=True),
+            )
+            self.decoder = nn.Sequential(
+                nn.Unflatten(1, self.encoder_out_shape),  # reshape to conv input
+                nn.ConvTranspose2d(512, 256, 4, 2, 1),  # 4×4 → 8×8
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                #
+                nn.ConvTranspose2d(256, 128, 4, 2, 1),  # 8×8 → 16×16
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                #
+                nn.ConvTranspose2d(128, 64, 4, 2, 1),  # 16×16 → 32×32
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+                #
+                nn.ConvTranspose2d(64, channels, 4, 2, 1),  # 32×32 → 64×64
+                nn.Sigmoid(),
+            )
+        else:
+            raise ValueError("model_type must be 'mlp' or 'conv'")
+        self.to(self.device)
+
+    def forward(self, x):
+        if self.model_type == "mlp":
+            z = self.encoder(x)
+            x_hat = self.decoder(z).view(-1, *self.input_shape)
+        else:  # conv
+            h = self.encoder(x)
+            z = self.fc_mu(h)
+            h_dec = self.decoder_fc(z)
+            x_hat = self.decoder(h_dec)
+        # assert x_hat.shape == x.shape, f"Shape mismatch: got {x_hat.shape}, expected {x.shape}"
+        return x_hat, z
+
+    def reconstruct(self, x):
+        x_hat, _ = self.forward(x)
+        return x_hat
+
+    def encode(self, x):
+        if self.model_type == "mlp":
+            return self.encoder(x)
+        else:
+            return self.fc_mu(self.encoder(x))
+
+    def decode(self, z):
+        if self.model_type == "mlp":
+            return self.decoder(z).view(-1, *self.input_shape)
+        else:
+            h_dec = self.decoder_fc(z)
+            return self.decoder(h_dec)
+
+    def fit_vine(
+        self,
+        z: torch.Tensor,
+    ):
+        """Fit a vine copula model to the latent representations z."""
+        if z.ndim != 2:
+            raise ValueError("Latent representation z must be a 2D tensor.")
+
+        vine = tvc.VineCop(
+            num_dim=z.shape[1],
+            is_cop_scale=False,
+            num_step_grid=self.num_step_grid,
+        ).to(self.device)
+        with torch.no_grad():
+            vine.fit(
+                obs=z,
+                mtd_vine=self.mtd_vine,
+                mtd_bidep=self.mtd_bidep,
+                mtd_kde=self.mtd_kde,
+                thresh_trunc=self.tau_thresh,
+            )
+        self.vine = vine
+        self.has_vine = True
+
+    def sample_from_vine(
+        self,
+        num_sample: int,
+        seed: int = 42,
+        is_sobol: bool = False,
+    ) -> torch.Tensor:
+        """Sample latent representations from vine and decode to data space."""
+        if not self.has_vine or not isinstance(self.vine, tvc.VineCop):
+            raise RuntimeError("Vine model has not been fitted.")
+        z_sampled = self.vine.sample(
+            num_sample=num_sample,
+            seed=seed,
+            is_sobol=is_sobol,
+        )
+        return self.decode(
+            torch.tensor(
+                z_sampled,
+                dtype=torch.float32,
+                device=self.device,
+            )
+        )
+
+    def get_neglogpdf_vine(self, z: torch.Tensor) -> torch.Tensor:
+        """Compute the negative log-likelihood of the latent representations z."""
+        if not self.has_vine or not isinstance(self.vine, tvc.VineCop):
+            raise RuntimeError("Vine model has not been fitted.")
+        return -self.vine.log_pdf(z)
+
+    def loss_joint(
+        self, x: torch.Tensor, recon_loss_fn=F.mse_loss, lambda_nll_vine: float = 0.1
+    ) -> torch.Tensor:
+        """Compute the joint loss: reconstruction loss + lambda * NLL."""
+        x_hat, z = self.forward(x)
+        recon_loss = recon_loss_fn(x_hat, x)
+        if self.has_vine and isinstance(self.vine, tvc.VineCop) and lambda_nll_vine > 0:
+            nll_loss = self.get_neglogpdf_vine(z).mean()
+            return recon_loss + lambda_nll_vine * nll_loss
+        else:
+            return recon_loss

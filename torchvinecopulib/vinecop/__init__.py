@@ -771,7 +771,7 @@ class VineCop(torch.nn.Module):
                         if v_s not in lst_source:
                             # * only free if not a source pseudo-obs
                             del dct_obs[lv - 1][v_s]
-        # ! last level
+        # ! the source vertex at the last level
         _visit_hfunc(lv=self.num_dim - 1, v_s=lst_source[0])
         # ! gather pseudo-obs by v
         return torch.hstack(
