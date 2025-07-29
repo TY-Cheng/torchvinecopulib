@@ -12,7 +12,7 @@ logs/
 examples/MNIST
 examples/logs
 examples/**/*.gz
-examples/**/*.ipynb
+# examples/**/*.ipynb
 
 # Python-generated files
 __pycache__/
