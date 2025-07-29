@@ -12,7 +12,7 @@ class Config:
     data_dir: str = os.environ.get("PATH_DATASETS", ".")
     save_dir: str = "logs/"
     batch_size: int = 512 if torch.cuda.is_available() else 64
-    max_epochs: int = 10
+    max_epochs: int = 50
     accelerator: str = DEVICE
     devices: int = 1
     num_workers: int = 1  # min(15, os.cpu_count())
