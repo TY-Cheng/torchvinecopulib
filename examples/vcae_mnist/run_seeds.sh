@@ -2,7 +2,7 @@
 
 PYTHON_BIN=$(which python)
 
-for i in {0..90..10}; do
+for i in {0..20..10}; do
     end=$((i + 10))
     name="seeds_${i}_${end}"
     echo "Launching $name"

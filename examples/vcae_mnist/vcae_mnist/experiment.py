@@ -46,7 +46,9 @@ def run_experiment(seed: int, config: Config):
     model_initial.learn_vine(n_samples=5000)
 
     # Extract test data
-    rep_initial, _, data_initial, _, samples_initial = model_initial.get_data(stage="test")
+    rep_initial, _, data_initial, decodec_initial, samples_initial = model_initial.get_data(
+        stage="test"
+    )
 
     # Deepcopy for refit
     model_refit = copy.deepcopy(model_initial)
@@ -68,10 +70,13 @@ def run_experiment(seed: int, config: Config):
     model_refit.to(DEVICE)
 
     # Extract test data
-    rep_refit, _, data_refit, _, samples_refit = model_refit.get_data(stage="test")
+    rep_refit, _, data_refit, decoded_refit, samples_refit = model_refit.get_data(stage="test")
 
     loglik_initial = model_initial.vine.log_pdf(rep_initial).mean().item()
     loglik_refit = model_refit.vine.log_pdf(rep_refit).mean().item()
+
+    mse_initial = torch.nn.functional.mse_loss(decodec_initial, data_initial).item()
+    mse_refit = torch.nn.functional.mse_loss(decoded_refit, data_refit).item()
 
     sigmas = [1e-3, 1e-2, 1e-1, 1, 10, 100]
     score_initial = compute_score(data_initial, samples_initial, DEVICE, sigmas=sigmas)
@@ -79,10 +84,12 @@ def run_experiment(seed: int, config: Config):
 
     return {
         "seed": seed,
-        "loglik": loglik_initial,
+        "mse_initial": mse_initial,
+        "mse_refit": mse_refit,
+        "loglik_initial": loglik_initial,
         "loglik_refit": loglik_refit,
-        "mmd": score_initial.mmd,
+        "mmd_initial": score_initial.mmd,
         "mmd_refit": score_refit.mmd,
-        "fid": score_initial.fid,
+        "fid_initial": score_initial.fid,
         "fid_refit": score_refit.fid,
     }

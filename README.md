@@ -41,7 +41,7 @@ Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main
 
 ## Installation
 
-- By `pip` from [`PyPI`](https://pypi.org/project/torchvinecopulib/):
+- By `pip` from [`PyPI`](https://pypi.org/project/torchvinecopulib/) (see the dependencies and uv sections below for CUDA support):
 
 ```bash
 pip install torchvinecopulib torch
@@ -62,10 +62,19 @@ pip install ./dist/torchvinecopulib-1.1.0.tar.gz
 After `git clone https://github.com/TY-Cheng/torchvinecopulib.git`, `cd` into the project root where [`pyproject.toml`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/pyproject.toml) exists,
 
 ```bash
-# inside project root folder
-uv sync --extra cpu -U
-# or
-uv sync --extra cu126 -U
+# From inside the project root folder
+# Create and activate local virtual environment
+uv venv .venv
+source .venv/bin/activate
+
+# Sync dependencies with CPU support (default)
+uv sync --extra cpu
+
+# Or for CUDA 12.6 or 12.8 support (depends on your CUDA version)
+uv sync --extra cu126
+
+# Additionally, to install additional dependencies for the examples
+uv sync --extra examples
 ```
 
 ## Dependencies
@@ -81,6 +90,7 @@ scipy = "*"
 torch = [
     { index = "torch-cpu", extra = "cpu" },
     { index = "torch-cu126", extra = "cu126" },
+    { index = "torch-cu128", extra = "cu128" },
 ]
 ```
 

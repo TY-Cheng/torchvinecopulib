@@ -108,6 +108,6 @@ def compute_score(real, fake, device, k=1, sigmas=[1e-3, 1e-2, 1e-1, 1, 10, 100]
     s = Score()
     s.mmd = sum(mmd(Mxx, Mxy, Myy, sigma) for sigma in sigmas)
     # s.knn = knn(Mxx, Mxy, Myy, k, sqrt)
-    s.fid = fid(real, fake).numpy()
+    s.fid = fid(fake, real).numpy()
 
     return s
