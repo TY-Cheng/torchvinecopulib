@@ -1,15 +1,14 @@
 # config.yaml
 is_test: false
 device: cuda
-test_size: 0.4
+test_size: 0.5
 val_size: 0.0
-batch_size: 512
 # * Grid-style sweep
 search:
   seed: [0, 1, 2, 3, 4]
-  dataset: [mnist, celeb]
-  # dataset: [celeb]
-  # * mnist: mlp and 10; celeb: conv and 50
+  # dataset: [mnist]
+  dataset: [svhn]
+  # * mnist: mlp and 10; svhn: conv and 50
   # model_type: [mlp, conv]
   # latent_dim: [10, 50]
   lr_ae: [2e-4]
@@ -22,4 +21,4 @@ search:
   mtd_kde: [tll]
   mtd_vine: [rvine]
   num_step_grid: [128]
-  tau_thresh: [1e-2]
+  tau_thresh: [1e-3]

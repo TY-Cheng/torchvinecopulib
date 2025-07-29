@@ -60,59 +60,32 @@ class VineCopAutoEncoder(nn.Module):
             )
 
         elif self.model_type == "conv":
-            # * celebA
+            # * svhn
             # * encoder
             self.encoder = nn.Sequential(
-                nn.Conv2d(
-                    in_channels=channels, out_channels=64, kernel_size=4, stride=2, padding=1
-                ),  # 64×64 → 32×32
-                nn.BatchNorm2d(64),
-                nn.LeakyReLU(inplace=True),
-                #
-                nn.Conv2d(
-                    in_channels=64, out_channels=128, kernel_size=4, stride=2, padding=1
-                ),  # 32×32 → 16×16
-                nn.BatchNorm2d(128),
-                nn.LeakyReLU(inplace=True),
-                #
-                nn.Conv2d(
-                    in_channels=128, out_channels=256, kernel_size=4, stride=2, padding=1
-                ),  # 16×16 → 8×8
-                nn.BatchNorm2d(256),
-                nn.LeakyReLU(inplace=True),
-                #
-                nn.Conv2d(
-                    in_channels=256, out_channels=512, kernel_size=4, stride=2, padding=1
-                ),  # 8×8 → 4×4
-                nn.BatchNorm2d(512),
-                nn.LeakyReLU(inplace=True),
-                #
-                nn.Flatten(),
+                nn.Conv2d(channels, 16, 3, stride=2, padding=1),  # → [16, 16, 16]
+                nn.LeakyReLU(),
+                nn.Conv2d(16, 32, 3, stride=2, padding=1),  # → [32, 8, 8]
+                nn.LeakyReLU(),
+                nn.Flatten(),  # → 32*8*8 = 2048
             )
-            self.encoder_out_shape = (512, 4, 4)  # shape after conv layers
-            self.encoder_out_dim = 512 * 4 * 4  # flattened size after conv layers
+            self.encoder_out_dim = 32 * 8 * 8
             self.fc_mu = nn.Linear(self.encoder_out_dim, latent_dim)
 
-            # * decoder
+            # Decoder: latent_dim → [32, 8, 8] → [3, 32, 32]
             self.decoder_fc = nn.Sequential(
                 nn.Linear(latent_dim, self.encoder_out_dim),
-                nn.ReLU(inplace=True),
+                nn.LeakyReLU(),
             )
             self.decoder = nn.Sequential(
-                nn.Unflatten(1, self.encoder_out_shape),  # reshape to conv input
-                nn.ConvTranspose2d(512, 256, 4, 2, 1),  # 4×4 → 8×8
-                nn.BatchNorm2d(256),
-                nn.ReLU(inplace=True),
-                #
-                nn.ConvTranspose2d(256, 128, 4, 2, 1),  # 8×8 → 16×16
-                nn.BatchNorm2d(128),
-                nn.ReLU(inplace=True),
-                #
-                nn.ConvTranspose2d(128, 64, 4, 2, 1),  # 16×16 → 32×32
-                nn.BatchNorm2d(64),
-                nn.ReLU(inplace=True),
-                #
-                nn.ConvTranspose2d(64, channels, 4, 2, 1),  # 32×32 → 64×64
+                nn.Unflatten(1, (32, 8, 8)),
+                nn.ConvTranspose2d(
+                    32, 16, 3, stride=2, padding=1, output_padding=1
+                ),  # → [16, 16, 16]
+                nn.LeakyReLU(),
+                nn.ConvTranspose2d(
+                    16, channels, 3, stride=2, padding=1, output_padding=1
+                ),  # → [3, 32, 32]
                 nn.Sigmoid(),
             )
         else:

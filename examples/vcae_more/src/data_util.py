@@ -127,6 +127,78 @@ def load_mnist_data(
     return train_loader, val_loader, test_loader
 
 
+def load_svhn_data(
+    batch_size: int = 128,
+    test_size: float = 0.3,
+    val_size: float = 0.0,
+    seed: int = 42,
+    num_workers: int = 4,
+    pin_memory: bool = True,
+):
+    """Load SVHN dataset and return DataLoaders."""
+    from torchvision.datasets import SVHN
+
+    transform = transforms.Compose(
+        [
+            # transforms.Resize((64, 64)),
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: x.to(torch.float32)),
+        ]
+    )
+
+    # Load the training split
+    dataset = SVHN(
+        root=DIR_DATA,
+        split="train",
+        download=False,
+        transform=transform,
+    )
+
+    # Split into train/val/test
+    random.seed(seed)
+    torch.manual_seed(seed)
+    train_indices = list(range(len(dataset)))
+    if val_size > 0:
+        train_indices, val_indices = train_test_split(
+            train_indices, test_size=val_size / (1 - test_size), random_state=seed
+        )
+    else:
+        val_indices = []
+
+    # Test split
+    test_dataset = SVHN(
+        root=DIR_DATA,
+        split="test",
+        download=False,
+        transform=transform,
+    )
+
+    # Create DataLoaders
+    train_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        sampler=torch.utils.data.SubsetRandomSampler(train_indices),
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+    val_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        sampler=torch.utils.data.SubsetRandomSampler(val_indices),
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,  # no sampler needed since it's a separate set
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+
+    return train_loader, val_loader, test_loader
+
+
 def load_celeb_data(
     batch_size: int = 128,
     test_size: float = 0.3,
@@ -217,9 +289,18 @@ if __name__ == "__main__":
     logger.info(f"MNIST Train loader size: {len(train_loader.sampler)}")
     logger.info(f"MNIST Validation loader size: {len(val_loader.sampler)}")
     logger.info(f"MNIST Test loader size: {len(test_loader.sampler)}")
+    logger.info(f"MNIST Train batch shape: {next(iter(train_loader))[0].shape}")
 
-    # * Load CelebA data
-    celeb_train_loader, celeb_val_loader, celeb_test_loader = load_celeb_data()
-    logger.info(f"CelebA Train loader size: {len(celeb_train_loader.sampler)}")
-    logger.info(f"CelebA Validation loader size: {len(celeb_val_loader.sampler)}")
-    logger.info(f"CelebA Test loader size: {len(celeb_test_loader.sampler)}")
+    # * Load SVHN data
+    svhn_train_loader, svhn_val_loader, svhn_test_loader = load_svhn_data()
+    logger.info(f"SVHN Train loader size: {len(svhn_train_loader.sampler)}")
+    logger.info(f"SVHN Validation loader size: {len(svhn_val_loader.sampler)}")
+    logger.info(f"SVHN Test loader size: {len(svhn_test_loader.sampler)}")
+    logger.info(f"SVHN Train batch shape: {next(iter(svhn_train_loader))[0].shape}")
+
+    # # * Load CelebA data
+    # celeb_train_loader, celeb_val_loader, celeb_test_loader = load_celeb_data()
+    # logger.info(f"CelebA Train loader size: {len(celeb_train_loader.sampler)}")
+    # logger.info(f"CelebA Validation loader size: {len(celeb_val_loader.sampler)}")
+    # logger.info(f"CelebA Test loader size: {len(celeb_test_loader.sampler)}")
+    # logger.info(f"CelebA Train batch shape: {next(iter(celeb_train_loader))[0].shape}")

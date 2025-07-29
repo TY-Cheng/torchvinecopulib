@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 import pickle
 from . import DIR_WORK, DIR_OUT, load_config_grid
-from .data_util import extract_XY, get_logger, load_celeb_data, load_mnist_data
+from .data_util import extract_XY, get_logger, load_mnist_data, load_svhn_data
 from .metric import compute_fid, compute_mmd
 from .vcae import VineCopAutoEncoder
 
@@ -189,24 +189,25 @@ if __name__ == "__main__":
         # * Load data
         if cfg_copy.dataset == "mnist":
             cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_mnist_data()
-            cfg_copy.input_shape = (1, 28, 28)
+            cfg_copy.input_shape = next(iter(cfg_copy.train_loader))[0].shape[1:]  # (C, H, W)
             cfg_copy.model_type = "mlp"
             cfg_copy.latent_dim = 10
             cfg_copy.num_epochs_ae = 30
             cfg_copy.num_epochs_joint = 5
-        elif cfg_copy.dataset == "celeb":
-            cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_celeb_data()
-            cfg_copy.input_shape = (3, 64, 64)
+            cfg_copy.batch_size = 256
+        elif cfg_copy.dataset == "svhn":
+            cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_svhn_data()
+            cfg_copy.input_shape = next(iter(cfg_copy.train_loader))[0].shape[1:]  # (C, H, W)
             cfg_copy.model_type = "conv"
-            cfg_copy.latent_dim = 50
+            cfg_copy.latent_dim = 20
             cfg_copy.num_epochs_ae = 10
             cfg_copy.num_epochs_joint = 2
+            cfg_copy.batch_size = 256
         else:
             raise ValueError(f"Unknown dataset: {cfg_copy.dataset}")
         cfg_copy.latent_dim = int(cfg_copy.latent_dim)
         cfg_copy.test_size = float(cfg_copy.test_size)
         cfg_copy.val_size = float(cfg_copy.val_size)
-        cfg_copy.batch_size = int(cfg_copy.batch_size)
         cfg_copy.seed = int(cfg_copy.seed)
         cfg_copy.lr_ae = float(cfg_copy.lr_ae)
         cfg_copy.num_epochs_ae = int(cfg_copy.num_epochs_ae)
@@ -217,11 +218,11 @@ if __name__ == "__main__":
         cfg_copy.num_step_grid = int(cfg_copy.num_step_grid)
         cfg_copy.tau_thresh = float(cfg_copy.tau_thresh)
         print(f"\n\nRunning configuration: {cfg_copy}")
-        main(cfg_copy)  # ! run main with copied config
-        # try:
-        #     main(cfg_copy)
-        # except Exception as e:
-        #     logger_main.error(f"Error in configuration {idx + 1}: {e}")
-        #     continue
+        # main(cfg_copy)  # ! run main with copied config
+        try:
+            main(cfg_copy)
+        except Exception as e:
+            logger_main.error(f"Error in configuration {idx + 1}: {e}")
+            continue
         logger_main.info(f"Finished configuration {idx + 1}/{len(lst_cfg)}")
         print("-" * 80)
