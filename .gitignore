@@ -11,6 +11,7 @@ MNIST/
 logs/
 examples/MNIST
 examples/logs
+examples/checkpoints
 examples/**/*.gz
 examples/**/*.ipynb
 

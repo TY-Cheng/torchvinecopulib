@@ -5,14 +5,15 @@ import sys
 
 import pandas as pd
 from tqdm import tqdm
-from vcae_mnist.config import config
-from vcae_mnist.experiment import run_experiment
+from vcae.config import config
+from vcae.experiment import run_experiment
 
+dataset = "MNIST"  # or "SVHN"
 start = int(sys.argv[1])
 end = int(sys.argv[2])
 
 # Redirect tqdm and errors to log file
-log_path = f"progress_{start}_{end}.log"
+log_path = f"progress_{dataset}_{start}_{end}.log"
 log_file = open(log_path, "w")
 
 logging.basicConfig(
@@ -34,13 +35,11 @@ def suppress_output():
 
 
 results = []
-
-output_path = f"results_{start}_{end}.csv"
-
+output_path = f"results_{dataset}_{start}_{end}.csv"
 for seed in tqdm(range(start, end), desc=f"Seeds {start}-{end}", file=log_file):
     try:
         with suppress_output():
-            result = run_experiment(seed, config)
+            result = run_experiment(seed, config, dataset=dataset)
         df = pd.DataFrame([result])
 
         # Write headers only once

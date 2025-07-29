@@ -7,7 +7,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
-from torchvision.datasets import MNIST
+from torchvision.datasets import MNIST, SVHN
 
 import torchvinecopulib as tvc
 
@@ -295,3 +295,92 @@ class LitMNISTAutoencoder(LitAutoencoder):
             self.data_train, self.data_val = random_split(data_full, [55000, 5000])
         if stage == "test" or stage is None:
             self.data_test = MNIST(data_dir, train=False, transform=self.transform)
+
+
+class LitSVHNAutoencoder(LitAutoencoder):
+    def __init__(
+        self,
+        data_dir: str = config.data_dir,
+        hidden_size: int = 128,
+        latent_size: int = 32,
+        learning_rate: float = 2e-4,
+        use_vine: bool = False,
+        use_mmd: bool = False,
+        mmd_sigmas: list = [1e-1, 1, 10],
+        mmd_lambda: float = 10.0,
+    ):
+        super().__init__(
+            dims=(3, 32, 32),
+            data_dir=data_dir,
+            hidden_size=hidden_size,
+            latent_size=latent_size,
+            learning_rate=learning_rate,
+            use_vine=use_vine,
+            use_mmd=use_mmd,
+            mmd_sigmas=mmd_sigmas,
+            mmd_lambda=mmd_lambda,
+        )
+
+        self.transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                # transforms.Normalize(mean=[0.4377, 0.4438, 0.4728], std=[0.1980, 0.2010, 0.1970]),
+            ]
+        )
+
+    def build_encoder(self) -> nn.Module:
+        latent_size = self.hparams["latent_size"]
+        hidden_size = self.hparams["hidden_size"]
+        return nn.Sequential(
+            nn.Conv2d(
+                3, hidden_size // 4, kernel_size=4, stride=2, padding=1
+            ),  # → [B, 32, 16, 16]
+            nn.ReLU(),
+            nn.Conv2d(
+                hidden_size // 4, hidden_size // 2, kernel_size=4, stride=2, padding=1
+            ),  # → [B, 64, 8, 8]
+            nn.ReLU(),
+            nn.Conv2d(
+                hidden_size // 2, hidden_size, kernel_size=4, stride=2, padding=1
+            ),  # → [B, 128, 4, 4]
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(hidden_size * 4 * 4, latent_size),
+        ).to(DEVICE)
+
+    def build_decoder(self) -> nn.Module:
+        latent_size = self.hparams["latent_size"]
+        hidden_size = self.hparams["hidden_size"]
+        return nn.Sequential(
+            nn.Linear(latent_size, hidden_size * 4 * 4),
+            nn.ReLU(),
+            nn.Unflatten(1, (hidden_size, 4, 4)),
+            nn.ConvTranspose2d(
+                hidden_size, hidden_size // 2, kernel_size=4, stride=2, padding=1
+            ),  # → [B, 64, 8, 8]
+            nn.ReLU(),
+            nn.ConvTranspose2d(
+                hidden_size // 2, hidden_size // 4, kernel_size=4, stride=2, padding=1
+            ),  # → [B, 32, 16, 16]
+            nn.ReLU(),
+            nn.ConvTranspose2d(
+                hidden_size // 4, 3, kernel_size=4, stride=2, padding=1
+            ),  # → [B, 3, 32, 32]
+            nn.Sigmoid(),  # For pixel values in [0,1]
+        ).to(DEVICE)
+
+    def prepare_data(self) -> None:
+        data_dir = self.hparams["data_dir"]
+        SVHN(data_dir, split="train", download=True)
+        SVHN(data_dir, split="test", download=True)
+
+    def setup(self, stage=None) -> None:
+        data_dir = self.hparams["data_dir"]
+        if stage == "fit" or stage is None:
+            full_train = SVHN(data_dir, split="train", transform=self.transform)
+            n_total = len(full_train)
+            n_val = int(0.1 * n_total)
+            n_train = n_total - n_val
+            self.data_train, self.data_val = random_split(full_train, [n_train, n_val])
+        if stage == "test" or stage is None:
+            self.data_test = SVHN(data_dir, split="test", transform=self.transform)

@@ -7,7 +7,7 @@ import torch
 
 from .config import DEVICE, Config
 from .metrics import compute_score
-from .model import LitMNISTAutoencoder
+from .model import LitMNISTAutoencoder, LitSVHNAutoencoder
 
 
 def set_seed(seed: int):
@@ -20,11 +20,16 @@ def set_seed(seed: int):
     torch.backends.cudnn.deterministic = True
 
 
-def run_experiment(seed: int, config: Config, use_mmd: bool = False):
+def run_experiment(seed: int, config: Config, dataset: str = "MNIST", use_mmd: bool = False):
     set_seed(seed)
 
     # Instantiate the model
-    model_initial = LitMNISTAutoencoder(use_mmd=use_mmd)
+    if dataset == "MNIST":
+        model_initial = LitMNISTAutoencoder(use_mmd=use_mmd)
+    elif dataset == "SVHN":
+        model_initial = LitSVHNAutoencoder(use_mmd=use_mmd)
+    else:
+        raise ValueError(f"Unsupported dataset: {dataset}")
 
     # Set up trainer
     trainer_initial = pl.Trainer(
@@ -86,6 +91,7 @@ def run_experiment(seed: int, config: Config, use_mmd: bool = False):
 
     return {
         "seed": seed,
+        "dataset": dataset,
         "use_mmd": use_mmd,
         "mse_initial": mse_initial,
         "mse_refit": mse_refit,
