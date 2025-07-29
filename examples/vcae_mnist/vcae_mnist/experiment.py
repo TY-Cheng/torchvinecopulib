@@ -20,11 +20,11 @@ def set_seed(seed: int):
     torch.backends.cudnn.deterministic = True
 
 
-def run_experiment(seed: int, config: Config):
+def run_experiment(seed: int, config: Config, use_mmd: bool = False):
     set_seed(seed)
 
     # Instantiate the model
-    model_initial = LitMNISTAutoencoder()
+    model_initial = LitMNISTAutoencoder(use_mmd=use_mmd)
 
     # Set up trainer
     trainer_initial = pl.Trainer(
@@ -72,6 +72,8 @@ def run_experiment(seed: int, config: Config):
     # Extract test data
     rep_refit, _, data_refit, decoded_refit, samples_refit = model_refit.get_data(stage="test")
 
+    assert model_initial.vine is not None
+    assert model_refit.vine is not None
     loglik_initial = model_initial.vine.log_pdf(rep_initial).mean().item()
     loglik_refit = model_refit.vine.log_pdf(rep_refit).mean().item()
 
@@ -79,11 +81,12 @@ def run_experiment(seed: int, config: Config):
     mse_refit = torch.nn.functional.mse_loss(decoded_refit, data_refit).item()
 
     sigmas = [1e-3, 1e-2, 1e-1, 1, 10, 100]
-    score_initial = compute_score(data_initial, samples_initial, DEVICE, sigmas=sigmas)
-    score_refit = compute_score(data_refit, samples_refit, DEVICE, sigmas=sigmas)
+    score_initial = compute_score(data_initial, samples_initial, sigmas=sigmas)
+    score_refit = compute_score(data_refit, samples_refit, sigmas=sigmas)
 
     return {
         "seed": seed,
+        "use_mmd": use_mmd,
         "mse_initial": mse_initial,
         "mse_refit": mse_refit,
         "loglik_initial": loglik_initial,

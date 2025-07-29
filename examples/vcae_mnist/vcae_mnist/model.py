@@ -1,161 +1,172 @@
+import abc
+from typing import Optional
+
 import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
 import torchvinecopulib as tvc
 
 from .config import DEVICE, config
+from .metrics import mmd
 
 
-class LitMNISTAutoencoder(pl.LightningModule):
+class LitAutoencoder(pl.LightningModule, abc.ABC):
     def __init__(
         self,
+        dims: tuple[int, ...],
         data_dir: str = config.data_dir,
         hidden_size: int = 64,
+        latent_size: int = 10,
         learning_rate: float = 2e-4,
         use_vine: bool = False,
-    ):
+        use_mmd: bool = False,
+        mmd_sigmas: list = [1e-1, 1, 10],
+        mmd_lambda: float = 10.0,
+    ) -> None:
         super().__init__()
-        self.data_dir = data_dir
-        self.hidden_size = hidden_size
-        self.learning_rate = learning_rate
+        self.save_hyperparameters(ignore=["use_vine"])
+        self.flat_dim = int(torch.prod(torch.tensor(dims)))
+
+        # Placeholder for data attributes
+        self.data_test: Optional[Dataset] = None
+        self.data_train: Optional[Dataset] = None
+        self.data_val: Optional[Dataset] = None
+
+        # Placeholders for the  vine copula
         self.use_vine = use_vine
-        self.vine = nn.Identity()  # Ensures registration
+        self.vine: Optional[tvc.VineCop] = None
 
-        self.dims = (1, 28, 28)
-        channels, width, height = self.dims
-        flat_dim = channels * width * height
-        self.mnist_test = None
-        self.mnist_train = None
-        self.mnist_val = None
+        # Call subclass-defined builders
+        self.encoder = self.build_encoder()
+        self.decoder = self.build_decoder()
 
-        # self.transform = transforms.Compose(
-        #     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        # )
-        self.transform = transforms.Compose([transforms.ToTensor()])
+    @abc.abstractmethod
+    def build_encoder(self) -> nn.Module:
+        """Subclasses must return an nn.Module mapping x -> z"""
+        raise NotImplementedError
 
-        # Encoder: flatten → hidden → latent
-        self.encoder = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(flat_dim, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size // 2),
-            nn.ReLU(),
-            nn.Linear(hidden_size // 2, 10),
-        ).to(DEVICE)
+    @abc.abstractmethod
+    def build_decoder(self) -> nn.Module:
+        """Subclasses must return an nn.Module mapping z -> x̂"""
+        raise NotImplementedError
 
-        # Decoder: latent → hidden → image
-        self.decoder = nn.Sequential(
-            nn.Linear(10, hidden_size // 2),
-            nn.ReLU(),
-            nn.Linear(hidden_size // 2, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, flat_dim),
-            nn.Sigmoid(),  # Ensure output in [0,1] range
-        ).to(DEVICE)
-
-    def set_vine(self, vine):
+    def set_vine(self, vine: tvc.VineCop) -> None:
         if not isinstance(vine, tvc.VineCop):
             raise ValueError("Vine must be of type tvc.VineCop for tvc.")
+        latent_size: int = self.hparams["latent_size"]
+        if not vine.num_dim == latent_size:
+            raise ValueError(
+                f"Vine dimension {vine.num_dim} does not match latent size {latent_size}."
+            )
         self.vine = vine
+        self.add_module("vine", vine)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
+        latent_size: int = self.hparams["latent_size"]
+        dims: tuple[int, ...] = self.hparams["dims"]
         z = self.encoder(x)
         x_hat = self.decoder(z)
-        if not self.use_vine:
-            return x_hat.view(-1, *self.dims)
-        else:
-            # also return the latent representation
-            z = z.view(-1, 10)
-            return x_hat.view(-1, *self.dims), z
+        z_out = z.view(-1, latent_size) if self.use_vine else None
+        return x_hat.view(-1, *dims), z_out
 
-    def training_step(self, batch, batch_idx):
-        x, _ = batch
-        x.to(DEVICE)
+    def compute_loss(self, x: torch.Tensor) -> torch.Tensor:
         if self.use_vine:
             x_hat, z = self(x)
-            loss = F.mse_loss(x_hat, x) - self.vine.log_pdf(z).mean()
+            recon_loss = F.mse_loss(x_hat, x)
+            if self.vine is None:
+                raise ValueError("Vine must be set before computing the loss.")
+            vine_loss = -self.vine.log_pdf(z).mean()
+            loss = recon_loss + vine_loss
+            use_mmd: bool = self.hparams["use_mmd"]
+            if use_mmd:
+                mmd_sigmas: list = self.hparams["mmd_sigmas"]
+                mmd_lambda: float = self.hparams["mmd_lambda"]
+                z_vine = self.vine.sample(x.shape[0])
+                z_vine = torch.tensor(z_vine, dtype=z.dtype, device=x.device)
+                x_vine = self.decoder(z_vine)
+                mmd_loss = mmd(x, x_vine, sigmas=mmd_sigmas)
+                loss += mmd_lambda * mmd_loss
         else:
-            x_hat = self(x)
+            x_hat, _ = self(x)
             loss = F.mse_loss(x_hat, x)
+        return loss
 
+    def training_step(
+        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> torch.Tensor:
+        """Training step to compute loss on training data."""
+        x, _ = batch
+        x.to(DEVICE)
+        loss = self.compute_loss(x)
         self.log("train_loss", loss, prog_bar=True)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+        """Validation step to compute loss on validation data."""
         x, _ = batch
         x.to(DEVICE)
-        if self.use_vine:
-            x_hat, z = self(x)
-            loss = F.mse_loss(x_hat, x) - self.vine.log_pdf(z).mean()
-        else:
-            x_hat = self(x)
-            loss = F.mse_loss(x_hat, x)
+        loss = self.compute_loss(x)
         self.log("val_loss", loss, prog_bar=True)
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+        """Test step to compute loss on test data."""
         x, _ = batch
         x.to(DEVICE)
-        if self.use_vine:
-            x_hat, z = self(x)
-            loss = F.mse_loss(x_hat, x) - self.vine.log_pdf(z).mean()
-        else:
-            x_hat = self(x)
-            loss = F.mse_loss(x_hat, x)
+        loss = self.compute_loss(x)
         self.log("test_loss", loss, prog_bar=True)
 
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+    def configure_optimizers(self) -> torch.optim.Optimizer:
+        """Returns the optimizer for training."""
+        learning_rate: float = self.hparams["learning_rate"]
+        return torch.optim.Adam(self.parameters(), lr=learning_rate)
 
-    def prepare_data(self):
-        MNIST(self.data_dir, train=True, download=True)
-        MNIST(self.data_dir, train=False, download=True)
-
-    def setup(self, stage=None):
-        if stage == "fit" or stage is None:
-            mnist_full = MNIST(self.data_dir, train=True, transform=self.transform)
-            self.mnist_train, self.mnist_val = random_split(mnist_full, [55000, 5000])
-        if stage == "test" or stage is None:
-            self.mnist_test = MNIST(self.data_dir, train=False, transform=self.transform)
-
-    def train_dataloader(self):
-        if self.mnist_train is None:
+    def train_dataloader(self) -> DataLoader:
+        """Returns the training dataloader."""
+        if self.data_train is None:
             self.setup(stage="fit")
+        assert self.data_train is not None
         return DataLoader(
-            self.mnist_train,
+            self.data_train,
             batch_size=config.batch_size,
             pin_memory=True,
             persistent_workers=True,
             num_workers=config.num_workers,
         )
 
-    def val_dataloader(self):
-        if self.mnist_val is None:
+    def val_dataloader(self) -> DataLoader:
+        """Returns the validation dataloader."""
+        if self.data_val is None:
             self.setup(stage="fit")
+        assert self.data_val is not None
         return DataLoader(
-            self.mnist_val,
+            self.data_val,
             batch_size=config.batch_size,
             pin_memory=True,
             persistent_workers=True,
             num_workers=config.num_workers,
         )
 
-    def test_dataloader(self):
-        if self.mnist_test is None:
+    def test_dataloader(self) -> DataLoader:
+        """Returns the test dataloader."""
+        if self.data_test is None:
             self.setup(stage="test")
+        assert self.data_test is not None
         return DataLoader(
-            self.mnist_test,
+            self.data_test,
             batch_size=config.batch_size,
             pin_memory=True,
             persistent_workers=True,
             num_workers=config.num_workers,
         )
 
-    def get_data(self, stage):
+    def get_data(
+        self, stage: str = "fit"
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         if stage == "fit" or stage is None:
             data_loader = self.train_dataloader()
         elif stage == "test":
@@ -174,6 +185,8 @@ class LitMNISTAutoencoder(pl.LightningModule):
                 z = self.encoder(x).to(decoder_device)
                 x_hat = self.decoder(z)
                 if self.use_vine:
+                    if self.vine is None:
+                        raise ValueError("Vine must be set before sampling with use_vine=True.")
                     sample = self.vine.sample(x.shape[0])
                     sample = self.decoder(
                         torch.tensor(sample, dtype=z.dtype, device=decoder_device)
@@ -186,16 +199,15 @@ class LitMNISTAutoencoder(pl.LightningModule):
                 samples.append(sample)
 
         # Concatenate into a single tensor
-        representations = torch.cat(representations, dim=0)
-        labels = torch.cat(labels, dim=0)
-        data = torch.cat(data, dim=0).flatten(start_dim=1)
-        decoded = torch.cat(decoded, dim=0)
-        if self.use_vine:
-            samples = torch.cat(samples, dim=0)
+        representations_tensor = torch.cat(representations, dim=0)
+        labels_tensor = torch.cat(labels, dim=0)
+        data_tensor = torch.cat(data, dim=0).flatten(start_dim=1)
+        decoded_tensor = torch.cat(decoded, dim=0)
+        samples_tensor = torch.cat(samples, dim=0) if self.use_vine else None
 
-        return representations, labels, data, decoded, samples
+        return representations_tensor, labels_tensor, data_tensor, decoded_tensor, samples_tensor
 
-    def learn_vine(self, n_samples=5000):
+    def learn_vine(self, n_samples: int = 5000) -> None:
         self.setup(stage="fit")
 
         representations, _, _, _, _ = self.get_data(stage="fit")
@@ -216,70 +228,70 @@ class LitMNISTAutoencoder(pl.LightningModule):
         self.use_vine = True
 
 
-# # Instantiate the LitMNISTAutoencoder
-# model = LitMNISTAutoencoder()
+class LitMNISTAutoencoder(LitAutoencoder):
+    def __init__(
+        self,
+        data_dir: str = config.data_dir,
+        hidden_size: int = 64,
+        latent_size: int = 10,
+        learning_rate: float = 2e-4,
+        use_vine: bool = False,
+        use_mmd: bool = False,
+        mmd_sigmas: list = [1e-1, 1, 10],
+        mmd_lambda: float = 10.0,
+    ):
+        super().__init__(
+            dims=(1, 28, 28),
+            data_dir=data_dir,
+            hidden_size=hidden_size,
+            latent_size=latent_size,
+            learning_rate=learning_rate,
+            use_vine=use_vine,
+            use_mmd=use_mmd,
+            mmd_sigmas=mmd_sigmas,
+            mmd_lambda=mmd_lambda,
+        )
 
-# # Instantiate a trainer with the specified configuration
-# trainer = pl.Trainer(
-#     accelerator=config.accelerator,
-#     devices=config.devices,
-#     max_epochs=config.max_epochs,
-#     logger=CSVLogger(save_dir=config.save_dir),
-# )
+        # self.transform = transforms.Compose(
+        #     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        # )
+        self.transform = transforms.Compose([transforms.ToTensor()])
 
-# # Train the model using the trainer
-# trainer.fit(model)
+    def build_encoder(self) -> nn.Module:
+        # Encoder: flatten → hidden → latent
+        latent_size: int = self.hparams["latent_size"]
+        hidden_size: int = self.hparams["hidden_size"]
+        return nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.flat_dim, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_size // 2, latent_size),
+        ).to(DEVICE)
 
-# # Train the vine
-# model.learn_vine(n_samples=5000)
-# # # Read in the training metrics from the CSV file generated by the logger
-# # metrics = pd.read_csv(f"{trainer.logger.log_dir}/metrics.csv")
+    def build_decoder(self) -> nn.Module:
+        # Decoder: latent → hidden → image
+        latent_size: int = self.hparams["latent_size"]
+        hidden_size: int = self.hparams["hidden_size"]
+        return nn.Sequential(
+            nn.Linear(latent_size, hidden_size // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_size // 2, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, self.flat_dim),
+            nn.Sigmoid(),  # Ensure output in [0,1] range
+        ).to(DEVICE)
 
-# # # Remove the "step" column, which is not needed for our analysis
-# # del metrics["step"]
+    def prepare_data(self) -> None:
+        data_dir: str = self.hparams["data_dir"]
+        MNIST(data_dir, train=True, download=True)
+        MNIST(data_dir, train=False, download=True)
 
-# # # Set the epoch column as the index, for easier plotting
-# # metrics.set_index("epoch", inplace=True)
-
-# # # Create a line plot of the training metrics using Seaborn
-# # sns.relplot(data=metrics, kind="line")
-
-# # Train the vine
-# model.learn_vine(n_samples=5000)
-
-# # Copy the model for refitting
-# model_refit = copy.deepcopy(model)
-
-# # Instantiate a new trainer
-# trainer_refit = pl.Trainer(
-#     accelerator=config.accelerator,
-#     devices=config.devices,
-#     max_epochs=config.max_epochs,
-#     logger=CSVLogger(save_dir=config.save_dir),
-# )
-
-# # Refit the model
-# trainer_refit.fit(model_refit)
-
-# # Test the model
-# representation, labels, data, decoded, samples = model.get_data(stage="test")
-# representation_refit, labels_refit, data_refit, decoded_refit, samples_refit = model_refit.get_data(
-#     stage="test"
-# )
-
-# sigmas = [1e-3, 1e-2, 1e-1, 1, 10, 100]
-# score_model = compute_score(data, samples, DEVICE, sigmas=sigmas)
-# score_refit_model = compute_score(refit_data, refit_samples, DEVICE, sigmas=sigmas)
-# loglik_model = model.vine.log_pdf(representation).mean()
-# loglik_refit_model = model_refit.vine.log_pdf(representation_refit).mean()
-# print("Log-likelihood (original vs refit):")
-# print(
-#     f"Log-likelihood: {loglik_model} vs {loglik_refit_model} => original is {loglik_model / loglik_refit_model} x worse"
-# )
-# print("Model scores (original vs refit):")
-# print(
-#     f"MMD: {score_model.mmd} vs {score_refit_model.mmd} => original is {score_model.mmd / score_refit_model.mmd} x worse"
-# )
-# print(
-#     f"FID: {score_model.fid} vs {score_refit_model.fid} => original is {score_model.fid / score_refit_model.fid} x worse"
-# )
+    def setup(self, stage=None) -> None:
+        data_dir: str = self.hparams["data_dir"]
+        if stage == "fit" or stage is None:
+            data_full = MNIST(data_dir, train=True, transform=self.transform)
+            self.data_train, self.data_val = random_split(data_full, [55000, 5000])
+        if stage == "test" or stage is None:
+            self.data_test = MNIST(data_dir, train=False, transform=self.transform)
