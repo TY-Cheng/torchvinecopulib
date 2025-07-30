@@ -1,4 +1,6 @@
 import abc
+import copy
+from dataclasses import asdict
 from typing import Optional
 
 import pytorch_lightning as pl
@@ -11,39 +13,40 @@ from torchvision.datasets import MNIST, SVHN
 
 import torchvinecopulib as tvc
 
-from .config import DEVICE, config
-from .metrics import mmd
+from .config import DEVICE, Config
 
 
 class LitAutoencoder(pl.LightningModule, abc.ABC):
-    def __init__(
-        self,
-        dims: tuple[int, ...],
-        data_dir: str = config.data_dir,
-        hidden_size: int = 64,
-        latent_size: int = 10,
-        learning_rate: float = 2e-4,
-        use_vine: bool = False,
-        use_mmd: bool = False,
-        mmd_sigmas: list = [1e-1, 1, 10],
-        mmd_lambda: float = 10.0,
-    ) -> None:
+    def __init__(self, config: Config) -> None:
+        """Initialize the autoencoder with the given configuration."""
         super().__init__()
-        self.save_hyperparameters(ignore=["use_vine"])
-        self.flat_dim = int(torch.prod(torch.tensor(dims)))
+        self.save_hyperparameters(asdict(config))
+        self.flat_dim = int(torch.prod(torch.tensor(self.hparams["dims"])))
 
-        # Placeholder for data attributes
+        # Placeholders for data attributes
         self.data_test: Optional[Dataset] = None
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
 
-        # Placeholders for the  vine copula
-        self.use_vine = use_vine
+        # Placeholder for the vine copula
         self.vine: Optional[tvc.VineCop] = None
 
         # Call subclass-defined builders
         self.encoder = self.build_encoder()
         self.decoder = self.build_decoder()
+        self.transform = self.build_transform()
+
+    @property
+    @abc.abstractmethod
+    def dataset_cls(self) -> type:
+        """Subclasses must return the dataset class (e.g., MNIST, SVHN)."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def dataset_kwargs(self) -> dict:
+        """Subclasses must return a dictionary of keyword arguments for the dataset."""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def build_encoder(self) -> nn.Module:
@@ -54,6 +57,20 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
     def build_decoder(self) -> nn.Module:
         """Subclasses must return an nn.Module mapping z -> x̂"""
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def build_transform(self) -> transforms.Compose:
+        """Subclasses must return a torchvision transforms.Compose for data preprocessing."""
+        raise NotImplementedError
+
+    def copy_with_config(self, new_config: Config) -> "LitAutoencoder":
+        """Create a copy of the model with a new configuration (for refit)."""
+        new_model = self.__class__(new_config)
+        new_model.encoder.load_state_dict(self.encoder.state_dict())
+        new_model.decoder.load_state_dict(self.decoder.state_dict())
+        if self.vine is not None:
+            new_model.vine = copy.deepcopy(self.vine)
+        return new_model
 
     def set_vine(self, vine: tvc.VineCop) -> None:
         if not isinstance(vine, tvc.VineCop):
@@ -71,29 +88,26 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
         dims: tuple[int, ...] = self.hparams["dims"]
         z = self.encoder(x)
         x_hat = self.decoder(z)
-        z_out = z.view(-1, latent_size) if self.use_vine else None
-        return x_hat.view(-1, *dims), z_out
+        return x_hat.view(-1, *dims), z.view(-1, latent_size)
 
     def compute_loss(self, x: torch.Tensor) -> torch.Tensor:
-        if self.use_vine:
-            x_hat, z = self(x)
-            recon_loss = F.mse_loss(x_hat, x)
+        x_hat, z = self(x)
+        loss = F.mse_loss(x_hat, x)
+        if self.hparams["vine_lambda"] > 0:
             if self.vine is None:
                 raise ValueError("Vine must be set before computing the loss.")
             vine_loss = -self.vine.log_pdf(z).mean()
-            loss = recon_loss + vine_loss
-            use_mmd: bool = self.hparams["use_mmd"]
-            if use_mmd:
-                mmd_sigmas: list = self.hparams["mmd_sigmas"]
-                mmd_lambda: float = self.hparams["mmd_lambda"]
-                z_vine = self.vine.sample(x.shape[0])
-                z_vine = torch.tensor(z_vine, dtype=z.dtype, device=x.device)
-                x_vine = self.decoder(z_vine)
-                mmd_loss = mmd(x, x_vine, sigmas=mmd_sigmas)
-                loss += mmd_lambda * mmd_loss
-        else:
-            x_hat, _ = self(x)
-            loss = F.mse_loss(x_hat, x)
+            vine_lambda: float = self.hparams["vine_lambda"]
+            loss += vine_lambda * vine_loss
+            # use_mmd: bool = self.hparams["use_mmd"]
+            # if use_mmd:
+            #     mmd_sigmas: list = self.hparams["mmd_sigmas"]
+            #     mmd_lambda: float = self.hparams["mmd_lambda"]
+            #     z_vine = self.vine.sample(x.shape[0])
+            #     z_vine = torch.tensor(z_vine, dtype=z.dtype, device=x.device)
+            #     x_vine = self.decoder(z_vine)
+            #     mmd_loss = mmd(x, x_vine, sigmas=mmd_sigmas)
+            #     loss += mmd_lambda * mmd_loss
         return loss
 
     def training_step(
@@ -125,17 +139,47 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
         learning_rate: float = self.hparams["learning_rate"]
         return torch.optim.Adam(self.parameters(), lr=learning_rate)
 
+    def prepare_data(self) -> None:
+        """Download the dataset if not already present."""
+        data_dir = self.hparams["data_dir"]
+        self.dataset_cls(data_dir, download=True, **self.dataset_kwargs["train"])
+        self.dataset_cls(data_dir, download=True, **self.dataset_kwargs["test"])
+
+    def setup(self, stage=None) -> None:
+        """Setup the datasets for training, validation, and testing."""
+        data_dir = self.hparams["data_dir"]
+
+        if stage in ("fit", None):
+            data_full = self.dataset_cls(
+                data_dir, transform=self.transform, **self.dataset_kwargs["train"]
+            )
+            n_total = len(data_full)
+            n_val = int(self.hparams["val_train_split"] * n_total)
+            n_train = n_total - n_val
+
+            generator = torch.Generator().manual_seed(self.hparams["seed"])
+            self.data_train, self.data_val = random_split(
+                data_full, [n_train, n_val], generator=generator
+            )
+
+        if stage in ("test", None):
+            self.data_test = self.dataset_cls(
+                data_dir, transform=self.transform, **self.dataset_kwargs["test"]
+            )
+
     def train_dataloader(self) -> DataLoader:
         """Returns the training dataloader."""
         if self.data_train is None:
             self.setup(stage="fit")
         assert self.data_train is not None
+        batch_size: int = self.hparams["batch_size"]
+        num_workers: int = self.hparams["num_workers"]
         return DataLoader(
             self.data_train,
-            batch_size=config.batch_size,
+            batch_size=batch_size,
             pin_memory=True,
             persistent_workers=True,
-            num_workers=config.num_workers,
+            num_workers=num_workers,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -143,12 +187,14 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
         if self.data_val is None:
             self.setup(stage="fit")
         assert self.data_val is not None
+        batch_size: int = self.hparams["batch_size"]
+        num_workers: int = self.hparams["num_workers"]
         return DataLoader(
             self.data_val,
-            batch_size=config.batch_size,
+            batch_size=batch_size,
             pin_memory=True,
             persistent_workers=True,
-            num_workers=config.num_workers,
+            num_workers=num_workers,
         )
 
     def test_dataloader(self) -> DataLoader:
@@ -156,17 +202,20 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
         if self.data_test is None:
             self.setup(stage="test")
         assert self.data_test is not None
+        batch_size: int = self.hparams["batch_size"]
+        num_workers: int = self.hparams["num_workers"]
         return DataLoader(
             self.data_test,
-            batch_size=config.batch_size,
+            batch_size=batch_size,
             pin_memory=True,
             persistent_workers=True,
-            num_workers=config.num_workers,
+            num_workers=num_workers,
         )
 
     def get_data(
         self, stage: str = "fit"
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+        """Extracts representations, labels, data, decoded outputs, and samples (e.g., to compute metrics)."""
         if stage == "fit" or stage is None:
             data_loader = self.train_dataloader()
         elif stage == "test":
@@ -184,9 +233,7 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
             with torch.no_grad():
                 z = self.encoder(x).to(decoder_device)
                 x_hat = self.decoder(z)
-                if self.use_vine:
-                    if self.vine is None:
-                        raise ValueError("Vine must be set before sampling with use_vine=True.")
+                if self.vine is not None:
                     sample = self.vine.sample(x.shape[0])
                     sample = self.decoder(
                         torch.tensor(sample, dtype=z.dtype, device=decoder_device)
@@ -195,7 +242,7 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
             representations.append(z)
             labels.append(y)
             data.append(x)
-            if self.use_vine:
+            if self.vine is not None:
                 samples.append(sample)
 
         # Concatenate into a single tensor
@@ -203,13 +250,16 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
         labels_tensor = torch.cat(labels, dim=0)
         data_tensor = torch.cat(data, dim=0).flatten(start_dim=1).flatten(start_dim=1)
         decoded_tensor = torch.cat(decoded, dim=0).flatten(start_dim=1)
-        samples_tensor = torch.cat(samples, dim=0).flatten(start_dim=1) if self.use_vine else None
+        samples_tensor = (
+            torch.cat(samples, dim=0).flatten(start_dim=1) if self.vine is not None else None
+        )
 
         return representations_tensor, labels_tensor, data_tensor, decoded_tensor, samples_tensor
 
     def learn_vine(self, n_samples: int = 5000) -> None:
-        self.setup(stage="fit")
-
+        """Learn the vine copula from a subset of representations."""
+        if self.data_train is None:
+            self.setup(stage="fit")
         representations, _, _, _, _ = self.get_data(stage="fit")
 
         representations_subset = representations[
@@ -225,39 +275,31 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
             mtd_kde="tll",
         )
         self.set_vine(vine_tvc)
-        self.use_vine = True
 
 
 class LitMNISTAutoencoder(LitAutoencoder):
-    def __init__(
-        self,
-        data_dir: str = config.data_dir,
-        hidden_size: int = 64,
-        latent_size: int = 10,
-        learning_rate: float = 2e-4,
-        use_vine: bool = False,
-        use_mmd: bool = False,
-        mmd_sigmas: list = [1e-1, 1, 10],
-        mmd_lambda: float = 10.0,
-    ):
-        super().__init__(
-            dims=(1, 28, 28),
-            data_dir=data_dir,
-            hidden_size=hidden_size,
-            latent_size=latent_size,
-            learning_rate=learning_rate,
-            use_vine=use_vine,
-            use_mmd=use_mmd,
-            mmd_sigmas=mmd_sigmas,
-            mmd_lambda=mmd_lambda,
-        )
+    def __init__(self, config: Config) -> None:
+        super().__init__(config)
 
-        # self.transform = transforms.Compose(
-        #     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        # )
-        self.transform = transforms.Compose([transforms.ToTensor()])
+    def build_transform(self) -> transforms.Compose:
+        """Returns a torchvision transforms.Compose for MNIST preprocessing."""
+        return transforms.Compose([transforms.ToTensor()])
+
+    @property
+    def dataset_cls(self) -> type:
+        """Returns the dataset class for MNIST."""
+        return MNIST
+
+    @property
+    def dataset_kwargs(self) -> dict:
+        """Returns a dictionary of keyword arguments for the MNIST dataset."""
+        return {
+            "train": {"train": True},
+            "test": {"train": False},
+        }
 
     def build_encoder(self) -> nn.Module:
+        """Returns a fully connected encoder for MNIST."""
         # Encoder: flatten → hidden → latent
         latent_size: int = self.hparams["latent_size"]
         hidden_size: int = self.hparams["hidden_size"]
@@ -271,6 +313,7 @@ class LitMNISTAutoencoder(LitAutoencoder):
         ).to(DEVICE)
 
     def build_decoder(self) -> nn.Module:
+        """Returns a fully connected decoder for MNIST."""
         # Decoder: latent → hidden → image
         latent_size: int = self.hparams["latent_size"]
         hidden_size: int = self.hparams["hidden_size"]
@@ -283,52 +326,30 @@ class LitMNISTAutoencoder(LitAutoencoder):
             nn.Sigmoid(),  # Ensure output in [0,1] range
         ).to(DEVICE)
 
-    def prepare_data(self) -> None:
-        data_dir: str = self.hparams["data_dir"]
-        MNIST(data_dir, train=True, download=True)
-        MNIST(data_dir, train=False, download=True)
-
-    def setup(self, stage=None) -> None:
-        data_dir: str = self.hparams["data_dir"]
-        if stage == "fit" or stage is None:
-            data_full = MNIST(data_dir, train=True, transform=self.transform)
-            self.data_train, self.data_val = random_split(data_full, [55000, 5000])
-        if stage == "test" or stage is None:
-            self.data_test = MNIST(data_dir, train=False, transform=self.transform)
-
 
 class LitSVHNAutoencoder(LitAutoencoder):
-    def __init__(
-        self,
-        data_dir: str = config.data_dir,
-        hidden_size: int = 128,
-        latent_size: int = 32,
-        learning_rate: float = 2e-4,
-        use_vine: bool = False,
-        use_mmd: bool = False,
-        mmd_sigmas: list = [1e-1, 1, 10],
-        mmd_lambda: float = 10.0,
-    ):
-        super().__init__(
-            dims=(3, 32, 32),
-            data_dir=data_dir,
-            hidden_size=hidden_size,
-            latent_size=latent_size,
-            learning_rate=learning_rate,
-            use_vine=use_vine,
-            use_mmd=use_mmd,
-            mmd_sigmas=mmd_sigmas,
-            mmd_lambda=mmd_lambda,
-        )
+    def __init__(self, config: Config) -> None:
+        super().__init__(config)
 
-        self.transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                # transforms.Normalize(mean=[0.4377, 0.4438, 0.4728], std=[0.1980, 0.2010, 0.1970]),
-            ]
-        )
+    def build_transform(self) -> transforms.Compose:
+        """Returns a torchvision transforms.Compose for SVHN preprocessing."""
+        return transforms.Compose([transforms.ToTensor()])
+
+    @property
+    def dataset_cls(self) -> type:
+        """Returns the dataset class for SVHN."""
+        return SVHN
+
+    @property
+    def dataset_kwargs(self) -> dict:
+        """Returns a dictionary of keyword arguments for the SVHN dataset."""
+        return {
+            "train": {"split": "train"},
+            "test": {"split": "test"},
+        }
 
     def build_encoder(self) -> nn.Module:
+        """Returns a convolutional encoder for SVHN."""
         latent_size = self.hparams["latent_size"]
         hidden_size = self.hparams["hidden_size"]
         return nn.Sequential(
@@ -349,6 +370,7 @@ class LitSVHNAutoencoder(LitAutoencoder):
         ).to(DEVICE)
 
     def build_decoder(self) -> nn.Module:
+        """Returns a convolutional decoder for SVHN."""
         latent_size = self.hparams["latent_size"]
         hidden_size = self.hparams["hidden_size"]
         return nn.Sequential(
@@ -368,19 +390,3 @@ class LitSVHNAutoencoder(LitAutoencoder):
             ),  # → [B, 3, 32, 32]
             nn.Sigmoid(),  # For pixel values in [0,1]
         ).to(DEVICE)
-
-    def prepare_data(self) -> None:
-        data_dir = self.hparams["data_dir"]
-        SVHN(data_dir, split="train", download=True)
-        SVHN(data_dir, split="test", download=True)
-
-    def setup(self, stage=None) -> None:
-        data_dir = self.hparams["data_dir"]
-        if stage == "fit" or stage is None:
-            full_train = SVHN(data_dir, split="train", transform=self.transform)
-            n_total = len(full_train)
-            n_val = int(0.1 * n_total)
-            n_train = n_total - n_val
-            self.data_train, self.data_val = random_split(full_train, [n_train, n_val])
-        if stage == "test" or stage is None:
-            self.data_test = SVHN(data_dir, split="test", transform=self.transform)

@@ -1,5 +1,5 @@
-import copy
 import random
+from typing import Union
 
 import numpy as np
 import pytorch_lightning as pl
@@ -7,7 +7,7 @@ import torch
 
 from .config import DEVICE, Config
 from .metrics import compute_score
-from .model import LitMNISTAutoencoder, LitSVHNAutoencoder
+from .model import LitAutoencoder, LitMNISTAutoencoder, LitSVHNAutoencoder
 
 
 def set_seed(seed: int):
@@ -20,14 +20,19 @@ def set_seed(seed: int):
     torch.backends.cudnn.deterministic = True
 
 
-def run_experiment(seed: int, config: Config, dataset: str = "MNIST", use_mmd: bool = False):
+def run_experiment(
+    seed: int, config: Config, vine_lambda: float = 1.0, dataset: str = "MNIST"
+) -> dict[str, Union[float, int, str]]:
+    # Set the seed for reproducibility
     set_seed(seed)
+    config.seed = seed
 
     # Instantiate the model
+    model_initial: LitAutoencoder
     if dataset == "MNIST":
-        model_initial = LitMNISTAutoencoder(use_mmd=use_mmd)
+        model_initial = LitMNISTAutoencoder(config)
     elif dataset == "SVHN":
-        model_initial = LitSVHNAutoencoder(use_mmd=use_mmd)
+        model_initial = LitSVHNAutoencoder(config)
     else:
         raise ValueError(f"Unsupported dataset: {dataset}")
 
@@ -55,8 +60,12 @@ def run_experiment(seed: int, config: Config, dataset: str = "MNIST", use_mmd: b
         stage="test"
     )
 
-    # Deepcopy for refit
-    model_refit = copy.deepcopy(model_initial)
+    # Reset the seed for refitting to avoid data leakage
+    set_seed(seed)
+
+    # Create a new model with the same configuration but reset vine lambda
+    config.vine_lambda = vine_lambda
+    model_refit = model_initial.copy_with_config(config)
 
     # Set up trainer for refitting
     trainer_refit = pl.Trainer(
@@ -92,7 +101,6 @@ def run_experiment(seed: int, config: Config, dataset: str = "MNIST", use_mmd: b
     return {
         "seed": seed,
         "dataset": dataset,
-        "use_mmd": use_mmd,
         "mse_initial": mse_initial,
         "mse_refit": mse_refit,
         "loglik_initial": loglik_initial,

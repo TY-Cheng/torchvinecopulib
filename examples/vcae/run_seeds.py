@@ -2,15 +2,24 @@ import contextlib
 import logging
 import os
 import sys
+from typing import Union
 
 import pandas as pd
 from tqdm import tqdm
-from vcae.config import config
+from vcae.config import config_mnist, config_svhn
 from vcae.experiment import run_experiment
 
 dataset = "MNIST"  # or "SVHN"
 start = int(sys.argv[1])
 end = int(sys.argv[2])
+
+if dataset == "MNIST":
+    config = config_mnist
+elif dataset == "SVHN":
+    config = config_svhn
+else:
+    raise ValueError(f"Unsupported dataset: {dataset}")
+
 
 # Redirect tqdm and errors to log file
 log_path = f"progress_{dataset}_{start}_{end}.log"
@@ -34,7 +43,7 @@ def suppress_output():
             logging.getLogger().setLevel(logging_level)
 
 
-results = []
+results: list[dict[str, Union[float, int, str]]] = []
 output_path = f"results_{dataset}_{start}_{end}.csv"
 for seed in tqdm(range(start, end), desc=f"Seeds {start}-{end}", file=log_file):
     try:
