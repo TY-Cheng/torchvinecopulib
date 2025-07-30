@@ -119,20 +119,21 @@ def main(cfg: SimpleNamespace) -> None:
     # --------------------------------------------
     # * Final eval
     # --------------------------------------------
-    # * Fit vine on encoded latent z for each (recon and joint)
-    Z_train = get_latent_from_loader(model_joint, cfg.train_loader, cfg.device)
-    model_joint.fit_vine(Z_train)
+    # * Fit vine on encoded latent z for each (recon and joint), Compute metrics
+    logger.debug("Fitting vine for recon model.")
     Z_train = get_latent_from_loader(model_recon, cfg.train_loader, cfg.device)
     model_recon.fit_vine(Z_train)
-    del Z_train  # ! free memory
-
-    # * Compute metrics
     res["recon"] = compute_metrics_from_loader(
         model=model_recon, loader=cfg.test_loader, device=cfg.device
     )
+    logger.info("Fitting vine for joint model.")
+    Z_train = get_latent_from_loader(model_joint, cfg.train_loader, cfg.device)
+    model_joint.fit_vine(Z_train)
     res["joint"] = compute_metrics_from_loader(
         model=model_joint, loader=cfg.test_loader, device=cfg.device
     )
+    logger.debug("Vine fitted for joint model.")
+    del Z_train  # ! free memory
     logger.info(
         f"[{cfg.dataset.upper()}] Final recon-only metrics: "
         f"MSE: {res['recon']['mse']:.4f}, "
@@ -152,7 +153,7 @@ def main(cfg: SimpleNamespace) -> None:
     # --------------------------------------------
     with open(file_pkl, "wb") as f:
         pickle.dump(obj=res, file=f)
-    logger.info(f"Results saved to {file_pkl}")
+    logger.info(f"Results saved to {file_pkl}.")
 
 
 if __name__ == "__main__":
@@ -170,7 +171,7 @@ if __name__ == "__main__":
             cfg_copy.model_type = "mlp"
             cfg_copy.latent_dim = 10
             cfg_copy.num_epochs_ae = 30
-            cfg_copy.num_epochs_joint = 5
+            cfg_copy.num_epochs_joint = 2
             cfg_copy.batch_size = 1024
             cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_mnist_data(
                 batch_size=cfg_copy.batch_size,
@@ -181,7 +182,7 @@ if __name__ == "__main__":
             cfg_copy.input_shape = next(iter(cfg_copy.train_loader))[0].shape[1:]  # (C, H, W)
         elif cfg_copy.dataset == "svhn":
             cfg_copy.model_type = "conv"
-            cfg_copy.latent_dim = 20
+            cfg_copy.latent_dim = 15
             cfg_copy.num_epochs_ae = 30
             cfg_copy.num_epochs_joint = 2
             cfg_copy.batch_size = 1024

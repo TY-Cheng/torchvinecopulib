@@ -14,7 +14,7 @@ def get_latent_from_loader(model, loader, device):
             x = x.to(device)
             z = model.encode(x)
             lst_Z.append(z.cpu())  # ! move to CPU to save memory
-    return torch.cat(lst_Z, dim=0)
+    return torch.cat(lst_Z, dim=0).to(device)
 
 
 class VineCopAutoEncoder(nn.Module):
