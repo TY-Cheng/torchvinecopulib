@@ -20,7 +20,7 @@ DIR_OUT = DIR_WORK / "examples" / "vcae_more" / "out"
 def get_logger(
     log_file: Path | str,
     console_level: int = logging.WARNING,
-    file_level: int = logging.INFO,
+    file_level: int = logging.DEBUG,
     fmt_console: str = "%(asctime)s - %(levelname)s - %(message)s",
     fmt_file: str = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
     name: str | None = None,
@@ -45,7 +45,7 @@ def get_logger(
 
     logger_name = name or str(log_file)
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(min(console_level, file_level))
 
     # * prevent duplicate handlers if called multiple times
     if not logger.handlers:

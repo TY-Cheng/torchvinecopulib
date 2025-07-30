@@ -5,10 +5,9 @@ test_size: 0.5
 val_size: 0.0
 # * Grid-style sweep
 search:
-  seed: [0, 1, 2, 3, 4]
+  seed: [0, 1, 2, 3]
   # dataset: [mnist]
   dataset: [svhn]
-  # * mnist: mlp and 10; svhn: conv and 50
   # model_type: [mlp, conv]
   # latent_dim: [10, 50]
   lr_ae: [2e-4]
@@ -16,7 +15,7 @@ search:
   lr_joint: [2e-4]
   # num_epochs_joint: [5]
   weight_decay: [1e-5]
-  lambda_nll_vine: [1e-4, 1e-3]
+  lambda_nll_vine: [1e-4, 1e-5]
   mtd_bidep: [chatterjee_xi, kendall_tau]
   mtd_kde: [tll]
   mtd_vine: [rvine]

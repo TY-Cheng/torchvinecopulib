@@ -6,9 +6,9 @@ import torch
 import torch.nn.functional as F
 import pickle
 from . import DIR_WORK, DIR_OUT, load_config_grid
-from .data_util import extract_XY, get_logger, load_mnist_data, load_svhn_data
-from .metric import compute_fid, compute_mmd
-from .vcae import VineCopAutoEncoder
+from .data_util import get_logger, load_mnist_data, load_svhn_data
+from .metric import compute_metrics_from_loader
+from .vcae import VineCopAutoEncoder, get_latent_from_loader
 
 logger_main = get_logger(log_file=DIR_OUT / "main.log", console_level="INFO", file_level="DEBUG")
 logger_main.info("Starting VCAE sweep...")
@@ -81,19 +81,15 @@ def main(cfg: SimpleNamespace) -> None:
     # --------------------------------------------
     # * Clone model, Fit vine
     # --------------------------------------------
-    model_recon = base_model  # continues MSE
-    model_joint = copy.deepcopy(base_model)  # switch to joint loss
+    model_recon = base_model
+    model_joint = copy.deepcopy(base_model)
 
     # * Fit vine on encoded latent z (from model_joint)
-    X_train, _ = extract_XY(cfg.train_loader, device=cfg.device)
-    with torch.no_grad():
-        Z_train = model_joint.encode(X_train)
-    model_joint.fit_vine(Z_train)
-    del X_train, Z_train  # ! free memory
+    Z_train = get_latent_from_loader(model_joint, cfg.train_loader, cfg.device)
+    model_joint.fit_vine(Z_train.to(cfg.device))
+    del Z_train  # ! free memory
     logger.debug(
-        f"Vine fitted with "
-        f"kde {cfg.mtd_kde}, bidep {cfg.mtd_bidep}, "
-        f"tau_thresh {cfg.tau_thresh}, num_step_grid {cfg.num_step_grid}"
+        f"Vine fitted on latent representations with {model_joint.vine.num_dim} dimensions."
     )
 
     # --------------------------------------------
@@ -117,43 +113,26 @@ def main(cfg: SimpleNamespace) -> None:
 
         logger.debug(
             f"[{cfg.dataset.upper()}] Joint Epoch {epoch + 1}/{cfg.num_epochs_joint} | "
-            # f"Recon Loss (train): {total_loss_recon / len(cfg.train_loader.dataset):.4f} | "
             f"Joint Loss (train): {total_loss_joint / len(cfg.train_loader.dataset):.4f}"
         )
+
     # --------------------------------------------
     # * Final eval
     # --------------------------------------------
     # * Fit vine on encoded latent z for each (recon and joint)
-    X_train, _ = extract_XY(cfg.train_loader, device=cfg.device)
-    with torch.no_grad():
-        Z_train = model_joint.encode(X_train)
+    Z_train = get_latent_from_loader(model_joint, cfg.train_loader, cfg.device)
     model_joint.fit_vine(Z_train)
-    with torch.no_grad():
-        Z_train = model_recon.encode(X_train)
+    Z_train = get_latent_from_loader(model_recon, cfg.train_loader, cfg.device)
     model_recon.fit_vine(Z_train)
-    del X_train, Z_train  # ! free memory
+    del Z_train  # ! free memory
 
     # * Compute metrics
-    x_test, _ = extract_XY(cfg.test_loader, device=cfg.device)
-    with torch.no_grad():
-        # * model whose loss function is recon (MSE) only
-        model_recon.eval()
-        x_hat = model_recon(x_test)[0]
-        res["recon"]["mse"] = F.mse_loss(x_hat, x_test).item()
-        res["recon"]["mmd"] = compute_mmd(real=x_test, fake=x_hat)
-        res["recon"]["fid"] = compute_fid(real=x_test, fake=x_hat)
-        res["recon"]["nll_vine"] = (
-            model_recon.get_neglogpdf_vine(model_recon.encode(x_test)).mean().item()
-        )
-        # * model whose loss function is joint (MSE + NLL)
-        model_joint.eval()
-        x_hat = model_joint(x_test)[0]
-        res["joint"]["mse"] = F.mse_loss(x_hat, x_test).item()
-        res["joint"]["mmd"] = compute_mmd(real=x_test, fake=x_hat)
-        res["joint"]["fid"] = compute_fid(real=x_test, fake=x_hat)
-        res["joint"]["nll_vine"] = (
-            model_joint.get_neglogpdf_vine(model_joint.encode(x_test)).mean().item()
-        )
+    res["recon"] = compute_metrics_from_loader(
+        model=model_recon, loader=cfg.test_loader, device=cfg.device
+    )
+    res["joint"] = compute_metrics_from_loader(
+        model=model_joint, loader=cfg.test_loader, device=cfg.device
+    )
     logger.info(
         f"[{cfg.dataset.upper()}] Final recon-only metrics: "
         f"MSE: {res['recon']['mse']:.4f}, "
@@ -188,21 +167,31 @@ if __name__ == "__main__":
         cfg_copy = copy.deepcopy(cfg)
         # * Load data
         if cfg_copy.dataset == "mnist":
-            cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_mnist_data()
-            cfg_copy.input_shape = next(iter(cfg_copy.train_loader))[0].shape[1:]  # (C, H, W)
             cfg_copy.model_type = "mlp"
             cfg_copy.latent_dim = 10
             cfg_copy.num_epochs_ae = 30
             cfg_copy.num_epochs_joint = 5
-            cfg_copy.batch_size = 256
-        elif cfg_copy.dataset == "svhn":
-            cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_svhn_data()
+            cfg_copy.batch_size = 1024
+            cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_mnist_data(
+                batch_size=cfg_copy.batch_size,
+                test_size=cfg_copy.test_size,
+                val_size=cfg_copy.val_size,
+                seed=cfg_copy.seed,
+            )
             cfg_copy.input_shape = next(iter(cfg_copy.train_loader))[0].shape[1:]  # (C, H, W)
+        elif cfg_copy.dataset == "svhn":
             cfg_copy.model_type = "conv"
             cfg_copy.latent_dim = 20
-            cfg_copy.num_epochs_ae = 10
+            cfg_copy.num_epochs_ae = 30
             cfg_copy.num_epochs_joint = 2
-            cfg_copy.batch_size = 256
+            cfg_copy.batch_size = 1024
+            cfg_copy.train_loader, cfg_copy.val_loader, cfg_copy.test_loader = load_svhn_data(
+                batch_size=cfg_copy.batch_size,
+                test_size=cfg_copy.test_size,
+                val_size=cfg_copy.val_size,
+                seed=cfg_copy.seed,
+            )
+            cfg_copy.input_shape = next(iter(cfg_copy.train_loader))[0].shape[1:]  # (C, H, W)
         else:
             raise ValueError(f"Unknown dataset: {cfg_copy.dataset}")
         cfg_copy.latent_dim = int(cfg_copy.latent_dim)

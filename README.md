@@ -124,11 +124,12 @@ uv run coverage report -m
 ## TODO
 
 - `VineCop.rosenblatt`
+- streaming (partial) fitting with `torch.utils.data.DataLoader`
 - replace `dict` with `torch.Tensor` using some `mod`
 - vectorized union-find
 - flatten `_visit` logic
-- `examples/someapplications.ipynb`
 - flatten dynamic nested dicts into tensors
+- `examples/someapplications.ipynb`
 - [`fastkde.pdf`](https://github.com/LBL-EESA/fastkde/blob/main/src/fastkde/fastKDE.py) onto `torch.Tensor`
 
 ## Contributing

@@ -5,6 +5,18 @@ import torch.nn.functional as F
 import torchvinecopulib as tvc
 
 
+def get_latent_from_loader(model, loader, device):
+    """Extract latent representations from a DataLoader using the given model."""
+    lst_Z = []
+    model.eval()
+    with torch.no_grad():
+        for x, _ in loader:
+            x = x.to(device)
+            z = model.encode(x)
+            lst_Z.append(z.cpu())  # ! move to CPU to save memory
+    return torch.cat(lst_Z, dim=0)
+
+
 class VineCopAutoEncoder(nn.Module):
     def __init__(
         self,
@@ -63,29 +75,30 @@ class VineCopAutoEncoder(nn.Module):
             # * svhn
             # * encoder
             self.encoder = nn.Sequential(
-                nn.Conv2d(channels, 16, 3, stride=2, padding=1),  # → [16, 16, 16]
+                nn.Conv2d(channels, 4, 3, stride=2, padding=1),
                 nn.LeakyReLU(),
-                nn.Conv2d(16, 32, 3, stride=2, padding=1),  # → [32, 8, 8]
+                nn.Conv2d(4, 8, 3, stride=2, padding=1),
                 nn.LeakyReLU(),
-                nn.Flatten(),  # → 32*8*8 = 2048
+                nn.Flatten(),
             )
-            self.encoder_out_dim = 32 * 8 * 8
+            # ! infer encoder_out_dim and shape using dummy forward pass
+            with torch.no_grad():
+                # * encoder_out_dim is the output dimension after the last conv layer
+                self.encoder_out_dim = self.encoder(torch.zeros(1, *input_shape)).shape[1]
+                self.encoder_out_shape = (8, 8, 8)  # match output of convs
+            # * latent representation
             self.fc_mu = nn.Linear(self.encoder_out_dim, latent_dim)
 
-            # Decoder: latent_dim → [32, 8, 8] → [3, 32, 32]
+            # * decoder
             self.decoder_fc = nn.Sequential(
                 nn.Linear(latent_dim, self.encoder_out_dim),
                 nn.LeakyReLU(),
             )
             self.decoder = nn.Sequential(
-                nn.Unflatten(1, (32, 8, 8)),
-                nn.ConvTranspose2d(
-                    32, 16, 3, stride=2, padding=1, output_padding=1
-                ),  # → [16, 16, 16]
+                nn.Unflatten(1, (self.encoder_out_shape)),
+                nn.ConvTranspose2d(8, 4, 3, stride=2, padding=1, output_padding=1),
                 nn.LeakyReLU(),
-                nn.ConvTranspose2d(
-                    16, channels, 3, stride=2, padding=1, output_padding=1
-                ),  # → [3, 32, 32]
+                nn.ConvTranspose2d(4, channels, 3, stride=2, padding=1, output_padding=1),
                 nn.Sigmoid(),
             )
         else:
