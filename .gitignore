@@ -11,8 +11,9 @@ MNIST/
 logs/
 examples/MNIST
 examples/logs
+examples/checkpoints
 examples/**/*.gz
-examples/**/*.ipynb
+# examples/**/*.ipynb
 
 # Python-generated files
 __pycache__/
@@ -239,3 +240,6 @@ Temporary Items
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+*.csv
+*.mat

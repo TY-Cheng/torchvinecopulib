@@ -49,6 +49,7 @@ dev = [
     "kagglehub",
     "matplotlib",
     "missingno",
+    "mypy",
     "pandas",
     "pytest-cov",
     "pytest",
@@ -67,6 +68,7 @@ dev = [
 cpu = ["torch>=2"]
 cu126 = ["torch>=2"]
 cu128 = ["torch>=2"]
+examples = ["pytorch-lightning", "tqdm"]
 
 [tool.uv]
 managed = true
