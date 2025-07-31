@@ -1,0 +1,656 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="torchvinecopulib.util package" href="torchvinecopulib.util.html" /><link rel="prev" title="torchvinecopulib package" href="torchvinecopulib.html" />
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.07.19 -->
+        <title>torchvinecopulib.bicop package - torchvinecopulib v1.1.2</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=25af2a20" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">torchvinecopulib v1.1.2</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <span class="sidebar-brand-text">torchvinecopulib v1.1.2</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Core Modules</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="modules.html">torchvinecopulib</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of torchvinecopulib</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="torchvinecopulib.html">torchvinecopulib package</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of torchvinecopulib package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">torchvinecopulib.bicop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.util.html">torchvinecopulib.util package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchvinecopulib.vinecop.html">torchvinecopulib.vinecop package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/torchvinecopulib.bicop.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="torchvinecopulib-bicop-package">
+<h1>torchvinecopulib.bicop package<a class="headerlink" href="#torchvinecopulib-bicop-package" title="Link to this heading">¶</a></h1>
+<section id="module-torchvinecopulib.bicop">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-torchvinecopulib.bicop" title="Link to this heading">¶</a></h2>
+<section id="torchvinecopulib-bicop">
+<h3>torchvinecopulib.bicop<a class="headerlink" href="#torchvinecopulib-bicop" title="Link to this heading">¶</a></h3>
+<p>Provides <code class="docutils literal notranslate"><span class="pre">BiCop</span></code> (<code class="docutils literal notranslate"><span class="pre">torch.nn.Module</span></code>) for estimating, evaluating, and sampling
+from bivariate copulas via <code class="docutils literal notranslate"><span class="pre">tll</span></code> or <code class="docutils literal notranslate"><span class="pre">fastKDE</span></code> approaches.</p>
+</section>
+<section id="decorators">
+<h3>Decorators<a class="headerlink" href="#decorators" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>torch.compile() for bilinear interpolation</p></li>
+<li><p>torch.no_grad() for fit(), hinv_l(), hinv_r(), sample(), and imshow()</p></li>
+</ul>
+</section>
+<section id="key-features">
+<h3>Key Features<a class="headerlink" href="#key-features" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Fits a copula density on a uniform [0,1]² grid and caches PDF/CDF/h‐functions</p></li>
+<li><p>Device‐agnostic: all buffers live on the same device/dtype you fit on</p></li>
+<li><p>Fast bilinear interpolation compiled with <code class="docutils literal notranslate"><span class="pre">torch.compile</span></code></p></li>
+<li><p>Convenient <code class="docutils literal notranslate"><span class="pre">.cdf()</span></code>, <code class="docutils literal notranslate"><span class="pre">.pdf()</span></code>, <code class="docutils literal notranslate"><span class="pre">.hfunc_*()</span></code>, <code class="docutils literal notranslate"><span class="pre">.hinv_*()</span></code>, and <code class="docutils literal notranslate"><span class="pre">.sample()</span></code> APIs</p></li>
+<li><p>Plotting helpers: <code class="docutils literal notranslate"><span class="pre">.imshow()</span></code> and <code class="docutils literal notranslate"><span class="pre">.plot(contour|surface)</span></code></p></li>
+</ul>
+</section>
+<section id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">torchvinecopulib.bicop</span><span class="w"> </span><span class="kn">import</span> <span class="n">BiCop</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cop</span> <span class="o">=</span> <span class="n">BiCop</span><span class="p">(</span><span class="n">num_step_grid</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cop</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>  <span class="c1"># obs: Tensor of shape (n,2) in [0,1]²</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cdf_vals</span> <span class="o">=</span> <span class="n">cop</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">samples</span> <span class="o">=</span> <span class="n">cop</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">is_sobol</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p>Nagler, T., Schellhase, C., &amp; Czado, C. (2017). Nonparametric estimation of simplified vine copula models: comparison of methods. Dependence Modeling, 5(1), 99-120.</p></li>
+<li><p>O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. &amp; O’Brien, J. P. A fast and objective multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). <a class="reference external" href="http://dx.doi.org/10.1016/j.csda.2016.02.014">http://dx.doi.org/10.1016/j.csda.2016.02.014</a></p></li>
+<li><p>O’Brien, T. A., Collins, W. D., Rauscher, S. A. &amp; Ringler, T. D. Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). <a class="reference external" href="http://dx.doi.org/10.1016/j.csda.2014.06.002">http://dx.doi.org/10.1016/j.csda.2014.06.002</a></p></li>
+</ul>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">torchvinecopulib.bicop.</span></span><span class="sig-name descname"><span class="pre">BiCop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_step_grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.cdf">
+<span class="sig-name descname"><span class="pre">cdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.cdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.cdf" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluate the copula CDF at given points. For independent copula, returns u₁·u₂.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> (<em>torch.Tensor</em>) – Points in [0,1]² where to evaluate the CDF (rows are (u₁,u₂)), shape (n,2).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>CDF values at each observation, shape (n,1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.device">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">device</span></em><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.device" title="Link to this definition">¶</a></dt>
+<dd><p>Get the device of the bicop model (all internal buffers).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The device on which the registered buffers reside.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.device</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.dtype">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dtype</span></em><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.dtype" title="Link to this definition">¶</a></dt>
+<dd><p>Get the data type of the bicop model (all internal buffers). Should be torch.float64.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The data type of the registered buffers.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.dtype</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mtd_kde</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'tll'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mtd_tll</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'constant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_iter_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">17</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_tau_est</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Estimate and cache PDF/CDF/h-function grids from bivariate copula observations.</p>
+<p>This method computes KDE-based bicopula densities on a uniform [0,1]² grid and populates internal buffers
+(<code class="docutils literal notranslate"><span class="pre">_pdf_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">_cdf_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">_hfunc_l_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">_hfunc_r_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">negloglik</span></code>).</p>
+<ul class="simple">
+<li><p>Nagler, T., Schellhase, C., &amp; Czado, C. (2017). Nonparametric estimation of simplified vine copula models: comparison of methods. Dependence Modeling, 5(1), 99-120.</p></li>
+<li><p>O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D. &amp; O’Brien, J. P. A fast and objective multidimensional kernel density estimation method: fastKDE. Comput. Stat. Data Anal. 101, 148–160 (2016). <a class="reference external" href="http://dx.doi.org/10.1016/j.csda.2016.02.014">http://dx.doi.org/10.1016/j.csda.2016.02.014</a></p></li>
+<li><p>O’Brien, T. A., Collins, W. D., Rauscher, S. A. &amp; Ringler, T. D. Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Comput. Stat. Data Anal. 79, 222–234 (2014). <a class="reference external" href="http://dx.doi.org/10.1016/j.csda.2014.06.002">http://dx.doi.org/10.1016/j.csda.2014.06.002</a></p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>obs</strong> (<em>torch.Tensor</em>) – shape (n, 2) bicop obs in [0, 1]².</p></li>
+<li><p><strong>mtd_kde</strong> (<em>str</em><em>, </em><em>optional</em>) – Method for estimating the copula density. One of (“tll”, “fastKDE”). Defaults to “tll”.</p></li>
+<li><p><strong>mtd_tll</strong> (<em>str</em><em>, </em><em>optional</em>) – fit method for the transformation local-likelihood (TLL) nonparametric family, used only when <code class="docutils literal notranslate"><span class="pre">mtd_kde=&quot;tll&quot;</span></code>, one of (“constant”, “linear”, or “quadratic”). Defaults to “constant”.</p></li>
+<li><p><strong>num_iter_max</strong> (<em>int</em><em>, </em><em>optional</em>) – num of Sinkhorn/IPF iters for grid normalization, used only when <code class="docutils literal notranslate"><span class="pre">mtd_kde=&quot;fastKDE&quot;</span></code>. Defaults to 17.</p></li>
+<li><p><strong>is_tau_est</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, compute and store Kendall’s τ. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.hfunc_l">
+<span class="sig-name descname"><span class="pre">hfunc_l</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.hfunc_l"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.hfunc_l" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluate the left h-function at given points. Computes H(u₂ | u₁):= ∂/∂u₁ C(u₁,u₂) for
+the fitted copula. For independent copula, returns u₂.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> (<em>torch.Tensor</em>) – Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Left h-function values at each observation, shape (n,1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.hfunc_r">
+<span class="sig-name descname"><span class="pre">hfunc_r</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.hfunc_r"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.hfunc_r" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluate the right h-function at given points. Computes H(u₁ | u₂):= ∂/∂u₂ C(u₁,u₂) for
+the fitted copula. For independent copula, returns u₁.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> (<em>torch.Tensor</em>) – Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Right h-function values at each observation, shape (n,1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.hinv_l">
+<span class="sig-name descname"><span class="pre">hinv_l</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.hinv_l"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.hinv_l" title="Link to this definition">¶</a></dt>
+<dd><p>Invert the left h‐function via root‐finding: find u₂ given (u₁, p). Solves H(u₂ | u₁) = p
+by ITP between 0 and 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> (<em>torch.Tensor</em>) – Points in [0,1]² where to evaluate the left h-function (rows are (u₁,u₂)), shape (n,2).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Solutions u₂ ∈ [0,1], shape (n,1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.hinv_r">
+<span class="sig-name descname"><span class="pre">hinv_r</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.hinv_r"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.hinv_r" title="Link to this definition">¶</a></dt>
+<dd><p>Invert the right h‐function via root‐finding: find u₁ given (u₂, p). Solves H(u₁ | u₂) =
+p by ITP between 0 and 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> (<em>torch.Tensor</em>) – Points in [0,1]² where to evaluate the right h-function (rows are (u₁,u₂)), shape (n,2).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Solutions u₁ ∈ [0,1], shape (n,1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.imshow">
+<span class="sig-name descname"><span class="pre">imshow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">is_log_pdf</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Axes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'inferno'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlabel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'$u_{left}$'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'$u_{right}$'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Estimated</span> <span class="pre">bivariate</span> <span class="pre">copula</span> <span class="pre">density'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorbartitle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Density'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">imshow_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Figure</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Axes</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.imshow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.imshow" title="Link to this definition">¶</a></dt>
+<dd><p>Display the (log-)PDF grid as a heatmap.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>is_log_pdf</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, plot log-PDF. Defaults to False.</p></li>
+<li><p><strong>ax</strong> (<em>plt.Axes</em><em>, </em><em>optional</em>) – Matplotlib Axes object to plot on. If None, a new figure and axes are created. Defaults to None.</p></li>
+<li><p><strong>cmap</strong> (<em>str</em><em>, </em><em>optional</em>) – Colormap for the plot. Defaults to “inferno”.</p></li>
+<li><p><strong>xlabel</strong> (<em>str</em><em>, </em><em>optional</em>) – X-axis label. Defaults to r”$u_{left}$”.</p></li>
+<li><p><strong>ylabel</strong> (<em>str</em><em>, </em><em>optional</em>) – Y-axis label. Defaults to r”$u_{right}$”.</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Plot title. Defaults to “Estimated bivariate copula density”.</p></li>
+<li><p><strong>colorbartitle</strong> (<em>str</em><em>, </em><em>optional</em>) – Colorbar title. Defaults to “Density”.</p></li>
+<li><p><strong>**imshow_kwargs</strong> – Additional keyword arguments for imshow.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The figure and axes objects.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.log_pdf">
+<span class="sig-name descname"><span class="pre">log_pdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.log_pdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.log_pdf" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluate the copula log-PDF at given points, with safe handling of inf/nan. For
+independent copula, returns 0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> (<em>torch.Tensor</em>) – Points in [0,1]² where to evaluate the log-PDF (rows are (u₁,u₂)), shape (n,2).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>log-PDF values at each observation, shape (n,1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.pdf">
+<span class="sig-name descname"><span class="pre">pdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.pdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.pdf" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluate the copula PDF at given points. For independent copula, returns 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obs</strong> (<em>torch.Tensor</em>) – Points in [0,1]² where to evaluate the PDF (rows are (u₁,u₂)), shape (n,2).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>PDF values at each observation, shape (n,1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plot_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'surface'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">margin_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'unif'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xylim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Figure</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Axes</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.plot" title="Link to this definition">¶</a></dt>
+<dd><p>Plot the bivariate copula density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plot_type</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of plot, either “contour” or “surface”. Defaults to “surface”.</p></li>
+<li><p><strong>margin_type</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of margin, either “unif” or “norm”. Defaults to “unif”.</p></li>
+<li><p><strong>xylim</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>, </em><em>optional</em>) – Limits for x and y axes. Defaults to None.</p></li>
+<li><p><strong>grid_size</strong> (<em>int</em><em>, </em><em>optional</em>) – Size of the grid for the plot. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The figure and axes objects.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.reset" title="Link to this definition">¶</a></dt>
+<dd><p>Reinitialize state and zero all statistics and precomputed grids.</p>
+<p>Sets the bicop back to independent bicop and clears accumulated
+metrics (<code class="docutils literal notranslate"><span class="pre">tau</span></code>, <code class="docutils literal notranslate"><span class="pre">num_obs</span></code>, <code class="docutils literal notranslate"><span class="pre">negloglik</span></code>) as well as all grid buffers
+(<code class="docutils literal notranslate"><span class="pre">_pdf_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">_cdf_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">_hfunc_l_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">_hfunc_r_grid</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="torchvinecopulib.bicop.BiCop.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_sample</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_sobol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="reference internal" href="_modules/torchvinecopulib/bicop.html#BiCop.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchvinecopulib.bicop.BiCop.sample" title="Link to this definition">¶</a></dt>
+<dd><p>Sample from the copula by inverse Rosenblatt transform. Uses Sobol sequence if
+<code class="docutils literal notranslate"><span class="pre">is_sobol=True</span></code>, otherwise uniform RNG. For independent copula, returns uniform samples in
+[0,1]².</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_sample</strong> (<em>int</em><em>, </em><em>optional</em>) – number of samples to generate. Defaults to 100.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – random seed for reproducibility. Defaults to 42.</p></li>
+<li><p><strong>is_sobol</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, use Sobol sampling. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Generated samples, shape (num_sample, 2).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="torchvinecopulib.util.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">torchvinecopulib.util package</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="torchvinecopulib.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">torchvinecopulib package</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024-, Tuoyuan Cheng
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">torchvinecopulib.bicop package</a><ul>
+<li><a class="reference internal" href="#module-torchvinecopulib.bicop">Module contents</a><ul>
+<li><a class="reference internal" href="#torchvinecopulib-bicop">torchvinecopulib.bicop</a></li>
+<li><a class="reference internal" href="#decorators">Decorators</a></li>
+<li><a class="reference internal" href="#key-features">Key Features</a></li>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop"><code class="docutils literal notranslate"><span class="pre">BiCop</span></code></a><ul>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.cdf"><code class="docutils literal notranslate"><span class="pre">BiCop.cdf()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.device"><code class="docutils literal notranslate"><span class="pre">BiCop.device</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.dtype"><code class="docutils literal notranslate"><span class="pre">BiCop.dtype</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.fit"><code class="docutils literal notranslate"><span class="pre">BiCop.fit()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.hfunc_l"><code class="docutils literal notranslate"><span class="pre">BiCop.hfunc_l()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.hfunc_r"><code class="docutils literal notranslate"><span class="pre">BiCop.hfunc_r()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.hinv_l"><code class="docutils literal notranslate"><span class="pre">BiCop.hinv_l()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.hinv_r"><code class="docutils literal notranslate"><span class="pre">BiCop.hinv_r()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.imshow"><code class="docutils literal notranslate"><span class="pre">BiCop.imshow()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.log_pdf"><code class="docutils literal notranslate"><span class="pre">BiCop.log_pdf()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.pdf"><code class="docutils literal notranslate"><span class="pre">BiCop.pdf()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.plot"><code class="docutils literal notranslate"><span class="pre">BiCop.plot()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.reset"><code class="docutils literal notranslate"><span class="pre">BiCop.reset()</span></code></a></li>
+<li><a class="reference internal" href="#torchvinecopulib.bicop.BiCop.sample"><code class="docutils literal notranslate"><span class="pre">BiCop.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=6f037312"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>
