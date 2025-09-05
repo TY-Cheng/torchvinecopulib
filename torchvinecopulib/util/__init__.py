@@ -22,56 +22,222 @@ References
 import enum
 from pprint import pformat
 
-import fastkde
+import math
+# import fastkde
 import torch
-from scipy.stats import kendalltau
+import torch.nn.functional as F
+# from scipy.stats import kendalltau
 
-_EPS = 1e-10
-
+from .constants import _EPS
+from .bandwidth import *
 
 @torch.no_grad()
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Compute Kendall's tau correlation coefficient and p-value. Moves inputs to CPU and delegates
-    to SciPy’s ``kendalltau``.
+    # tau-b, ties-corrected, CPU torch
+    x = x.view(-1).to(torch.float64, 'cpu')
+    y = y.view(-1).to(torch.float64, 'cpu')
+    n = x.numel()
+    if n < 2:
+        return torch.tensor(0.0, dtype=torch.float64)
 
-    Args:
-        x (torch.Tensor): shape (n, 1)
-        y (torch.Tensor): shape (n, 1)
-    Returns:
-        torch.Tensor: Kendall's tau correlation coefficient and p-value
-    """
-    return torch.as_tensor(
-        kendalltau(x.view(-1).cpu(), y.view(-1).cpu()),
-        dtype=x.dtype,
-        device=x.device,
-    )
+    # sort by x, then use BIT over ranks of y
+    order = torch.argsort(x, stable=True)
+    xs, ys = x[order], y[order]
+    y_vals, y_inv = torch.unique(ys, sorted=True, return_inverse=True)
+    yr = y_inv + 1
+    m = int(y_vals.numel())
 
+    # tie counts
+    def tie_pairs(arr):
+        _, c = torch.unique(arr, return_counts=True)
+        c = c.to(torch.int64)
+        return int(((c * (c - 1)) // 2).sum().item())
+    n0 = n * (n - 1) // 2
+    n1, n2 = tie_pairs(xs), tie_pairs(ys)
+
+    # Fenwick tree
+    bit = torch.zeros(m + 1, dtype=torch.int64)
+    def bit_add(i):
+        while i <= m:
+            bit[i] += 1
+            i += i & -i
+    def bit_sum(i):
+        s = 0
+        while i > 0:
+            s += int(bit[i].item())
+            i -= i & -i
+        return s
+
+    C = D = 0
+    i = 0
+    processed = 0
+    while i < n:
+        j = i + 1
+        while j < n and xs[j] == xs[i]:
+            j += 1
+        for k in range(i, j):
+            r = int(yr[k].item())
+            C += bit_sum(r - 1)
+            D += processed - bit_sum(r)
+        for k in range(i, j):
+            bit_add(int(yr[k].item()))
+            processed += 1
+        i = j
+
+    denom = ((n0 - n1) * (n0 - n2)) ** 0.5
+    if denom == 0:
+        return torch.tensor(0.0, dtype=torch.float64)
+    return torch.tensor((C - D) / denom, dtype=torch.float64)
+
+##############################################
+# previous SciPy version
+##############################################
+# @torch.no_grad()
+# def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+#     """Compute Kendall's tau correlation coefficient and p-value. Moves inputs to CPU and delegates
+#     to SciPy’s ``kendalltau``.
+
+#     Args:
+#         x (torch.Tensor): shape (n, 1)
+#         y (torch.Tensor): shape (n, 1)
+#     Returns:
+#         torch.Tensor: Kendall's tau correlation coefficient and p-value
+#     """
+#     return torch.as_tensor(
+#         kendalltau(x.view(-1).cpu(), y.view(-1).cpu()),
+#         dtype=x.dtype,
+#         device=x.device,
+#     )
+
+def _auto_grid_size(range_len: float, h: float, cells_per_sigma: int, gmin: int, gmax: int) -> int:
+    if h <= 0.0 or not math.isfinite(h):  # fallback
+        return max(gmin, 256)
+    est = int(math.ceil(cells_per_sigma * max(range_len, 1e-12) / h))
+    return int(max(gmin, min(gmax, est)))
 
 @torch.no_grad()
-def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Estimate mutual information using ``fastKDE``. Moves inputs to CPU and delegates to
-    ``fastKDE.pdf``.
-
-    - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
-    - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
-    - Purkayastha, S., & Song, P. X. K. (2024). fastMI: A fast and consistent copula-based nonparametric estimator of mutual information. Journal of Multivariate Analysis, 201, 105270.
+def mutual_info(x: torch.Tensor, y: torch.Tensor,
+                hxy: tuple[float, float] | None = None,
+                cells_per_sigma: int = 10,
+                grid_min: int = 128,
+                grid_max: int = 2048,
+                bandwidth_method: str = "auto",
+                bandwidth_kwargs: dict | None = None, ) -> torch.Tensor:
+    """
+    Torch-only MI via 2D KDE on a grid, with **adaptive Nx,Ny** based on bandwidths.
+    - If hxy is None, use Scott's rule.
+    - Grid spacing dx,dy chosen so ~cells_per_sigma points; Nx,Ny clamped to [grid_min,grid_max].
 
     Args:
         x (torch.Tensor): shape (n, 1)
         y (torch.Tensor): shape (n, 1)
+        hxy: bandwidth for x and y
+        ...
+        bandwidth selectors:
+            Choose bandwidth via:
+            'isj'    -> isj_bandwidth (if available), else Silverman
+            'kfold'  -> kfold_lcv_bandwidth
+            'auto'   -> ISJ/Silverman -> refine ±50% via LCV
+        if hxy not specified, will decide using selected bandwith method
     Returns:
-        torch.Tensor: Estimated mutual information
+        torch.Tensor: Estimated mutual information    
+    
     """
-    x = x.clamp(_EPS, 1.0 - _EPS).view(-1).cpu()
-    y = y.clamp(_EPS, 1.0 - _EPS).view(-1).cpu()
-    joint = torch.as_tensor(fastkde.pdf(x, y).values, dtype=x.dtype, device=x.device)
-    margin_x = torch.as_tensor(fastkde.pdf(x).values, dtype=x.dtype, device=x.device)
-    margin_y = torch.as_tensor(fastkde.pdf(y).values, dtype=x.dtype, device=x.device)
-    return (
-        joint[joint > 0.0].log().mean()
-        - margin_x[margin_x > 0.0].log().mean()
-        - margin_y[margin_y > 0.0].log().mean()
-    )
+    x = x.view(-1).to(dtype=torch.float64)
+    y = y.view(-1).to(dtype=torch.float64)
+    n = x.numel()
+
+    # Ranges with a tiny pad to avoid edge squeezing
+    x_lo, x_hi = x.min().item(), x.max().item()
+    y_lo, y_hi = y.min().item(), y.max().item()
+    rx = max(x_hi - x_lo, 1e-12)
+    ry = max(y_hi - y_lo, 1e-12)
+    pad_x = 0.1 * rx
+    pad_y = 0.1 * ry
+    x_min, x_max = x_lo - pad_x, x_hi + pad_x
+    y_min, y_max = y_lo - pad_y, y_hi + pad_y
+    rxp = x_max - x_min
+    ryp = y_max - y_min
+
+    # Bandwidths
+    if hxy is None:
+        try:
+            hx = float(optimal_bandwidth(x, method=bandwidth_method, **(bandwidth_kwargs or {})))
+            hy = float(optimal_bandwidth(y, method=bandwidth_method, **(bandwidth_kwargs or {})))
+        except Exception:
+            # fallback: Scott
+            sf = n ** (-1.0 / 6.0)
+            hx = float(sf * x.std(unbiased=True).clamp_min(1e-12))
+            hy = float(sf * y.std(unbiased=True).clamp_min(1e-12))
+    else:
+        hx, hy = map(float, hxy)
+
+    # Adaptive grid sizes
+    nx = _auto_grid_size(rxp, hx, cells_per_sigma, grid_min, grid_max)
+    ny = _auto_grid_size(ryp, hy, cells_per_sigma, grid_min, grid_max)
+
+    gx = torch.linspace(x_min, x_max, nx, dtype=torch.float64)
+    gy = torch.linspace(y_min, y_max, ny, dtype=torch.float64)
+    dx = gx[1] - gx[0]
+    dy = gy[1] - gy[0]
+
+    # Bin points to nearest cell
+    ix = ((x - x_min) / dx).round().clamp(0, nx - 1).to(torch.long)
+    iy = ((y - y_min) / dy).round().clamp(0, ny - 1).to(torch.long)
+    lin = ix * ny + iy
+    counts = torch.zeros(nx * ny, dtype=torch.float64).scatter_add_(
+        0, lin, torch.ones_like(lin, dtype=torch.float64)
+    ).view(nx, ny)
+
+    # Separable Gaussian smoothing
+    rxk = int(math.ceil(4.0 * (hx / dx)))
+    ryk = int(math.ceil(4.0 * (hy / dy)))
+    ox = torch.arange(-rxk, rxk + 1, dtype=torch.float64) * dx
+    oy = torch.arange(-ryk, ryk + 1, dtype=torch.float64) * dy
+    kx = torch.exp(-0.5 * (ox / hx).pow(2)) / (hx * math.sqrt(2.0 * math.pi))
+    ky = torch.exp(-0.5 * (oy / hy).pow(2)) / (hy * math.sqrt(2.0 * math.pi))
+
+    s = counts.unsqueeze(0).unsqueeze(0)     # [1,1,nx,ny]
+    s = F.conv2d(s, kx.view(1,1,-1,1), padding=(rxk, 0))
+    s = F.conv2d(s, ky.view(1,1,1,-1), padding=(0, ryk))
+    pdf = (s.squeeze(0).squeeze(0) / n).clamp_min(1e-12)  # density
+
+    # Convert to probabilities on the grid, then MI
+    p = (pdf * dx * dy).clamp_min(1e-12)
+    p = p / p.sum()
+    px = p.sum(dim=1, keepdim=True).clamp_min(1e-12)
+    py = p.sum(dim=0, keepdim=True).clamp_min(1e-12)
+    mi = (p * (p.log() - px.log() - py.log())).sum()
+    return mi.to(dtype=x.dtype, device=x.device)
+
+##############################################
+# previous fastKDE version
+##############################################
+# @torch.no_grad()
+# def mutual_info(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+#     """Estimate mutual information using ``fastKDE``. Moves inputs to CPU and delegates to
+#     ``fastKDE.pdf``.
+
+#     - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
+#     - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
+#     - Purkayastha, S., & Song, P. X. K. (2024). fastMI: A fast and consistent copula-based nonparametric estimator of mutual information. Journal of Multivariate Analysis, 201, 105270.
+
+#     Args:
+#         x (torch.Tensor): shape (n, 1)
+#         y (torch.Tensor): shape (n, 1)
+#     Returns:
+#         torch.Tensor: Estimated mutual information
+#     """
+#     x = x.clamp(_EPS, 1.0 - _EPS).view(-1).cpu()
+#     y = y.clamp(_EPS, 1.0 - _EPS).view(-1).cpu()
+#     joint = torch.as_tensor(fastkde.pdf(x, y).values, dtype=x.dtype, device=x.device)
+#     margin_x = torch.as_tensor(fastkde.pdf(x).values, dtype=x.dtype, device=x.device)
+#     margin_y = torch.as_tensor(fastkde.pdf(y).values, dtype=x.dtype, device=x.device)
+#     return (
+#         joint[joint > 0.0].log().mean()
+#         - margin_x[margin_x > 0.0].log().mean()
+#         - margin_y[margin_y > 0.0].log().mean()
+#     )
 
 
 @torch.no_grad()
@@ -153,7 +319,7 @@ class ENUM_FUNC_BIDEP(enum.Enum):
 
 
 class kdeCDFPPF1D(torch.nn.Module):
-    _EPS = _EPS
+    _EPS = _EPS  # keep your constant
 
     def __init__(
         self,
@@ -162,52 +328,91 @@ class kdeCDFPPF1D(torch.nn.Module):
         x_min: float = None,
         x_max: float = None,
         pad: float = 0.1,
+        h: torch.Tensor | float = None,   # optional: allow passing a bandwidth
+        bandwidth_method: str = "auto",
+        bandwidth_kwargs: dict | None = None,
     ):
-        """1D KDE CDF/PPF using ``fastKDE`` + Simpson's rule. Given a sample ``x``, fits a kernel
-        density estimate via ``fastKDE`` on a grid of size ``num_step_grid`` (power of two plus
-        one).  Precomputes PDF, CDF, and their finite‐difference slopes for fast interpolation.
-
-        - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
-        - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
-
-        Args:
-            x (torch.Tensor): input sample to fit the KDE.
-            num_step_grid (int, optional): number of grid points for the KDE, should be power of 2 plus 1. Defaults to None.
-            x_min (float, optional): minimum value of the grid. Defaults to x.min() - pad.
-            x_max (float, optional): maximum value of the grid. Defaults to x.max() + pad.
-            pad (float, optional): padding to extend beyond the min/max when ``x_min``/``x_max`` is None. Defaults to 1.0.
+        """
+        1D KDE CDF/PPF using pure Torch:
+        - Bin samples on an equispaced grid
+        - Smooth counts with a Gaussian kernel via conv1d (zero-padded => no wraparound)
+        - Normalize to get PDF, integrate to get CDF
         """
         super().__init__()
-        self.num_obs = x.shape[0]
-        self.x_min = x_min if x_min is not None else x.min().item() - pad
-        self.x_max = x_max if x_max is not None else x.max().item() + pad
-        # * power of 2 plus 1
+
+        # Work in float64 for stability; buffers carry device/dtype
+        x = x.view(-1).to(dtype=torch.float64)
+        x = x[torch.isfinite(x)]
+        self.num_obs = x.numel()
+
+        # Domain & grid
+        x_lo = x.min().item()
+        x_hi = x.max().item()
+        self.x_min = float(x_min) if x_min is not None else (x_lo - pad * (x_hi - x_lo + 1e-12))
+        self.x_max = float(x_max) if x_max is not None else (x_hi + pad * (x_hi - x_lo + 1e-12))
         if num_step_grid is None:
-            num_step_grid = int(2 ** torch.log2(torch.tensor(x.numel())).ceil().item()) + 1
-        self.num_step_grid = num_step_grid
-        # * fastkde
-        res = fastkde.pdf(x.view(-1).cpu().numpy(), num_points=num_step_grid)
-        xs = torch.from_numpy(res.var0.values).to(dtype=torch.float64)
-        pdfs = torch.from_numpy(res.values).to(dtype=torch.float64).clamp_min(self._EPS)
-        N = pdfs.shape[0]
-        ws = torch.ones(N, dtype=torch.float64)
-        ws[1:-1:2] = 4
-        ws[2:-1:2] = 2
-        h = xs[1] - xs[0]
-        cdf = torch.cumsum(pdfs * ws, dim=0) * (h / 3)
-        cdf = cdf / cdf[-1]
-        slope_fwd = (cdf[1:] - cdf[:-1]) / h
-        slope_inv = h / (cdf[1:] - cdf[:-1])
-        slope_pdf = (pdfs[1:] - pdfs[:-1]) / h
+            # power-of-two-ish for nice conv/cache; "+1" keeps your original spirit
+            pow2 = 1 << (int(max(16, self.num_obs)).bit_length())  # >=16
+            num_step_grid = int(pow2 + 1)
+        self.num_step_grid = int(num_step_grid)
+
+        xs = torch.linspace(self.x_min, self.x_max, self.num_step_grid, dtype=torch.float64)
+        dx = xs[1] - xs[0]
+
+        # Bandwidth (default: Silverman)
+        if h is None:
+            try:
+                h = optimal_bandwidth(
+                    x, method=bandwidth_method, **(bandwidth_kwargs or {})
+                    )
+            except Exception:
+                # fallback to Silverman if selector not available
+                std = x.std(unbiased=True).clamp_min(1e-12)
+                h = 1.06 * std * (self.num_obs ** (-1.0 / 5.0))
+
+        h = torch.as_tensor(h, dtype=torch.float64)
+
+        # Bin to nearest grid index
+        idx_f = ((x - self.x_min) / dx).round()
+        idx = idx_f.clamp(0, self.num_step_grid - 1).to(torch.long)
+        counts = torch.zeros(self.num_step_grid, dtype=torch.float64).scatter_add_(
+            0, idx, torch.ones_like(idx, dtype=torch.float64)
+        )
+
+        # Build discrete Gaussian kernel (truncate at 4 std devs)
+        rad = int(math.ceil(4.0 * (h / dx).item()))
+        offsets = torch.arange(-rad, rad + 1, dtype=torch.float64) * dx
+        kernel = torch.exp(-0.5 * (offsets / h).pow(2)) / (h * math.sqrt(2.0 * math.pi))
+        kernel = kernel.unsqueeze(0).unsqueeze(0)  # [1,1,kw]
+        signal = counts.unsqueeze(0).unsqueeze(0)  # [1,1,N]
+
+        # Linear conv with zero padding (no wrap)
+        pdf = F.conv1d(signal, kernel, padding=rad).squeeze() / self.num_obs  # shape [N]
+        pdf = pdf.clamp_min(self._EPS)
+
+        # CDF by trapezoid rule + renorm (monotone guard)
+        cdf = torch.empty_like(pdf)
+        cdf[0] = 0.0
+        cdf[1:] = torch.cumsum(0.5 * (pdf[:-1] + pdf[1:]) * dx, dim=0)
+        cdf = (cdf / cdf[-1]).clamp(0.0, 1.0)
+        # enforce monotonicity in case of tiny numeric dips
+        cdf = torch.cummax(cdf, dim=0).values
+
+        # Precompute slopes for fast interpolation
+        slope_fwd = (cdf[1:] - cdf[:-1]) / dx
+        slope_inv = dx / (cdf[1:] - cdf[:-1]).clamp_min(self._EPS)
+        slope_pdf = (pdf[1:] - pdf[:-1]) / dx
+
+        # Register buffers for device/dtype agnosticism
         self.register_buffer("grid_x", xs)
-        self.register_buffer("grid_pdf", pdfs)
+        self.register_buffer("grid_pdf", pdf)
         self.register_buffer("grid_cdf", cdf)
         self.register_buffer("slope_fwd", slope_fwd)
         self.register_buffer("slope_inv", slope_inv)
         self.register_buffer("slope_pdf", slope_pdf)
-        self.h = h
-        # ! device agnostic
-        self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))
+        self.h = float(h.item())
+        self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))  # device anchor
+
         self.negloglik = -self.log_pdf(x).mean()
 
     @property
@@ -295,6 +500,7 @@ class kdeCDFPPF1D(torch.nn.Module):
         """
         return -self.log_pdf(x).mean()
 
+
     def __str__(self):
         """String representation of the ``kdeCDFPPF1D`` object.
 
@@ -308,11 +514,177 @@ class kdeCDFPPF1D(torch.nn.Module):
             "x_min": float(round(self.x_min, 4)),
             "x_max": float(round(self.x_max, 4)),
             "num_step_grid": int(self.num_step_grid),
+            "h": float(self.h),
             "dtype": self.dtype,
             "device": self.device,
         }
-        params_str = pformat(params, sort_dicts=False, underscore_numbers=True)
-        return f"{header}\n{params_str[1:-1]}\n\n"
+        from pprint import pformat
+        return f"{header}\n{pformat(params, sort_dicts=False, underscore_numbers=True)[1:-1]}\n\n"
+
+##############################################
+# previous fastKDE version
+##############################################
+# class kdeCDFPPF1D(torch.nn.Module):
+#     _EPS = _EPS
+
+#     def __init__(
+#         self,
+#         x: torch.Tensor,
+#         num_step_grid: int = None,
+#         x_min: float = None,
+#         x_max: float = None,
+#         pad: float = 0.1,
+#     ):
+#         """1D KDE CDF/PPF using ``fastKDE`` + Simpson's rule. Given a sample ``x``, fits a kernel
+#         density estimate via ``fastKDE`` on a grid of size ``num_step_grid`` (power of two plus
+#         one).  Precomputes PDF, CDF, and their finite‐difference slopes for fast interpolation.
+
+#         - O’Brien, T. A., Kashinath, K., Cavanaugh, N. R., Collins, W. D., & O’Brien, J. P. (2016). A fast and objective multidimensional kernel density estimation method: fastKDE. Computational Statistics & Data Analysis, 101, 148-160.
+#         - O’Brien, T. A., Collins, W. D., Rauscher, S. A., & Ringler, T. D. (2014). Reducing the computational cost of the ECF using a nuFFT: A fast and objective probability density estimation method. Computational Statistics & Data Analysis, 79, 222-234.
+
+#         Args:
+#             x (torch.Tensor): input sample to fit the KDE.
+#             num_step_grid (int, optional): number of grid points for the KDE, should be power of 2 plus 1. Defaults to None.
+#             x_min (float, optional): minimum value of the grid. Defaults to x.min() - pad.
+#             x_max (float, optional): maximum value of the grid. Defaults to x.max() + pad.
+#             pad (float, optional): padding to extend beyond the min/max when ``x_min``/``x_max`` is None. Defaults to 1.0.
+#         """
+#         super().__init__()
+#         self.num_obs = x.shape[0]
+#         self.x_min = x_min if x_min is not None else x.min().item() - pad
+#         self.x_max = x_max if x_max is not None else x.max().item() + pad
+#         # * power of 2 plus 1
+#         if num_step_grid is None:
+#             num_step_grid = int(2 ** torch.log2(torch.tensor(x.numel())).ceil().item()) + 1
+#         self.num_step_grid = num_step_grid
+#         # * fastkde
+#         res = fastkde.pdf(x.view(-1).cpu().numpy(), num_points=num_step_grid)
+#         xs = torch.from_numpy(res.var0.values).to(dtype=torch.float64)
+#         pdfs = torch.from_numpy(res.values).to(dtype=torch.float64).clamp_min(self._EPS)
+#         N = pdfs.shape[0]
+#         ws = torch.ones(N, dtype=torch.float64)
+#         ws[1:-1:2] = 4
+#         ws[2:-1:2] = 2
+#         h = xs[1] - xs[0]
+#         cdf = torch.cumsum(pdfs * ws, dim=0) * (h / 3)
+#         cdf = cdf / cdf[-1]
+#         slope_fwd = (cdf[1:] - cdf[:-1]) / h
+#         slope_inv = h / (cdf[1:] - cdf[:-1])
+#         slope_pdf = (pdfs[1:] - pdfs[:-1]) / h
+#         self.register_buffer("grid_x", xs)
+#         self.register_buffer("grid_pdf", pdfs)
+#         self.register_buffer("grid_cdf", cdf)
+#         self.register_buffer("slope_fwd", slope_fwd)
+#         self.register_buffer("slope_inv", slope_inv)
+#         self.register_buffer("slope_pdf", slope_pdf)
+#         self.h = h
+#         # ! device agnostic
+#         self.register_buffer("_dd", torch.tensor([], dtype=torch.float64))
+#         self.negloglik = -self.log_pdf(x).mean()
+
+#     @property
+#     def device(self):
+#         return self._dd.device
+
+#     @property
+#     def dtype(self):
+#         return self._dd.dtype
+
+#     def cdf(self, x: torch.Tensor) -> torch.Tensor:
+#         """Compute the CDF of the fitted KDE at ``x``.
+
+#         Args:
+#             x (torch.Tensor): Points at which to evaluate the CDF.
+#         Returns:
+#             torch.Tensor: CDF values at ``x``, clamped to [0, 1].
+#         """
+#         # ! device agnostic
+#         x = x.to(device=self.device, dtype=self.dtype)
+#         x_clamped = x.clamp(self.x_min, self.x_max)
+#         idx = torch.searchsorted(self.grid_x, x_clamped, right=False)
+#         idx = idx.clamp(1, self.grid_cdf.numel() - 1)
+#         y = (self.grid_cdf[idx - 1]) + (self.slope_fwd[idx - 1]) * (
+#             x_clamped - self.grid_x[idx - 1]
+#         )
+#         y = torch.where(x < self.x_min, torch.zeros_like(y), y)
+#         y = torch.where(x > self.x_max, torch.ones_like(y), y)
+#         return y.clamp(0.0, 1.0)
+
+#     def ppf(self, q: torch.Tensor) -> torch.Tensor:
+#         """Compute the PPF (quantile function) of the fitted KDE at ``q``.
+
+#         Args:
+#             q (torch.Tensor): Quantiles at which to evaluate the PPF.
+#         Returns:
+#             torch.Tensor: PPF values at ``q``, clamped to [x_min, x_max].
+#         """
+#         # ! device agnostic
+#         q = q.to(device=self.device, dtype=self.dtype)
+#         q_clamped = q.clamp(0.0, 1.0)
+#         idx = torch.searchsorted(self.grid_cdf, q_clamped, right=False)
+#         idx = idx.clamp(1, self.grid_cdf.numel() - 1)
+#         x = (self.grid_x[idx - 1]) + (self.slope_inv[idx - 1]) * (
+#             q_clamped - self.grid_cdf[idx - 1]
+#         )
+#         x = torch.where(q < 0.0, torch.full_like(x, self.x_min), x)
+#         x = torch.where(q > 1.0, torch.full_like(x, self.x_max), x)
+#         return x.clamp(self.x_min, self.x_max)
+
+#     def pdf(self, x: torch.Tensor) -> torch.Tensor:
+#         """Compute the PDF of the fitted KDE at ``x``.
+
+#         Args:
+#             x (torch.Tensor): Points at which to evaluate the PDF.
+#         Returns:
+#             torch.Tensor: PDF values at ``x``, clamped to [0, ∞).
+#         """
+#         # ! device agnostic
+#         x = x.to(device=self.device, dtype=self.dtype)
+#         x_clamped = x.clamp(self.x_min, self.x_max)
+#         idx = torch.searchsorted(self.grid_x, x_clamped, right=False)
+#         idx = idx.clamp(1, self.grid_pdf.numel() - 1)
+#         f = self.grid_pdf[idx - 1] + (self.slope_pdf[idx - 1]) * (x_clamped - self.grid_x[idx - 1])
+#         f = torch.where((x < self.x_min) | (x > self.x_max), torch.zeros_like(f), f)
+#         return f.clamp_min(0.0)
+
+#     def log_pdf(self, x: torch.Tensor) -> torch.Tensor:
+#         """Compute the log PDF of the fitted KDE at ``x``.
+
+#         Args:
+#             x (torch.Tensor): Points at which to evaluate the log PDF.
+#         Returns:
+#             torch.Tensor: Log PDF values at ``x``, guaranteed to be finite.
+#         """
+#         return self.pdf(x).log().nan_to_num(posinf=0.0, neginf=-13.815510557964274)
+
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         """Average negative log-likelihood of the fitted KDE at ``x``.
+
+#         Args:
+#             x (torch.Tensor): Points at which to evaluate the negative log-likelihood.
+#         Returns:
+#             torch.Tensor: Negative log-likelihood values at ``x``, averaged over the batch.
+#         """
+#         return -self.log_pdf(x).mean()
+
+#     def __str__(self):
+#         """String representation of the ``kdeCDFPPF1D`` object.
+
+#         Returns:
+#             str: String representation of the ``kdeCDFPPF1D`` object.
+#         """
+#         header = self.__class__.__name__
+#         params = {
+#             "num_obs": int(self.num_obs),
+#             "negloglik": float(self.negloglik.round(decimals=4)),
+#             "x_min": float(round(self.x_min, 4)),
+#             "x_max": float(round(self.x_max, 4)),
+#             "num_step_grid": int(self.num_step_grid),
+#             "dtype": self.dtype,
+#             "device": self.device,
+#         }
+#         params_str = pformat(params, sort_dicts=False, underscore_numbers=True)
+#         return f"{header}\n{params_str[1:-1]}\n\n"
 
 
 # @torch.compile
