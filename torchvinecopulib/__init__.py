@@ -6,6 +6,7 @@ __all__ = [
     "BiCop",
     "VineCop",
     "util",
+    "kdeCDFPPF1D",
 ]
 # dynamically grab the version you just built & installed
 try:
