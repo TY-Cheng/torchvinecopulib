@@ -1,4 +1,14 @@
 # conftest.py
+
+# solving the tcl issue
+import os
+os.environ.setdefault("MPLBACKEND", "Agg")
+try:
+    import matplotlib
+    matplotlib.use("Agg", force=True)
+except Exception:
+    pass
+
 import numpy as np
 import pytest
 import pyvinecopulib as pvc
@@ -27,7 +37,7 @@ FAMILIES = [
 def bicop_pair(request):
     """
     Returns a tuple:
-      ( family, true_params, U_tensor, bicop_fastkde, bicop_tll )
+      ( family, true_params, U_tensor, bicop_fastkde, bicop_tll, bicop_torchKDE )
 
     notice the scope="module" so that the fixture is created only once and reused in all tests that use it.
     """
@@ -38,14 +48,17 @@ def bicop_pair(request):
     U = true_bc.simulate(n=N_SIM, seeds=SEEDS)  # shape (N_SIM, 2)
     U_tensor = torch.tensor(U, device=DEVICE, dtype=torch.float64)
 
-    # 2) fit two torchvinecopulib instances (fast KDE and TLL)
+    # 2) fit two torchvinecopulib instances (torch KDE, fast KDE and TLL)
     bc_fast = tvc.BiCop(num_step_grid=512).to(DEVICE)
     bc_fast.fit(U_tensor, mtd_kde="fastKDE")
+
+    bc_torch = tvc.BiCop(num_step_grid=512).to(DEVICE)
+    bc_torch.fit(U_tensor, mtd_kde="torchKDE")
 
     bc_tll = tvc.BiCop(num_step_grid=512).to(DEVICE)
     bc_tll.fit(U_tensor, mtd_kde="tll")
 
-    return family, true_params, rotation, U_tensor, bc_fast, bc_tll
+    return family, true_params, rotation, U_tensor, bc_fast, bc_tll, bc_torch
 
 
 @pytest.fixture(scope="module")
