@@ -20,10 +20,10 @@ def test_device_and_dtype():
 
 
 def test_monotonicity_and_range(bicop_pair):
-    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+    family, params, rotation, U, bc_fast, bc_tll, bc_torch = bicop_pair
 
     # pick one of the two implementations or loop both
-    for bicop in (bc_fast, bc_tll):
+    for bicop in (bc_fast, bc_tll, bc_torch):
         # * simple diagonal check
         grid = torch.linspace(EPS, 1.0 - EPS, 100, device=U.device, dtype=torch.float64).unsqueeze(
             1
@@ -44,9 +44,9 @@ def test_monotonicity_and_range(bicop_pair):
 
 
 def test_inversion(bicop_pair):
-    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
+    family, params, rotation, U, bc_fast, bc_tll, bc_torch = bicop_pair
 
-    for bicop in (bc_fast, bc_tll):
+    for bicop in (bc_fast, bc_tll, bc_torch):
         grid = torch.linspace(0.1, 0.9, 50, device=U.device, dtype=torch.float64).unsqueeze(1)
         for u in grid:
             pts = torch.hstack([grid, u.repeat(grid.size(0), 1)])
@@ -68,8 +68,8 @@ def test_inversion(bicop_pair):
 
 
 def test_pdf_integrates_to_one(bicop_pair):
-    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
-    for cop in (bc_fast, bc_tll):
+    family, params, rotation, U, bc_fast, bc_tll, bc_torch = bicop_pair
+    for cop in (bc_fast, bc_tll, bc_torch):
         # our grid is uniform on [0,1]² with spacing Δ = 1/(N−1)
         Δ = 1.0 / (cop.num_step_grid - 1)
         # approximate ∫ pdf(u,v) du dv ≈ Σ_pdf_grid * Δ²
@@ -80,8 +80,8 @@ def test_pdf_integrates_to_one(bicop_pair):
 
 
 def test_log_pdf_matches_log_of_pdf(bicop_pair):
-    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
-    for cop in (bc_fast, bc_tll):
+    family, params, rotation, U, bc_fast, bc_tll, bc_torch = bicop_pair
+    for cop in (bc_fast, bc_tll, bc_torch):
         pts = torch.rand(500, 2, dtype=torch.float64, device=cop.device)
         pdf = cop.pdf(pts)
         logp = cop.log_pdf(pts)
@@ -102,8 +102,8 @@ def test_log_pdf_handles_zero():
 
 
 def test_sample_marginals(bicop_pair):
-    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
-    for cop in (bc_fast, bc_tll):
+    family, params, rotation, U, bc_fast, bc_tll, bc_torch = bicop_pair
+    for cop in (bc_fast, bc_tll, bc_torch):
         for is_sobol in (False, True):
             samp = cop.sample(2000, seed=0, is_sobol=is_sobol)
             # samples lie in [0,1]
@@ -117,8 +117,8 @@ def test_sample_marginals(bicop_pair):
 
 
 def test_internal_buffers_and_flags(bicop_pair):
-    _, _, _, U, bc_fast, bc_tll = bicop_pair
-    for cop, mtd_kde in [(bc_fast, "fastKDE"), (bc_tll, "tll")]:
+    _, _, _, U, bc_fast, bc_tll, bc_torch = bicop_pair
+    for cop, mtd_kde in [(bc_fast, "fastKDE"), (bc_tll, "tll"), (bc_torch, "torchKDE")]:
         print(cop)
         assert not cop.is_indep
         assert cop.mtd_kde == mtd_kde
@@ -131,7 +131,7 @@ def test_internal_buffers_and_flags(bicop_pair):
 
 
 def test_tau_estimation(bicop_pair):
-    _, _, _, U, bc_fast, bc_mtd_kde = bicop_pair
+    _, _, _, U, bc_fast, bc_mtd_kde, bc_torch = bicop_pair
     # re‐fit with tau estimation
     bc = tvc.BiCop(num_step_grid=64)
     bc.fit(U, mtd_kde="tll", is_tau_est=True)
@@ -141,8 +141,8 @@ def test_tau_estimation(bicop_pair):
 
 
 def test_sample_shape_and_dtype_on_tll(bicop_pair):
-    _, _, _, U, bc_fast, bc_tll = bicop_pair
-    for cop in (bc_fast, bc_tll):
+    _, _, _, U, bc_fast, bc_tll, bc_torch = bicop_pair
+    for cop in (bc_fast, bc_tll, bc_torch):
         s = cop.sample(123, seed=7, is_sobol=True)
         assert s.shape == (123, 2)
         assert s.dtype is cop.dtype
@@ -150,8 +150,9 @@ def test_sample_shape_and_dtype_on_tll(bicop_pair):
 
 
 def test_imshow_and_plot_api(bicop_pair):
-    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
-    cop = bc_fast
+    family, params, rotation, U, bc_fast, bc_tll, bc_torch = bicop_pair
+    # cop = bc_fast
+    cop = bc_torch
     # imshow
     fig, ax = cop.imshow(is_log_pdf=True)
     assert isinstance(fig, matplotlib.figure.Figure)
@@ -186,16 +187,18 @@ def test_imshow_and_plot_api(bicop_pair):
 
 
 def test_plot_accepts_unused_kwargs(bicop_pair):
-    _, _, _, U, bc_fast, _ = bicop_pair
+    _, _, _, U, bc_fast, _ , bc_torch = bicop_pair
     # just ensure it doesn’t crash
-    bc_fast.plot(plot_type="contour", margin_type="norm", xylim=(0, 1), grid_size=50)
-    bc_fast.plot(plot_type="surface", margin_type="unif", xylim=(0, 1), grid_size=20)
+    # bc_fast.plot(plot_type="contour", margin_type="norm", xylim=(0, 1), grid_size=50)
+    # bc_fast.plot(plot_type="surface", margin_type="unif", xylim=(0, 1), grid_size=20)
+    bc_torch.plot(plot_type="contour", margin_type="norm", xylim=(0, 1), grid_size=50)
+    bc_torch.plot(plot_type="surface", margin_type="unif", xylim=(0, 1), grid_size=20)
 
 
 def test_reset_and_str(bicop_pair):
     # ! notice scope="module" so we put this test at the end
-    family, params, rotation, U, bc_fast, bc_tll = bicop_pair
-    for cop in (bc_fast, bc_tll):
+    family, params, rotation, U, bc_fast, bc_tll, bc_torch = bicop_pair
+    for cop in (bc_fast, bc_tll, bc_torch):
         cop.reset()
         # should go back to independent
         assert cop.is_indep
@@ -261,7 +264,8 @@ def test_interp_on_trivial_grid():
 def test_imshow_with_existing_axes():
     cop = tvc.BiCop(num_step_grid=32)
     us = torch.rand(100, 2)
-    cop.fit(us, mtd_kde="fastKDE")
+    cop.fit(us, mtd_kde="torchKDE")
+    # cop.fit(us, mtd_kde="fastKDE")
     fig, outer_ax = plt.subplots()
     fig2, ax2 = cop.imshow(is_log_pdf=False, ax=outer_ax, cmap="viridis")
     # should have returned the same axes object
