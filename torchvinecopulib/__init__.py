@@ -1,6 +1,7 @@
 from . import util
 from .bicop import BiCop
 from .vinecop import VineCop
+from .util import kdeCDFPPF1D
 
 __all__ = [
     "BiCop",
