@@ -83,27 +83,32 @@ def _make_kfold_indices(n: int, folds: int = _DEFAULT_CV_FOLDS, seed: int = 0):
         yield train_idx, val_idx
 
 @torch.no_grad()
-def kfold_lcv_bandwidth(
-    x: torch.Tensor,
-    h_grid: torch.Tensor | None = None,
-    folds: int = _DEFAULT_CV_FOLDS,
-) -> torch.Tensor:
+def kfold_lcv_bandwidth(x: torch.Tensor, h_grid: torch.Tensor | None = None, folds: int = _DEFAULT_CV_FOLDS) -> torch.Tensor:
     """
-    Likelihood CV for 1D Gaussian KDE:
-      minimize -(1/|val|) * sum_{val} log f_{train,h}(x)
-    Torch-only; numerically stable via log-sum-exp.
-    """
-    x = x.view(-1).to(dtype=torch.float64)
-    n = x.numel()
+    Bandwidth via k-fold likelihood cross-validation for 1-D KDE.
 
-    # Default grid around Silverman pilot if not provided
+    Args:
+        x (torch.Tensor): 1-D samples. Non-finite values are ignored.
+        h_grid (torch.Tensor | None, optional): Candidate bandwidths; if None,
+            a log-spaced grid around a Silverman pilot is used.
+        folds (int, optional): Number of CV folds. Default `_DEFAULT_CV_FOLDS`.
+
+    Returns:
+        torch.Tensor: Selected bandwidth (float64) from the grid; safe fallback
+            if data are insufficient.
+    """
+
+    x = x.view(-1).to(torch.float64)
+    x = x[torch.isfinite(x)]
+    n = x.numel()
+    if n < 2:
+        return torch.tensor(1.0, dtype=torch.float64, device=x.device)  # safe fallback
+
     if h_grid is None:
         std = x.std(unbiased=True).clamp_min(1e-12)
         h0 = 1.06 * std * (n ** (-1.0 / 5.0))
-        h_grid = torch.logspace(
-            math.log10(0.5 * h0), math.log10(2.0 * h0),
-            steps=_KFOLD_LSCV_GRID_SIZE, dtype=torch.float64, device=x.device
-        )
+        h_grid = torch.logspace(math.log10(0.5 * h0), math.log10(2.0 * h0),
+                                steps=_KFOLD_LSCV_GRID_SIZE, dtype=torch.float64, device=x.device)
     else:
         h_grid = h_grid.to(dtype=torch.float64, device=x.device)
 
@@ -132,13 +137,23 @@ def kfold_lcv_bandwidth(
 
 def optimal_bandwidth(x: torch.Tensor, method: str = 'isj', **kwargs) -> torch.Tensor:
     """
-    Choose bandwidth via:
-      'isj'    -> isj_bandwidth (if available), else Silverman
-      'kfold'  -> kfold_lcv_bandwidth
-      'auto'   -> ISJ/Silverman -> refine ±50% via LCV
+    Robust dispatcher for 1-D KDE bandwidth selection.
+
+    Args:
+        x (torch.Tensor): 1-D samples. Non-finite values are ignored.
+        method (str, optional): "isj", "kfold", or "auto" (ISJ → kfold → Silverman).
+        **kwargs: Extra parameters forwarded to the chosen method.
+
+    Returns:
+        torch.Tensor: Positive scalar bandwidth (float64).
     """
-    x = x.view(-1)
+
+    x = x.view(-1).to(torch.float64)
+    x = x[torch.isfinite(x)]
     n = x.numel()
+    if n < 2:
+        return torch.tensor(1.0, dtype=torch.float64, device=x.device)
+
     std = x.std(unbiased=True).clamp_min(1e-12)
     silverman = 1.06 * std * (n ** (-1.0 / 5.0))
 

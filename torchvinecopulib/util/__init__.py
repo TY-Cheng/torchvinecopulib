@@ -26,88 +26,28 @@ import math
 # import fastkde
 import torch
 import torch.nn.functional as F
-# from scipy.stats import kendalltau
+from scipy.stats import kendalltau
 
 from .constants import _EPS
 from .bandwidth import *
 
+
 @torch.no_grad()
 def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    # tau-b, ties-corrected, CPU torch
-    x = x.view(-1).to(torch.float64, 'cpu')
-    y = y.view(-1).to(torch.float64, 'cpu')
-    n = x.numel()
-    if n < 2:
-        return torch.tensor(0.0, dtype=torch.float64)
+    """Compute Kendall's tau correlation coefficient and p-value. Moves inputs to CPU and delegates
+    to SciPy’s ``kendalltau``.
 
-    # sort by x, then use BIT over ranks of y
-    order = torch.argsort(x, stable=True)
-    xs, ys = x[order], y[order]
-    y_vals, y_inv = torch.unique(ys, sorted=True, return_inverse=True)
-    yr = y_inv + 1
-    m = int(y_vals.numel())
-
-    # tie counts
-    def tie_pairs(arr):
-        _, c = torch.unique(arr, return_counts=True)
-        c = c.to(torch.int64)
-        return int(((c * (c - 1)) // 2).sum().item())
-    n0 = n * (n - 1) // 2
-    n1, n2 = tie_pairs(xs), tie_pairs(ys)
-
-    # Fenwick tree
-    bit = torch.zeros(m + 1, dtype=torch.int64)
-    def bit_add(i):
-        while i <= m:
-            bit[i] += 1
-            i += i & -i
-    def bit_sum(i):
-        s = 0
-        while i > 0:
-            s += int(bit[i].item())
-            i -= i & -i
-        return s
-
-    C = D = 0
-    i = 0
-    processed = 0
-    while i < n:
-        j = i + 1
-        while j < n and xs[j] == xs[i]:
-            j += 1
-        for k in range(i, j):
-            r = int(yr[k].item())
-            C += bit_sum(r - 1)
-            D += processed - bit_sum(r)
-        for k in range(i, j):
-            bit_add(int(yr[k].item()))
-            processed += 1
-        i = j
-
-    denom = ((n0 - n1) * (n0 - n2)) ** 0.5
-    if denom == 0:
-        return torch.tensor(0.0, dtype=torch.float64)
-    return torch.tensor((C - D) / denom, dtype=torch.float64)
-
-##############################################
-# previous SciPy version
-##############################################
-# @torch.no_grad()
-# def kendall_tau(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-#     """Compute Kendall's tau correlation coefficient and p-value. Moves inputs to CPU and delegates
-#     to SciPy’s ``kendalltau``.
-
-#     Args:
-#         x (torch.Tensor): shape (n, 1)
-#         y (torch.Tensor): shape (n, 1)
-#     Returns:
-#         torch.Tensor: Kendall's tau correlation coefficient and p-value
-#     """
-#     return torch.as_tensor(
-#         kendalltau(x.view(-1).cpu(), y.view(-1).cpu()),
-#         dtype=x.dtype,
-#         device=x.device,
-#     )
+    Args:
+        x (torch.Tensor): shape (n, 1)
+        y (torch.Tensor): shape (n, 1)
+    Returns:
+        torch.Tensor: Kendall's tau correlation coefficient and p-value
+    """
+    return torch.as_tensor(
+        kendalltau(x.view(-1).cpu(), y.view(-1).cpu()),
+        dtype=x.dtype,
+        device=x.device,
+    )
 
 def _auto_grid_size(range_len: float, h: float, cells_per_sigma: int, gmin: int, gmax: int) -> int:
     if h <= 0.0 or not math.isfinite(h):  # fallback
@@ -116,99 +56,120 @@ def _auto_grid_size(range_len: float, h: float, cells_per_sigma: int, gmin: int,
     return int(max(gmin, min(gmax, est)))
 
 @torch.no_grad()
-def mutual_info(x: torch.Tensor, y: torch.Tensor,
-                hxy: tuple[float, float] | None = None,
-                cells_per_sigma: int = 10,
-                grid_min: int = 128,
-                grid_max: int = 2048,
-                bandwidth_method: str = "auto",
-                bandwidth_kwargs: dict | None = None, ) -> torch.Tensor:
+@torch.no_grad()
+def mutual_info(
+    x: torch.Tensor, y: torch.Tensor,
+    hxy: tuple[float, float] | None = None,
+    cells_per_sigma: int = 10,
+    grid_min: int = 128,
+    grid_max: int = 2048,
+    bandwidth_method: str = "auto",
+    bandwidth_kwargs: dict | None = None,
+) -> torch.Tensor:
     """
-    Torch-only MI via 2D KDE on a grid, with **adaptive Nx,Ny** based on bandwidths.
-    - If hxy is None, use Scott's rule.
-    - Grid spacing dx,dy chosen so ~cells_per_sigma points; Nx,Ny clamped to [grid_min,grid_max].
+    Estimate mutual information I(X;Y) via Torch-only 2D KDE on an adaptive grid.
 
     Args:
-        x (torch.Tensor): shape (n, 1)
-        y (torch.Tensor): shape (n, 1)
-        hxy: bandwidth for x and y
-        ...
-        bandwidth selectors:
-            Choose bandwidth via:
-            'isj'    -> isj_bandwidth (if available), else Silverman
-            'kfold'  -> kfold_lcv_bandwidth
-            'auto'   -> ISJ/Silverman -> refine ±50% via LCV
-        if hxy not specified, will decide using selected bandwith method
-    Returns:
-        torch.Tensor: Estimated mutual information    
-    
-    """
-    x = x.view(-1).to(dtype=torch.float64)
-    y = y.view(-1).to(dtype=torch.float64)
-    n = x.numel()
+        x (torch.Tensor): 1-D samples for X. Non-finite pairs (with y) are dropped.
+        y (torch.Tensor): 1-D samples for Y. Non-finite pairs (with x) are dropped.
+        hxy (tuple[float, float] | None, optional): (hx, hy). If None, choose per-axis
+            via `optimal_bandwidth`; falls back to Scott’s rule if needed.
+        cells_per_sigma (int, optional): Target grid resolution per Gaussian σ. Default 10.
+        grid_min (int, optional): Minimum cells per axis. Default 128.
+        grid_max (int, optional): Maximum cells per axis. Default 2048.
+        bandwidth_method (str, optional): Bandwidth selector for each axis, e.g. "auto",
+            "isj", or "kfold". Default "auto".
+        bandwidth_kwargs (dict | None, optional): Extra kwargs passed to the selector.
 
-    # Ranges with a tiny pad to avoid edge squeezing
+    Returns:
+        torch.Tensor: Scalar 0-D tensor (same dtype/device as `x`) with the MI estimate.
+    """
+    # keep caller dtype/device for the return
+    out_dtype, out_device = x.dtype, x.device
+
+    # 0) sanitize: keep only finite PAIRS
+    x = x.view(-1).to(torch.float64)
+    y = y.view(-1).to(torch.float64)
+    m = torch.isfinite(x) & torch.isfinite(y)
+    x, y = x[m], y[m]
+    n = x.numel()
+    if n < 2:
+        return torch.tensor(0.0, dtype=out_dtype, device=out_device)
+
+    # 1) padded ranges (no NaNs now)
     x_lo, x_hi = x.min().item(), x.max().item()
     y_lo, y_hi = y.min().item(), y.max().item()
-    rx = max(x_hi - x_lo, 1e-12)
-    ry = max(y_hi - y_lo, 1e-12)
-    pad_x = 0.1 * rx
-    pad_y = 0.1 * ry
+    rx = max(x_hi - x_lo, 1e-12); ry = max(y_hi - y_lo, 1e-12)
+    pad_x, pad_y = 0.1 * rx, 0.1 * ry
     x_min, x_max = x_lo - pad_x, x_hi + pad_x
     y_min, y_max = y_lo - pad_y, y_hi + pad_y
-    rxp = x_max - x_min
-    ryp = y_max - y_min
+    rxp, ryp = (x_max - x_min), (y_max - y_min)
 
-    # Bandwidths
+    # 2) bandwidths
     if hxy is None:
         try:
             hx = float(optimal_bandwidth(x, method=bandwidth_method, **(bandwidth_kwargs or {})))
             hy = float(optimal_bandwidth(y, method=bandwidth_method, **(bandwidth_kwargs or {})))
         except Exception:
-            # fallback: Scott
             sf = n ** (-1.0 / 6.0)
             hx = float(sf * x.std(unbiased=True).clamp_min(1e-12))
             hy = float(sf * y.std(unbiased=True).clamp_min(1e-12))
     else:
         hx, hy = map(float, hxy)
+        if not (math.isfinite(hx) and math.isfinite(hy)) or hx <= 0 or hy <= 0:
+            # fallback if user passed junk
+            sf = n ** (-1.0 / 6.0)
+            hx = float(sf * x.std(unbiased=True).clamp_min(1e-12))
+            hy = float(sf * y.std(unbiased=True).clamp_min(1e-12))
 
-    # Adaptive grid sizes
-    nx = _auto_grid_size(rxp, hx, cells_per_sigma, grid_min, grid_max)
-    ny = _auto_grid_size(ryp, hy, cells_per_sigma, grid_min, grid_max)
+    # 3) adaptive grid sizes
+    def _auto_grid_size(range_len: float, h: float) -> int:
+        if h <= 0.0 or not math.isfinite(h):
+            return max(grid_min, 256)
+        est = int(math.ceil(cells_per_sigma * max(range_len, 1e-12) / h))
+        return int(max(grid_min, min(grid_max, est)))
+
+    nx = _auto_grid_size(rxp, hx)
+    ny = _auto_grid_size(ryp, hy)
 
     gx = torch.linspace(x_min, x_max, nx, dtype=torch.float64)
     gy = torch.linspace(y_min, y_max, ny, dtype=torch.float64)
-    dx = gx[1] - gx[0]
-    dy = gy[1] - gy[0]
+    dx = float(gx[1] - gx[0])
+    dy = float(gy[1] - gy[0])
 
-    # Bin points to nearest cell
-    ix = ((x - x_min) / dx).round().clamp(0, nx - 1).to(torch.long)
-    iy = ((y - y_min) / dy).round().clamp(0, ny - 1).to(torch.long)
+    # avoid undersmoothing relative to grid
+    hx = max(hx, 0.5 * dx); hy = max(hy, 0.5 * dy)
+
+    # 4) histogram with indices clamped in-range
+    ix = ((x - x_min) / dx).floor().clamp(0, nx - 1).to(torch.long)
+    iy = ((y - y_min) / dy).floor().clamp(0, ny - 1).to(torch.long)
     lin = ix * ny + iy
-    counts = torch.zeros(nx * ny, dtype=torch.float64).scatter_add_(
-        0, lin, torch.ones_like(lin, dtype=torch.float64)
-    ).view(nx, ny)
+    counts = torch.zeros(nx * ny, dtype=torch.float64)
+    counts.scatter_add_(0, lin, torch.ones_like(lin, dtype=torch.float64))
+    counts = counts.view(nx, ny)
 
-    # Separable Gaussian smoothing
-    rxk = int(math.ceil(4.0 * (hx / dx)))
-    ryk = int(math.ceil(4.0 * (hy / dy)))
+    # 5) separable Gaussian smoothing (truncate at 4σ)
+    rxk = max(1, int(math.ceil(4.0 * (hx / dx))))
+    ryk = max(1, int(math.ceil(4.0 * (hy / dy))))
     ox = torch.arange(-rxk, rxk + 1, dtype=torch.float64) * dx
     oy = torch.arange(-ryk, ryk + 1, dtype=torch.float64) * dy
-    kx = torch.exp(-0.5 * (ox / hx).pow(2)) / (hx * math.sqrt(2.0 * math.pi))
-    ky = torch.exp(-0.5 * (oy / hy).pow(2)) / (hy * math.sqrt(2.0 * math.pi))
+    kx = torch.exp(-0.5 * (ox / hx) ** 2) / (hx * math.sqrt(2.0 * math.pi))
+    ky = torch.exp(-0.5 * (oy / hy) ** 2) / (hy * math.sqrt(2.0 * math.pi))
 
-    s = counts.unsqueeze(0).unsqueeze(0)     # [1,1,nx,ny]
-    s = F.conv2d(s, kx.view(1,1,-1,1), padding=(rxk, 0))
-    s = F.conv2d(s, ky.view(1,1,1,-1), padding=(0, ryk))
-    pdf = (s.squeeze(0).squeeze(0) / n).clamp_min(1e-12)  # density
+    s = counts.unsqueeze(0).unsqueeze(0)  # [1,1,nx,ny]
+    s = F.conv2d(s, kx.view(1, 1, -1, 1), padding=(rxk, 0))
+    s = F.conv2d(s, ky.view(1, 1, 1, -1), padding=(0, ryk))
+    pdf = (s.squeeze(0).squeeze(0) / n).clamp_min(1e-12)
 
-    # Convert to probabilities on the grid, then MI
+    # 6) MI from normalized grid probabilities
     p = (pdf * dx * dy).clamp_min(1e-12)
     p = p / p.sum()
     px = p.sum(dim=1, keepdim=True).clamp_min(1e-12)
     py = p.sum(dim=0, keepdim=True).clamp_min(1e-12)
     mi = (p * (p.log() - px.log() - py.log())).sum()
-    return mi.to(dtype=x.dtype, device=x.device)
+
+    return mi.to(dtype=out_dtype, device=out_device)
+
 
 ##############################################
 # previous fastKDE version
@@ -424,61 +385,72 @@ class kdeCDFPPF1D(torch.nn.Module):
         return self._dd.dtype
 
     def cdf(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute the CDF of the fitted KDE at ``x``.
+        """
+        KDE CDF via piecewise-linear interpolation on the precomputed 1-D grid.
 
         Args:
-            x (torch.Tensor): Points at which to evaluate the CDF.
+            x (torch.Tensor): Query points. Non-finite entries return NaN in-place.
+
         Returns:
-            torch.Tensor: CDF values at ``x``, clamped to [0, 1].
+            torch.Tensor: CDF values in [0,1], same shape/dtype/device as `x`.
         """
-        # ! device agnostic
+
         x = x.to(device=self.device, dtype=self.dtype)
-        x_clamped = x.clamp(self.x_min, self.x_max)
-        idx = torch.searchsorted(self.grid_x, x_clamped, right=False)
-        idx = idx.clamp(1, self.grid_cdf.numel() - 1)
-        y = (self.grid_cdf[idx - 1]) + (self.slope_fwd[idx - 1]) * (
-            x_clamped - self.grid_x[idx - 1]
-        )
-        y = torch.where(x < self.x_min, torch.zeros_like(y), y)
-        y = torch.where(x > self.x_max, torch.ones_like(y), y)
-        return y.clamp(0.0, 1.0)
+        out = torch.full_like(x, float("nan"))
+        mask = torch.isfinite(x)
+        if mask.any():
+            xc = x[mask].clamp(self.x_min, self.x_max)
+            idx = torch.searchsorted(self.grid_x, xc, right=False).clamp(1, self.grid_cdf.numel() - 1)
+            y = self.grid_cdf[idx - 1] + self.slope_fwd[idx - 1] * (xc - self.grid_x[idx - 1])
+            y = torch.where(x[mask] < self.x_min, torch.zeros_like(y), y)
+            y = torch.where(x[mask] > self.x_max, torch.ones_like(y), y)
+            out[mask] = y
+        return out.clamp(0.0, 1.0)
 
     def ppf(self, q: torch.Tensor) -> torch.Tensor:
-        """Compute the PPF (quantile function) of the fitted KDE at ``q``.
+        """
+        KDE percent-point function (quantile) from the precomputed monotone CDF grid.
 
         Args:
-            q (torch.Tensor): Quantiles at which to evaluate the PPF.
+            q (torch.Tensor): Probabilities. Non-finite entries return NaN in-place.
+
         Returns:
-            torch.Tensor: PPF values at ``q``, clamped to [x_min, x_max].
+            torch.Tensor: Quantiles in [x_min, x_max], same shape/dtype/device as `q`.
         """
-        # ! device agnostic
+
         q = q.to(device=self.device, dtype=self.dtype)
-        q_clamped = q.clamp(0.0, 1.0)
-        idx = torch.searchsorted(self.grid_cdf, q_clamped, right=False)
-        idx = idx.clamp(1, self.grid_cdf.numel() - 1)
-        x = (self.grid_x[idx - 1]) + (self.slope_inv[idx - 1]) * (
-            q_clamped - self.grid_cdf[idx - 1]
-        )
-        x = torch.where(q < 0.0, torch.full_like(x, self.x_min), x)
-        x = torch.where(q > 1.0, torch.full_like(x, self.x_max), x)
-        return x.clamp(self.x_min, self.x_max)
+        out = torch.full_like(q, float("nan"))
+        mask = torch.isfinite(q)
+        if mask.any():
+            qc = q[mask].clamp(0.0, 1.0)
+            idx = torch.searchsorted(self.grid_cdf, qc, right=False).clamp(1, self.grid_cdf.numel() - 1)
+            x = self.grid_x[idx - 1] + self.slope_inv[idx - 1] * (qc - self.grid_cdf[idx - 1])
+            x = torch.where(q[mask] < 0.0, torch.full_like(x, self.x_min), x)
+            x = torch.where(q[mask] > 1.0, torch.full_like(x, self.x_max), x)
+            out[mask] = x
+        return out.clamp(self.x_min, self.x_max)
 
     def pdf(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute the PDF of the fitted KDE at ``x``.
+        """
+        KDE PDF via piecewise-linear interpolation on the precomputed 1-D grid.
 
         Args:
-            x (torch.Tensor): Points at which to evaluate the PDF.
+            x (torch.Tensor): Query points. Non-finite entries return NaN in-place.
+
         Returns:
-            torch.Tensor: PDF values at ``x``, clamped to [0, ∞).
+            torch.Tensor: PDF values (>=0), same shape/dtype/device as `x`.
         """
-        # ! device agnostic
+
         x = x.to(device=self.device, dtype=self.dtype)
-        x_clamped = x.clamp(self.x_min, self.x_max)
-        idx = torch.searchsorted(self.grid_x, x_clamped, right=False)
-        idx = idx.clamp(1, self.grid_pdf.numel() - 1)
-        f = self.grid_pdf[idx - 1] + (self.slope_pdf[idx - 1]) * (x_clamped - self.grid_x[idx - 1])
-        f = torch.where((x < self.x_min) | (x > self.x_max), torch.zeros_like(f), f)
-        return f.clamp_min(0.0)
+        out = torch.full_like(x, float("nan"))
+        mask = torch.isfinite(x)
+        if mask.any():
+            xc = x[mask].clamp(self.x_min, self.x_max)
+            idx = torch.searchsorted(self.grid_x, xc, right=False).clamp(1, self.grid_pdf.numel() - 1)
+            f = self.grid_pdf[idx - 1] + self.slope_pdf[idx - 1] * (xc - self.grid_x[idx - 1])
+            f = torch.where((x[mask] < self.x_min) | (x[mask] > self.x_max), torch.zeros_like(f), f)
+            out[mask] = f
+        return out.clamp_min(0.0)
 
     def log_pdf(self, x: torch.Tensor) -> torch.Tensor:
         """Compute the log PDF of the fitted KDE at ``x``.
