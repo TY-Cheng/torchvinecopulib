@@ -16,7 +16,7 @@ documentation = "https://ty-cheng.github.io/torchvinecopulib/"
 
 [project]
 name = "torchvinecopulib"
-version = "1.1.2"
+version = "1.3.0"
 requires-python = ">=3.11"
 authors = [{ name = "Tuoyuan Cheng", email = "tuoyuan.cheng@nus.edu.sg" }]
 description = "Fitting and sampling vine copulas using PyTorch."
@@ -34,7 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["numpy>=2", "scipy", "fastkde==2.1.3", "pyvinecopulib"]
+dependencies = ["numpy>=2", "scipy"]
 
 [dependency-groups]
 dev = [
@@ -69,6 +69,7 @@ cpu = ["torch>=2"]
 cu126 = ["torch>=2"]
 cu128 = ["torch>=2"]
 examples = ["pytorch-lightning", "tqdm"]
+reference = ["pyvinecopulib"]
 
 [tool.uv]
 managed = true
@@ -131,9 +132,15 @@ max-line-length = 127
 extend-ignore = ["E203", "W503"]
 exclude = [".venv", "build", "dist", "docs"]
 per-file-ignores = [
-    "torchvinecopulib/vinecop/__init__.py: E501, C901",
-    "torchvinecopulib/bicop/__init__.py: E501, C901",
-    "torchvinecopulib/util/__init__.py: E501, C901",
+    "torchvinecopulib/vinecop/__init__.py: E501",
+    "torchvinecopulib/bicop/__init__.py: E501",
+    "torchvinecopulib/util/__init__.py: E501",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "cuda: tests that require a CUDA device and are skipped in the default CPU suite",
+    "slow: long-running tests that are excluded from the default fast feedback loop",
 ]
 
 [tool.sphinx-pyproject]

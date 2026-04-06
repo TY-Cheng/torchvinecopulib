@@ -4,8 +4,10 @@
 /Styles
 /data
 /out
+/benchmarks/results/
 *.pkl
 *.svg
+*.bench.json
 checkpoints/
 MNIST/
 logs/

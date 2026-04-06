@@ -8,12 +8,18 @@ from collections import defaultdict
 from itertools import product
 from pathlib import Path
 
-import pyvinecopulib as pvc
 import torch
 from dotenv import load_dotenv
 from torch.special import ndtr
 
 import torchvinecopulib as tvc
+
+try:
+    import pyvinecopulib as pvc
+except ImportError as exc:
+    raise ImportError(
+        "examples/benchmark requires pyvinecopulib. Install torchvinecopulib[reference]."
+    ) from exc
 
 # ! ===================
 # ! ===================
@@ -115,7 +121,12 @@ for num_dim, num_obs in product(lst_num_dim, lst_num_obs):
     print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} TVC...")
     for seed in lst_seed:
         t0 = time.perf_counter()
-        tvc_mdl.fit(obs=U, mtd_bidep="kendall_tau", num_iter_max=11)
+        tvc_mdl.fit(
+            obs=U,
+            mtd_bidep="kendall_tau",
+            bicop_backend="grid_reflect",
+            bicop_kwargs={"bandwidth": "silverman", "num_iter_max": 5},
+        )
         t1 = time.perf_counter()
         if seed > 0:
             dct_time_fit["tvc"][num_obs, num_dim].append(t1 - t0)
@@ -125,7 +136,12 @@ for num_dim, num_obs in product(lst_num_dim, lst_num_obs):
         for seed in lst_seed:
             torch.cuda.synchronize()
             t0 = time.perf_counter()
-            tvc_mdl_cuda.fit(obs=U_cuda, mtd_bidep="kendall_tau", num_iter_max=11)
+            tvc_mdl_cuda.fit(
+                obs=U_cuda,
+                mtd_bidep="kendall_tau",
+                bicop_backend="grid_reflect",
+                bicop_kwargs={"bandwidth": "silverman", "num_iter_max": 5},
+            )
             t1 = time.perf_counter()
             torch.cuda.synchronize()
             if seed > 0:

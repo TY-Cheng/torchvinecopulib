@@ -38,21 +38,20 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install uv
-          python3 -m uv sync --extra cpu
+          python3 -m uv sync --extra cpu --extra reference
           # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names
           uv run flake8 ./torchvinecopulib --exclude .venv --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          uv run flake8 ./torchvinecopulib --count --exit-zero --max-complexity=10 --max-line-length=127 --ignore=E203,W503,E501,C901 --statistics
+          uv run flake8 ./torchvinecopulib --count --max-complexity=30 --max-line-length=127 --ignore=E203,W503,E501 --statistics
 
       - name: Test with pytest
         run: |
           uv run python -c "import sys; print(sys.version)"
           uv run python -c "import torch; print(torch.cuda.is_available())"
-          uv run coverage run --source=torchvinecopulib -m pytest tests
+          uv run coverage run --source=torchvinecopulib -m pytest -W error::DeprecationWarning tests
           uv run coverage report
           uv run coverage xml -o coverage.xml
 

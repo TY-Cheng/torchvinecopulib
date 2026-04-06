@@ -115,7 +115,7 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
     ) -> torch.Tensor:
         """Training step to compute loss on training data."""
         x, _ = batch
-        x.to(DEVICE)
+        x = x.to(DEVICE)
         loss = self.compute_loss(x)
         self.log("train_loss", loss, prog_bar=True)
         return loss
@@ -123,14 +123,14 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
     def validation_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Validation step to compute loss on validation data."""
         x, _ = batch
-        x.to(DEVICE)
+        x = x.to(DEVICE)
         loss = self.compute_loss(x)
         self.log("val_loss", loss, prog_bar=True)
 
     def test_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Test step to compute loss on test data."""
         x, _ = batch
-        x.to(DEVICE)
+        x = x.to(DEVICE)
         loss = self.compute_loss(x)
         self.log("test_loss", loss, prog_bar=True)
 
@@ -235,9 +235,7 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
                 x_hat = self.decoder(z)
                 if self.vine is not None:
                     sample = self.vine.sample(x.shape[0])
-                    sample = self.decoder(
-                        torch.tensor(sample, dtype=z.dtype, device=decoder_device)
-                    )
+                    sample = self.decoder(sample.to(dtype=z.dtype, device=decoder_device))
             decoded.append(x_hat)
             representations.append(z)
             labels.append(y)
@@ -272,7 +270,10 @@ class LitAutoencoder(pl.LightningModule, abc.ABC):
         ).to(DEVICE)
         vine_tvc.fit(
             obs=representations_subset,
-            mtd_kde="tll",
+            marginal_backend="grid",
+            marginal_kwargs={"bandwidth": "isj"},
+            bicop_backend="grid_reflect",
+            bicop_kwargs={"bandwidth": "silverman"},
         )
         self.set_vine(vine_tvc)
 

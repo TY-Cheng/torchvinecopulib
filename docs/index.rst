@@ -28,6 +28,20 @@ It is designed for researchers and practitioners in statistics, machine learning
 
 **GitHub Repository:** https://github.com/TY-Cheng/torchvinecopulib
 
+.. note::
+
+   Version ``1.3.0`` standardizes the backend API around ``marginal_backend`` and
+   ``bicop_backend``. The default production path is the torch-native grid implementation
+   (``grid``, ``grid_reflect``, ``grid_probit``), while CPU-only reference backends
+   (``lp_ref`` and ``tll_ref``) remain optional via ``uv sync --extra reference`` or
+   ``pip install torchvinecopulib[reference]``.
+
+.. note::
+
+   ``fit()`` is a builder path and does not preserve a training graph. The differentiable
+   query path is exposed through ``log_pdf()``, ``cdf()``, ``hfunc()``, and the underlying
+   interpolation routines.
+
 .. toctree::
    :maxdepth: 3
    :caption: Core Modules

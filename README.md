@@ -7,20 +7,23 @@
 
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/torchvinecopulib)
 [![OS](https://img.shields.io/badge/OS-Windows%7CmacOS%7CUbuntu-blue)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/TY-Cheng/torchvinecopulib/blob/main/LICENSE)
 [![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib)](https://pypi.org/project/torchvinecopulib/)
 
-A Python library for fitting and sampling vine copulas, using [PyTorch](https://pytorch.org/get-started/locally/).
+`torchvinecopulib` is a PyTorch-first vine copula library for fitting, evaluating, and sampling
+high-dimensional dependence models on CPU or GPU. Version `1.3.0` standardizes the
+backend API around `marginal_backend` and `bicop_backend`, keeps a torch-native grid path as
+the production default, and isolates CPU-only reference oracles behind the optional
+`reference` extra.
 
-- C/D/R-Vine full-sampling/ quantile-regression/ conditional-sampling, all in one package
-  - Flexible sampling order for experienced users
-- Vectorized tensor computation with GPU (`device='cuda'`) support
-- Shorter runtimes for higher dimension simulations
-- Pure `Python` library, inspired by [pyvinecopulib](https://github.com/vinecopulib/pyvinecopulib/) on Windows, Linux, MacOS
-- IO and visualization support
+- C-, D-, and R-vine fitting with differentiable log-density evaluation
+- Torch-native `TorchKDE1D` marginals with ISJ bandwidth by default
+- Torch-native `TorchCopulaKDE2D` pair-copula grids with `grid_reflect` and `grid_probit`
+- Optional `lp_ref` and `tll_ref` CPU reference backends
+- Differentiable query path via `log_pdf()`, `cdf()`, `hfunc()`, and bilinear interpolation
 
 ## Citation
+
 If you use `torchvinecopulib` in your work, please cite:
 
 > Cheng, Tuoyuan, Thibault Vatter, Thomas Nagler, and Kan Chen. "Vine Copulas as Differentiable Computational Graphs." arXiv preprint arXiv:2506.13318 (2025).
@@ -35,140 +38,139 @@ If you use `torchvinecopulib` in your work, please cite:
 }
 ```
 
-## Examples
-
-Visit the [`./examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main/examples) folder for `.ipynb` Jupyter notebooks.
-
 ## Installation
 
-- By `pip` from [`PyPI`](https://pypi.org/project/torchvinecopulib/) (see the dependencies and uv sections below for CUDA support):
+Install from PyPI with a matching PyTorch build:
 
 ```bash
 pip install torchvinecopulib torch
 ```
 
-- Or `pip` from `./dist/*.whl` or `./dist/*.tar.gz` in this repo.
-  Need to use proper file name.
+For local development with `uv`:
 
 ```bash
-# inside project root folder
-pip install ./dist/torchvinecopulib-1.1.0-py3-none-any.whl
-# or
-pip install ./dist/torchvinecopulib-1.1.0.tar.gz
-```
-
-### (Recommended) [uv](https://docs.astral.sh/uv/getting-started/) for Dependency Management and Packaging
-
-After `git clone https://github.com/TY-Cheng/torchvinecopulib.git`, `cd` into the project root where [`pyproject.toml`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/pyproject.toml) exists,
-
-```bash
-# From inside the project root folder
-# Create and activate local virtual environment
 uv venv .venv
 source .venv/bin/activate
-
-# Sync dependencies with CPU support (default)
 uv sync --extra cpu
-
-# Or for CUDA 12.6 or 12.8 support (depends on your CUDA version)
-uv sync --extra cu126
-
-# Additionally, to install additional dependencies for the examples
-uv sync --extra examples
 ```
 
-## Dependencies
+Install the optional reference backend only when you need `lp_ref`, `tll_ref`, or oracle
+comparisons:
+
+```bash
+uv sync --extra cpu --extra reference
+# or
+pip install "torchvinecopulib[reference]"
+```
+
+### Dependencies
+
+Current core dependencies are:
 
 ```toml
-# inside the `./pyproject.toml` file;
-fastkde = "*"
-numpy = "*"
-pyvinecopulib = "*"
-python = ">=3.11"
-scipy = "*"
-# optional to facilitate customization
-torch = [
-    { index = "torch-cpu", extra = "cpu" },
-    { index = "torch-cu126", extra = "cu126" },
-    { index = "torch-cu128", extra = "cu128" },
+[project]
+dependencies = [
+  "numpy>=2",
+  "scipy",
 ]
+
+[project.optional-dependencies]
+cpu = ["torch>=2"]
+cu126 = ["torch>=2"]
+cu128 = ["torch>=2"]
+examples = ["pytorch-lightning", "tqdm"]
+reference = ["pyvinecopulib"]
 ```
 
-For [PyTorch](https://pytorch.org/get-started/locally/) with `cuda`:
+For CUDA builds of PyTorch, install the matching wheel index from the
+[official PyTorch instructions](https://pytorch.org/get-started/locally/).
 
-```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu126 --force-reinstall
-# check cuda availability
-python -c "import torch; print(torch.cuda.is_available())"
-```
+## Migration
 
-> [!TIP]
-> macOS users should set `device='cpu'` at this stage, for using `device='mps'` won't support `dtype=torch.float64`.
+Version `1.3.0` is a breaking release.
 
-## Documentation
+- `kdeCDFPPF1D` was removed. Use `TorchKDE1D` instead.
+- `fastKDE` was removed from runtime dependencies and from the default KDE path.
+- `pyvinecopulib` moved to the optional `reference` extra.
+- `mtd_kde` is deprecated. Use `bicop_backend="grid_reflect" | "grid_probit" | "tll_ref"` and
+  `marginal_backend="grid" | "lp_ref"` instead.
+- `BiCop.fit()` and `VineCop.fit()` now normalize legacy top-level bandwidth arguments into
+  `bicop_kwargs` / `marginal_kwargs`.
+- `VineCop.cdf()` now samples and compares in copula scale consistently when
+  `is_cop_scale=False`.
+- `fit()` is a builder path, not a differentiable training layer. The differentiable path is
+  the forward query side: `log_pdf()`, `cdf()`, `hfunc()`, and the interpolation kernels.
 
-- Visit [GitHub Pages website](https://ty-cheng.github.io/torchvinecopulib/)
-
-- Or build by yourself (need [`Sphinx`](https://github.com/sphinx-doc/sphinx), theme [`furo`](https://github.com/pradyunsg/furo) and [the GNU `make`](https://www.gnu.org/software/make/))
-
-```bash
-# inside project root folder
-sphinx-apidoc -o ./docs ./torchvinecopulib && cd ./docs && make html && cd ..
-# if using uv
-uv run sphinx-apidoc -o docs torchvinecopulib/ --separate
-uv run sphinx-build docs docs/_build/html
-```
-
-## Tests
+Minimal upgrade example:
 
 ```python
-# inside project root folder
-python -m pytest ./tests
-# coverage report
-coverage run -m pytest ./tests && coverage html
-# if using uv
-uv run coverage run --source=torchvinecopulib -m pytest ./tests
+import torchvinecopulib as tvc
+
+vc = tvc.VineCop(num_dim=4, is_cop_scale=False, num_step_grid=128)
+vc.fit(
+    obs,
+    mtd_vine="rvine",
+    mtd_bidep="chatterjee_xi",
+    marginal_backend="grid",
+    marginal_kwargs={"bandwidth": "isj"},
+    bicop_backend="grid_reflect",
+    bicop_kwargs={"bandwidth": "silverman"},
+)
+samples = vc.sample(num_sample=512)
+```
+
+Reference-oracle example:
+
+```python
+vc.fit(
+    obs,
+    marginal_backend="lp_ref",
+    bicop_backend="tll_ref",
+    bicop_kwargs={"nonparametric_method": "quadratic"},
+)
+```
+
+## Documentation and Tests
+
+- Documentation: [GitHub Pages](https://ty-cheng.github.io/torchvinecopulib/)
+- Examples: [`examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main/examples)
+- Test suite:
+
+```bash
+uv run coverage run --source=torchvinecopulib -m pytest tests
 uv run coverage report -m
+```
+
+Build docs locally with:
+
+```bash
+uv run sphinx-apidoc --force -o docs torchvinecopulib/ --separate
+uv run sphinx-build -b html docs/ docs/_build/html
+```
+
+Run the optional benchmark/profiler scripts with:
+
+```bash
+uv run --extra cpu python benchmarks/profile_builder.py --device cpu
+uv run --extra cpu python benchmarks/profile_query.py --device cpu
 ```
 
 ## TODO
 
+- ~~`fastkde.pdf` onto `torch.Tensor`~~
+- ~~replace runtime `fastKDE` dependency with a torch-native KDE path~~
 - `VineCop.rosenblatt`
-- replace `dict` with `torch.Tensor` using some `mod`
-- vectorized union-find
-- flatten `_visit` logic
-- `examples/someapplications.ipynb`
-- flatten dynamic nested dicts into tensors
-- [`fastkde.pdf`](https://github.com/LBL-EESA/fastkde/blob/main/src/fastkde/fastKDE.py) onto `torch.Tensor`
+- replace dynamic vine dictionaries with typed tensor-friendly structures
+- vectorized union-find for structure learning
+- flatten `_visit` logic in sampling and pseudo-observation traversal
 
 ## Contributing
 
-We welcome contributions, whether it's a bug report, feature suggestion, code contribution, or documentation improvement.
+Contributions are welcome. Keep pull requests focused, include tests for new behavior, and note
+any numerical or API compatibility changes explicitly.
 
-- If you encounter any issues with the project or have ideas for new features, please [open an issue](https://github.com/TY-Cheng/torchvinecopulib/issues/new) on GitHub or [privately email us](mailto:cty120120@gmail.com). Make sure to include detailed information about the problem or feature request, including steps to reproduce for bugs.
+## Third-Party Notice
 
-### Code Contributions
-
-1. Fork the repository and create a new branch from the `main` branch.
-2. Make your changes and ensure they adhere to the project's coding style and conventions.
-3. Write tests for any new functionality and ensure existing tests pass.
-4. Commit your changes with clear and descriptive commit messages.
-5. Push your changes to your fork and submit a pull request to the `main` branch of the original repository.
-
-### Pull Request Guidelines
-
-- Keep pull requests focused on addressing a single issue or feature.
-- Include a clear and descriptive title and description for your pull request.
-- Make sure all tests pass before submitting the pull request.
-- If your pull request addresses an open issue, reference the issue number in the description using the syntax `#issue_number`.
-- [in-place ops can be slower](https://discuss.pytorch.org/t/are-inplace-operations-faster/61209/4)
-- [torch.jit.script can be slower](https://discuss.pytorch.org/t/why-is-torch-jit-script-slower/120131/6)
-
-## License
-
-This project is released under the MIT License (© 2024- Tuoyuan Cheng, Kan Chen).  
-See [LICENSE](./LICENSE) for the full text, including our own grant of rights and disclaimer.
-
-### Third-Party Dependencies
-
-See the “Third-Party Dependencies” section in [LICENSE](./LICENSE) for details on the `PyTorch`, `FastKDE`, and `pyvinecopulib` licenses that govern those components.
+`torchvinecopulib` depends on PyTorch at runtime. The project also retains historical attribution
+for FastKDE and offers an optional `pyvinecopulib` reference backend. See [LICENSE](./LICENSE)
+for the full third-party license texts and attribution notes.

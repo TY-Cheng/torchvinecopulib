@@ -16,9 +16,10 @@ def train_vine(Z_train, Y_train, seed=42, device="cpu"):
         obs=ZY_train,
         first_tree_vertex=first_tree_vertex,
         mtd_bidep="ferreira_tail_dep_coeff",
-        mtd_kde="tll",
-        mtd_tll="quadratic",
-        seed=seed,
+        marginal_backend="grid",
+        marginal_kwargs={"bandwidth": "isj"},
+        bicop_backend="grid_reflect",
+        bicop_kwargs={"bandwidth": "silverman"},
     )
     return model_vine
 

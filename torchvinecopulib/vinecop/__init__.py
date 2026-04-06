@@ -2,10 +2,11 @@
 torchvinecopulib.vinecop
 -------------------------
 
-Provides ``VineCop`` (``torch.nn.Module``) for multivariate vine copula fitting, and sampling
+Provides ``VineCop`` (``torch.nn.Module``) for multivariate vine copula fitting and
+sampling.
 
 - Constructs and fits D-, C-, and R-vine copula structures via the Dissmann algorithm or user-specified tree matrices.
-- Optinally handles marginals with 1D KDE via ``kdeCDFPPF1D``.
+- Optionally handles marginals with the torch-native ``TorchKDE1D`` backend.
 - Employs pairwise bivariate copulas (``BiCop``).
 - Supports a variety of dependence measures (``ENUM_FUNC_BIDEP``) such as Kendall’s τ and Chatterjee’s ξ for edge weighting.
 - Offers device-agnostic ``.fit()``, ``.log_pdf()``, ``.cdf()``, ``.sample()``, and visualization helpers (``.draw_lv()``, ``.draw_dag()``).
@@ -37,7 +38,8 @@ References
 import copy
 import heapq
 import math
-from collections import Counter, defaultdict
+import warnings
+from collections import Counter, OrderedDict, defaultdict
 from itertools import combinations
 from pathlib import Path
 from pprint import pformat
@@ -45,8 +47,15 @@ from textwrap import indent
 
 import torch
 
+from ..backends import (
+    API_VERSION,
+    build_marginal_estimator,
+    build_marginal_shell,
+    normalize_bicop_backend,
+    normalize_marginal_backend,
+)
 from ..bicop import BiCop
-from ..util import ENUM_FUNC_BIDEP, kdeCDFPPF1D
+from ..util import ENUM_FUNC_BIDEP
 
 __all__ = [
     "VineCop",
@@ -105,6 +114,11 @@ class VineCop(torch.nn.Module):
                 right=None,
             )
         self.mtd_bidep = None
+        self.api_version = API_VERSION
+        self.marginal_backend = "grid"
+        self.marginal_backend_config = {}
+        self.bicop_backend = "grid_reflect"
+        self.bicop_backend_config = {}
         self.tree_bidep = [{} for _ in range(num_dim - 1)]
         self.num_step_grid = num_step_grid
         self.sample_order = tuple(_ for _ in range(num_dim))
@@ -161,6 +175,10 @@ class VineCop(torch.nn.Module):
         Reset the VineCop object to its initial state.
         """
         self.num_obs.zero_()
+        self.marginal_backend = "grid"
+        self.marginal_backend_config = {}
+        self.bicop_backend = "grid_reflect"
+        self.bicop_backend_config = {}
         for i in range(self.num_dim):
             self.struct_obs[0][(i,)] = ""
             if i > 0:
@@ -173,6 +191,220 @@ class VineCop(torch.nn.Module):
             dd["right"] = None
         for bicop in self.bicops.values():
             bicop.reset()
+
+    def get_extra_state(self) -> dict:
+        return {
+            "api_version": self.api_version,
+            "marginal_backend": self.marginal_backend,
+            "marginal_backend_config": dict(self.marginal_backend_config),
+            "bicop_backend": self.bicop_backend,
+            "bicop_backend_config": dict(self.bicop_backend_config),
+            "sample_order": list(self.sample_order),
+            "tree_bidep": [
+                [
+                    {
+                        "edge": list(edge),
+                        "weight": float(torch.as_tensor(weight).reshape(-1)[0].item()),
+                    }
+                    for edge, weight in sorted(tree.items())
+                ]
+                for tree in self.tree_bidep
+            ],
+            "struct_obs": [
+                [
+                    {
+                        "vertex_set": list(v_s),
+                        "cond_ed": cond_ed,
+                    }
+                    for v_s, cond_ed in sorted(level.items())
+                ]
+                for level in self.struct_obs
+            ],
+            "struct_bcp": {
+                cond_ed: {
+                    "cond_ing": list(dd["cond_ing"]),
+                    "is_indep": bool(dd["is_indep"]),
+                    "left": dd["left"],
+                    "right": dd["right"],
+                }
+                for cond_ed, dd in self.struct_bcp.items()
+            },
+        }
+
+    def set_extra_state(self, state: dict) -> None:
+        if not state:
+            return
+        self.api_version = state.get("api_version", self.api_version)
+        self.marginal_backend = state.get("marginal_backend", self.marginal_backend)
+        self.marginal_backend_config = dict(state.get("marginal_backend_config", {}))
+        self.bicop_backend = state.get("bicop_backend", self.bicop_backend)
+        self.bicop_backend_config = dict(state.get("bicop_backend_config", {}))
+        if "sample_order" in state:
+            self.sample_order = tuple(int(v) for v in state["sample_order"])
+        tree_bidep = state.get("tree_bidep")
+        if tree_bidep is not None:
+            restored_tree_bidep = []
+            for level in tree_bidep:
+                restored_level = {}
+                for item in level:
+                    restored_level[tuple(int(v) for v in item["edge"])] = float(item["weight"])
+                restored_tree_bidep.append(restored_level)
+            if len(restored_tree_bidep) == self.num_dim - 1:
+                self.tree_bidep = restored_tree_bidep
+        struct_obs = state.get("struct_obs")
+        if struct_obs is not None:
+            restored_struct_obs = []
+            for level in struct_obs:
+                restored_level = {}
+                for item in level:
+                    restored_level[tuple(int(v) for v in item["vertex_set"])] = item["cond_ed"]
+                restored_struct_obs.append(restored_level)
+            if len(restored_struct_obs) == self.num_dim:
+                self.struct_obs = restored_struct_obs
+        struct_bcp = state.get("struct_bcp")
+        if struct_bcp is not None:
+            for cond_ed, payload in struct_bcp.items():
+                if cond_ed not in self.struct_bcp:
+                    continue
+                self.struct_bcp[cond_ed]["cond_ing"] = tuple(int(v) for v in payload.get("cond_ing", ()))
+                self.struct_bcp[cond_ed]["is_indep"] = bool(payload.get("is_indep", True))
+                self.struct_bcp[cond_ed]["left"] = payload.get("left")
+                self.struct_bcp[cond_ed]["right"] = payload.get("right")
+
+    def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
+        needs_top_level_state = "_extra_state" not in state_dict
+        missing_bicop_state = [
+            f"bicops.{cond_ed}._extra_state"
+            for cond_ed in self.bicops
+            if f"bicops.{cond_ed}._extra_state" not in state_dict
+        ]
+        marginal_backend = "grid"
+        top_level_state = state_dict.get("_extra_state")
+        if isinstance(top_level_state, dict):
+            marginal_backend = str(top_level_state.get("marginal_backend", marginal_backend))
+        for idx in range(self.num_dim):
+            if self.marginals[idx] is None and f"marginals.{idx}.grid_x" in state_dict:
+                self.marginals[idx] = build_marginal_shell(backend_name=marginal_backend)
+        if needs_top_level_state or missing_bicop_state:
+            patched_state = OrderedDict(state_dict)
+            if needs_top_level_state:
+                patched_state["_extra_state"] = {
+                    "api_version": self.api_version,
+                    "marginal_backend": "grid",
+                    "marginal_backend_config": {},
+                    "bicop_backend": "grid_reflect",
+                    "bicop_backend_config": {},
+                }
+            for key in missing_bicop_state:
+                patched_state[key] = {
+                    "api_version": self.api_version,
+                    "backend_name": "grid_reflect",
+                    "normalized_backend_config": {},
+                }
+            state_dict = patched_state
+        return super().load_state_dict(state_dict, strict=strict, assign=assign)
+
+    def _normalize_fit_request(
+        self,
+        *,
+        marginal_backend: str,
+        marginal_kwargs: dict | None,
+        bicop_backend: str | None,
+        bicop_kwargs: dict | None,
+        mtd_kde: str | None,
+        mtd_tll: str,
+        num_iter_max: int,
+        num_step_grid_kde1d: int | None,
+        bandwidth: str | float | torch.Tensor,
+        bandwidth_scale: float,
+        kde_kwargs: dict,
+    ) -> tuple[str, dict, str, dict]:
+        marginal_backend = normalize_marginal_backend(marginal_backend)
+        normalized_marginal_kwargs = dict(marginal_kwargs or {})
+        if kde_kwargs:
+            warnings.warn(
+                "Legacy keyword args passed through '**kde_kwargs' are deprecated; use 'marginal_kwargs' instead.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            normalized_marginal_kwargs = {**kde_kwargs, **normalized_marginal_kwargs}
+        if marginal_backend == "grid":
+            if "bandwidth" not in normalized_marginal_kwargs:
+                normalized_marginal_kwargs["bandwidth"] = bandwidth
+            elif bandwidth != "isj":
+                warnings.warn(
+                    "Both 'marginal_kwargs[\"bandwidth\"]' and legacy top-level 'bandwidth' were provided; "
+                    "using marginal_kwargs.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+            if "bandwidth_scale" not in normalized_marginal_kwargs:
+                normalized_marginal_kwargs["bandwidth_scale"] = bandwidth_scale
+            elif bandwidth_scale != 1.0:
+                warnings.warn(
+                    "Both 'marginal_kwargs[\"bandwidth_scale\"]' and legacy top-level "
+                    "'bandwidth_scale' were provided; using marginal_kwargs.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+            if "num_step_grid" not in normalized_marginal_kwargs:
+                normalized_marginal_kwargs["num_step_grid"] = num_step_grid_kde1d
+            elif num_step_grid_kde1d is not None:
+                warnings.warn(
+                    "Both 'marginal_kwargs[\"num_step_grid\"]' and legacy 'num_step_grid_kde1d' were "
+                    "provided; using marginal_kwargs.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+
+        if bicop_backend is None:
+            if mtd_kde is None:
+                bicop_backend = "grid_reflect"
+            else:
+                warnings.warn(
+                    "'mtd_kde' is deprecated; use 'bicop_backend' instead.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+                bicop_backend = {
+                    "fastKDE": "grid_reflect",
+                    "torch_grid": "grid_reflect",
+                    "tll": "tll_ref",
+                }.get(mtd_kde, mtd_kde)
+        bicop_backend = normalize_bicop_backend(bicop_backend)
+        normalized_bicop_kwargs = dict(bicop_kwargs or {})
+        if bicop_backend == "tll_ref":
+            if "nonparametric_method" not in normalized_bicop_kwargs:
+                normalized_bicop_kwargs["nonparametric_method"] = mtd_tll
+            elif mtd_tll != "constant":
+                warnings.warn(
+                    "Both 'bicop_kwargs[\"nonparametric_method\"]' and legacy 'mtd_tll' were provided; "
+                    "using bicop_kwargs.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+        else:
+            if "bandwidth" not in normalized_bicop_kwargs and bandwidth != "isj":
+                normalized_bicop_kwargs["bandwidth"] = bandwidth
+            if "bandwidth_scale" not in normalized_bicop_kwargs:
+                normalized_bicop_kwargs["bandwidth_scale"] = bandwidth_scale
+            elif bandwidth_scale != 1.0:
+                warnings.warn(
+                    "Both 'bicop_kwargs[\"bandwidth_scale\"]' and legacy top-level "
+                    "'bandwidth_scale' were provided; using bicop_kwargs.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+            if "num_iter_max" not in normalized_bicop_kwargs:
+                normalized_bicop_kwargs["num_iter_max"] = num_iter_max
+            elif num_iter_max != 5:
+                warnings.warn(
+                    "Both 'bicop_kwargs[\"num_iter_max\"]' and legacy top-level 'num_iter_max' were "
+                    "provided; using bicop_kwargs.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+        return marginal_backend, normalized_marginal_kwargs, bicop_backend, normalized_bicop_kwargs
 
     @staticmethod
     @torch.no_grad()
@@ -421,46 +653,52 @@ class VineCop(torch.nn.Module):
         mtd_vine: str = "rvine",
         mtd_bidep: str = "chatterjee_xi",
         thresh_trunc: None | float = 0.01,
-        mtd_kde: str = "tll",
+        mtd_kde: str | None = None,
         mtd_tll: str = "constant",
-        num_iter_max: int = 17,
+        num_iter_max: int = 5,
         is_tau_est: bool = False,
         num_step_grid_kde1d: int = None,
+        marginal_backend: str = "grid",
+        marginal_kwargs: dict | None = None,
+        bicop_backend: str | None = None,
+        bicop_kwargs: dict | None = None,
+        bandwidth: str | float | torch.Tensor = "isj",
+        bandwidth_scale: float = 1.0,
+        generator: torch.Generator | None = None,
         **kde_kwargs,
     ) -> None:
-        """Fit the VineCop object to multivariate data. Learns both the vine structure (via
-        Dissmann’s greedy MST or a provided matrix) and fits all bivariate copulas and 1D marginals
-        (if needed).
-
-        Args:
-            obs (torch.Tensor): observations of shape (num_obs, num_dim). If ``is_cop_scale=False``, raw data; otherwise assumed already uniform.
-            is_dissmann (bool, optional): if True, use Dissmann's algorithm to learn the vine structure. Otherwise, use the provided matrix. Defaults to True.
-            matrix (torch.Tensor, optional): matrix representation of the vine structure. Defaults to None.
-            first_tree_vertex (tuple, optional): vertices of the first tree (set of conditioning variables). Defaults to ().
-            mtd_vine (str, optional): method for vine structure. One of "cvine", "dvine", "rvine". Defaults to "rvine".
-            mtd_bidep (str, optional): method for bivariate dependence. One of "chatterjee_xi", "ferreira_tail_dep_coeff", "kendall_tau", "mutual_info". Defaults to "chatterjee_xi".
-            thresh_trunc (None | float, optional): threshold for truncating bivariate copulas using p-val from Kendall's tau stats test. Defaults to 0.01.
-            mtd_kde (str, optional): method for bicop KDE. One of "fastKDE" or "tll". Defaults to "fastKDE".
-            mtd_tll (str, optional): fit method for the transformation local-likelihood (TLL) nonparametric family, one of ("constant", "linear", or "quadratic"). Defaults to "constant".
-            num_iter_max (int, optional): num of Sinkhorn/IPF iters for grid normalization, used only when `mtd_kde` is "fastKDE". Defaults to 17.
-            is_tau_est (bool, optional): If True, compute and store Kendall’s τ inside BiCop. Defaults to False.
-            num_step_grid_kde1d (int, optional): Grid resolution for each marginal KDE. Defaults to None.
-            **kde_kwargs: additional keyword arguments for ``kdeCDFPPF1D``.
-
-        Raises:
-            ValueError: if `mtd_vine` is not one of "cvine", "dvine", or "rvine".
-        """
         self.reset()
-        # ! device agnostic
         device, dtype = self.device, self.dtype
+        (
+            marginal_backend,
+            normalized_marginal_kwargs,
+            bicop_backend,
+            normalized_bicop_kwargs,
+        ) = self._normalize_fit_request(
+            marginal_backend=marginal_backend,
+            marginal_kwargs=marginal_kwargs,
+            bicop_backend=bicop_backend,
+            bicop_kwargs=bicop_kwargs,
+            mtd_kde=mtd_kde,
+            mtd_tll=mtd_tll,
+            num_iter_max=num_iter_max,
+            num_step_grid_kde1d=num_step_grid_kde1d,
+            bandwidth=bandwidth,
+            bandwidth_scale=bandwidth_scale,
+            kde_kwargs=kde_kwargs,
+        )
+        self.marginal_backend = marginal_backend
+        self.marginal_backend_config = dict(normalized_marginal_kwargs)
+        self.bicop_backend = bicop_backend
+        self.bicop_backend_config = dict(normalized_bicop_kwargs)
         if self.is_cop_scale:
             obs_mvcp = obs.to(device=device, dtype=dtype)
         else:
             for v in range(self.num_dim):
-                self.marginals[v] = kdeCDFPPF1D(
+                self.marginals[v] = build_marginal_estimator(
+                    backend_name=marginal_backend,
                     x=obs[:, v],
-                    num_step_grid=num_step_grid_kde1d,
-                    **kde_kwargs,
+                    backend_kwargs=normalized_marginal_kwargs,
                 ).to(device=device, dtype=dtype)
             obs_mvcp = torch.hstack(
                 [self.marginals[v].cdf(obs[:, [v]]) for v in range(self.num_dim)]
@@ -590,10 +828,12 @@ class VineCop(torch.nn.Module):
                 if is_fitting:
                     bcp.fit(
                         obs=obs_bcp,
-                        num_iter_max=num_iter_max,
                         is_tau_est=is_tau_est,
-                        mtd_kde=mtd_kde,
+                        mtd_kde=None,
                         mtd_tll=mtd_tll,
+                        bicop_backend=bicop_backend,
+                        bicop_kwargs=normalized_bicop_kwargs,
+                        generator=generator,
                     )
                     self.struct_bcp[cond_ed]["is_indep"] = False
                 else:
@@ -714,35 +954,15 @@ class VineCop(torch.nn.Module):
         raise NotImplementedError
 
     @torch.no_grad()
-    def sample(
+    def _sample_u(
         self,
         num_sample: int = 1000,
-        seed: int = 42,
+        seed: int | None = 42,
         is_sobol: bool = False,
         sample_order: tuple[int, ...] | None = None,
         dct_v_s_obs: dict[tuple[int, ...], torch.Tensor] | None = None,
+        generator: torch.Generator | None = None,
     ) -> torch.Tensor:
-        """Draw random samples from the fitted vine copula via inverse Rosenblatt.
-
-        Generates ``num_sample`` joint samples in original or copula scale by
-        (1) sampling independent uniforms for each “source” pseudo-obs,
-        (2) recursively applying h-functions and their inverses following the
-        vine structure, and (3) optionally transforming back through 1D marginal PPFs.
-
-        Args:
-            num_sample (int, optional): number of samples to draw. Defaults to 1000.
-            seed (int, optional): random seed for RNG or Sobol engine. Defaults to 42.
-            is_sobol (bool, optional): if True, use Sobol engine for quasi-random sampling. Defaults to False.
-            sample_order (tuple[int, ...] | None, optional): custom sampling order. Defaults to None and uses `self.sample_order`.
-            dct_v_s_obs (dict[tuple[int, ...], torch.Tensor] | None, optional):
-                dict mapping tuple(idx|conding set)->pseudo-obs. Defaults to None. User-provided pseudo-obs to initialize
-                the sampling process. Notice if `is_cop_scale=False`, CDF/PPF will only be applied to the top level marginals.
-                Pseudo-obs at deeper levels are assumed to be in copula scale [0,1].
-
-        Returns:
-            torch.Tensor: sampled observations in original scale if ``self.is_cop_scale=False``, otherwise in [0,1]^d.
-        """
-
         def _ref_count_decrement(v_s) -> None:
             ref_count[v_s] -= 1
             if ref_count[v_s] < 1 and (len(v_s) > 1):
@@ -806,28 +1026,24 @@ class VineCop(torch.nn.Module):
             if is_hinv:
                 return v_s_next
 
-        # ! device agnostic
         device, dtype = self.device, self.dtype
-        torch.manual_seed(seed=seed)
-        # ! start with any user‐provided pseudo obs
         dct_obs = dict()
         if dct_v_s_obs:
             for v_s, vec in dct_v_s_obs.items():
                 v, *s = v_s
-                # ! sorted !
                 v_s = (v, *sorted(s))
-                # NOTE: if top lv then marginal cdf, else nothing happen (quantile regression for experienced users)
                 if not s:
-                    dct_obs[v_s] = self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
+                    if self.is_cop_scale:
+                        dct_obs[v_s] = vec.to(device=device, dtype=dtype)
+                    else:
+                        dct_obs[v_s] = self.marginals[v].cdf(vec).to(device=device, dtype=dtype)
                 else:
                     dct_obs[v_s] = vec.to(device=device, dtype=dtype)
-        # * source vertices in each path; reference counting for whole DAG
         ref_count, lst_source, _ = self.ref_count_hfunc(
             num_dim=self.num_dim,
             struct_obs=self.struct_obs,
             sample_order=sample_order if sample_order else self.sample_order,
         )
-        # * draw indep uniform for default source vertices
         dim_sim = sum(1 for v_s in lst_source if v_s not in dct_obs)
         if dim_sim > 0:
             if is_sobol:
@@ -837,44 +1053,53 @@ class VineCop(torch.nn.Module):
                     .to(device=device)
                 )
             else:
-                obs_mvcp_indep = torch.rand(size=(num_sample, dim_sim), device=device, dtype=dtype)
-            # * initialize source vertices
+                if generator is None:
+                    generator = torch.Generator(device=device)
+                    if seed is not None:
+                        generator.manual_seed(seed)
+                obs_mvcp_indep = torch.rand(
+                    size=(num_sample, dim_sim),
+                    device=device,
+                    dtype=dtype,
+                    generator=generator,
+                )
             idx = 0
             for v_s in lst_source:
                 if v_s not in dct_obs:
                     dct_obs[v_s] = obs_mvcp_indep[:, [idx]]
                     idx += 1
             del obs_mvcp_indep, idx
-        # * source to target (empty cond_ing), from the shallowest to the deepest
         for v_s in lst_source:
             lv = len(v_s) - 1
             while lv > 0:
                 v_s = _visit(lv=lv, v_s=v_s, is_hinv=True)
                 lv -= 1
-        # ! gather pseudo-obs by v
-        obs_mvcp = torch.hstack([dct_obs[(v,)] for v in range(self.num_dim)])
+        return torch.hstack([dct_obs[(v,)] for v in range(self.num_dim)])
+
+    @torch.no_grad()
+    def sample(
+        self,
+        num_sample: int = 1000,
+        seed: int | None = 42,
+        is_sobol: bool = False,
+        sample_order: tuple[int, ...] | None = None,
+        dct_v_s_obs: dict[tuple[int, ...], torch.Tensor] | None = None,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        obs_mvcp = self._sample_u(
+            num_sample=num_sample,
+            seed=seed,
+            is_sobol=is_sobol,
+            sample_order=sample_order,
+            dct_v_s_obs=dct_v_s_obs,
+            generator=generator,
+        )
         if self.is_cop_scale:
             return obs_mvcp
-        else:
-            # * transform to original scale
-            return torch.hstack(
-                [self.marginals[v].ppf(obs_mvcp[:, [v]]) for v in range(self.num_dim)]
-            )
+        return torch.hstack([self.marginals[v].ppf(obs_mvcp[:, [v]]) for v in range(self.num_dim)])
 
     @torch.no_grad()
     def cdf(self, obs: torch.Tensor, num_sample: int = 10007, seed: int = 42) -> torch.Tensor:
-        """Estimate the multivariate CDF via Monte Carlo of the vine copula. Approximates C(u) = P(U
-        ≤ u) by drawing ``num_sample`` Sobol samples in copula scale and computing the proportion
-        that lie below ``obs``.
-
-        Args:
-            obs (torch.Tensor): Points at which to evaluate the CDF. Shape (num_obs, num_dim).
-            num_sample (int, optional): number of samples to draw for approx. Defaults to 10007.
-            seed (int, optional): random seed for Sobol engine. Defaults to 0.
-        Returns:
-            torch.Tensor: Estimated CDF values at the given observations. Shape (num_obs, 1).
-        """
-        # ! device agnostic
         device, dtype = self.device, self.dtype
         if self.is_cop_scale:
             obs_mvcp = obs.to(device=device, dtype=dtype)
@@ -882,26 +1107,14 @@ class VineCop(torch.nn.Module):
             obs_mvcp = torch.hstack(
                 [self.marginals[v].cdf(obs[:, [v]]) for v in range(self.num_dim)]
             ).to(device=device, dtype=dtype)
-        # * broadcast
         return (
             (
-                self.sample(num_sample=num_sample, seed=seed, is_sobol=True).unsqueeze(
-                    dim=1
-                )  # * (num_sample,1,num_dim)
-                <= obs_mvcp  # * (num_sample, num_obs, num_dim)
+                self._sample_u(num_sample=num_sample, seed=seed, is_sobol=True).unsqueeze(dim=1)
+                <= obs_mvcp
             )
-            .all(
-                dim=2,
-                keepdim=True,
-                # * (num_sample, num_obs, 1)
-            )
-            .sum(
-                axis=0,
-                keepdim=False,
-                # * (num_obs, 1)
-            )
+            .all(dim=2, keepdim=True)
+            .sum(axis=0, keepdim=False)
             / num_sample
-            # * bool -> float32 -> dtype
         ).to(device=device, dtype=dtype)
 
     def __str__(self) -> str:
@@ -916,6 +1129,8 @@ class VineCop(torch.nn.Module):
             "num_obs": int(self.num_obs),
             "is_cop_scale": self.is_cop_scale,
             "mtd_bidep": self.mtd_bidep,
+            "marginal_backend": self.marginal_backend,
+            "bicop_backend": self.bicop_backend,
             "negloglik": float(
                 sum(bcp.negloglik for bcp in self.bicops.values()).round(decimals=4)
             ),
