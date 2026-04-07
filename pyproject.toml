@@ -10,9 +10,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.urls]
-# homepage = ""
+homepage = "https://ty-cheng.github.io/torchvinecopulib/"
 repository = "https://github.com/TY-Cheng/torchvinecopulib"
 documentation = "https://ty-cheng.github.io/torchvinecopulib/"
+changelog = "https://github.com/TY-Cheng/torchvinecopulib/blob/main/CHANGELOG.md"
+issues = "https://github.com/TY-Cheng/torchvinecopulib/issues"
 
 [project]
 name = "torchvinecopulib"
@@ -45,11 +47,13 @@ dev = [
     "docformatter",
     "flake8",
     "furo",
+    "hypothesis",
     "ipykernel",
     "kagglehub",
     "matplotlib",
     "missingno",
     "mypy",
+    "myst-parser",
     "pandas",
     "pytest-cov",
     "pytest",
@@ -68,6 +72,7 @@ dev = [
 cpu = ["torch>=2"]
 cu126 = ["torch>=2"]
 cu128 = ["torch>=2"]
+docs = ["furo", "myst-parser", "sphinx", "sphinx_pyproject"]
 examples = ["pytorch-lightning", "tqdm"]
 reference = ["pyvinecopulib"]
 
@@ -107,6 +112,9 @@ explicit = true
 [tool.ruff]
 line-length = 99
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -140,6 +148,9 @@ per-file-ignores = [
 [tool.pytest.ini_options]
 markers = [
     "cuda: tests that require a CUDA device and are skipped in the default CPU suite",
+    "integration: tests that exercise fit/serialize/reload/sample workflows end-to-end",
+    "property: hypothesis-driven statistical property tests",
+    "reference: tests that rely on optional reference implementations",
     "slow: long-running tests that are excluded from the default fast feedback loop",
 ]
 
@@ -148,6 +159,7 @@ source-dir = "docs"
 build-dir = "docs/_build"
 all_files = true
 extensions = [
+    "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.autosummary",
@@ -160,6 +172,7 @@ extensions = [
     "sphinx.ext.imgconverter",
     "sphinx.ext.inheritance_diagram",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",

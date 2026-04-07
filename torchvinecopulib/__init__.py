@@ -1,13 +1,26 @@
 from . import util
-from .bicop import BiCop, TorchCopulaKDE2D
+from .bicop import BiCop, BiCopDiagnostics, TorchCopulaKDE2D
 from .util import TorchKDE1D
-from .vinecop import VineCop
+from .vinecop import (
+    VineBuildArtifact,
+    VineBuilder,
+    VineCop,
+    VineCopEngine,
+    VineDiagnostics,
+    VineExecutionPlan,
+)
 
 __all__ = [
     "BiCop",
+    "BiCopDiagnostics",
     "TorchCopulaKDE2D",
     "TorchKDE1D",
+    "VineBuildArtifact",
+    "VineBuilder",
     "VineCop",
+    "VineCopEngine",
+    "VineDiagnostics",
+    "VineExecutionPlan",
     "util",
 ]
 

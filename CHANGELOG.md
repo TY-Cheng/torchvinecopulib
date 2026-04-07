@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- Rebuilt the docs around `Sphinx + MyST + Furo` with curated Quickstart, Theory, Systems, API,
+  and benchmark entrypoints.
+- Replaced the old `sphinx-apidoc --force` flow with hand-maintained API landing pages plus
+  controlled `_generated` stubs.
+- Added doctested quickstart examples and stricter warning-free Sphinx builds.
+
+### Infrastructure
+
+- Split GitHub Actions into `ci.yml`, `docs.yml`, and `release.yml`.
+- Moved docs deployment to a dedicated cloud-built `gh-pages` branch workflow instead of relying on
+  generated HTML in the main branch.
+- Added a docs-only optional dependency set and public project URLs for docs, changelog, and issue
+  tracking.
+
 ## 1.3.0 - 2026-04-06
 
 ### Breaking Changes

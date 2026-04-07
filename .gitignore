@@ -1,6 +1,8 @@
 # Manual
 /scratch
-/docs
+/docs/.DS_Store
+# Docs sources, API stubs, and templates are tracked; only local build artifacts stay ignored.
+/docs/_build/
 /Styles
 /data
 /out
@@ -98,9 +100,6 @@ instance/
 # Scrapy stuff:
 .scrapy
 
-# Sphinx documentation
-docs/_build/
-
 # PyBuilder
 .pybuilder/
 target/
@@ -159,6 +158,8 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/

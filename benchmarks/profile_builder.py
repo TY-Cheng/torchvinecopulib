@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import platform
 import time
 import tracemalloc
 from pathlib import Path
@@ -55,6 +56,20 @@ def _state_dict_nbytes(module: torch.nn.Module) -> int:
     return buffer.tell()
 
 
+def _environment(device: torch.device) -> dict[str, str | bool]:
+    return {
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "torch_version": torch.__version__,
+        "cuda_available": torch.cuda.is_available(),
+        "device_type": device.type,
+    }
+
+
+def _peak_metric_name(device: torch.device) -> str:
+    return "cuda_bytes" if device.type == "cuda" else "tracemalloc_bytes"
+
+
 def main() -> None:
     args = _parse_args()
     if args.device == "cuda" and not torch.cuda.is_available():
@@ -70,14 +85,7 @@ def main() -> None:
     if args.bicop_backend != "tll_ref":
         fit_kwargs["bicop_kwargs"] = {"bandwidth": "silverman"}
 
-    metrics: dict[str, int | float | str] = {
-        "num_obs": args.num_obs,
-        "num_dim": args.num_dim,
-        "grid_size": args.grid_size,
-        "device": args.device,
-        "bicop_backend": args.bicop_backend,
-        "seed": args.seed,
-    }
+    metrics: dict[str, int | float | str] = {}
 
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
@@ -86,7 +94,7 @@ def main() -> None:
         model.fit(obs, **fit_kwargs)
         _sync(device)
         metrics["fit_seconds"] = time.perf_counter() - t0
-        metrics["peak_cuda_bytes"] = int(torch.cuda.max_memory_allocated(device))
+        metrics["peak_memory_bytes"] = int(torch.cuda.max_memory_allocated(device))
     else:
         tracemalloc.start()
         t0 = time.perf_counter()
@@ -94,12 +102,30 @@ def main() -> None:
         metrics["fit_seconds"] = time.perf_counter() - t0
         _, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
-        metrics["peak_tracemalloc_bytes"] = int(peak)
+        metrics["peak_memory_bytes"] = int(peak)
 
     metrics["state_dict_bytes"] = _state_dict_nbytes(model)
+    metrics["peak_memory_kind"] = _peak_metric_name(device)
+    metrics["num_edges"] = len(model.bicops)
+    metrics["num_obs_fitted"] = int(model.num_obs)
+    metrics["fallback_to_indep"] = model.diagnostics().fallback_to_indep
+    report = {
+        "schema_version": 1,
+        "benchmark": "builder",
+        "config": {
+            "num_obs": args.num_obs,
+            "num_dim": args.num_dim,
+            "grid_size": args.grid_size,
+            "device": args.device,
+            "bicop_backend": args.bicop_backend,
+            "seed": args.seed,
+        },
+        "environment": _environment(device),
+        "metrics": metrics,
+    }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps(metrics, indent=2, sort_keys=True))
+    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from . import gaussian_copula
 
 
 RUN_CUDA_TESTS = os.getenv("TVC_RUN_CUDA_TESTS") == "1"
+pytestmark = pytest.mark.cuda
 
 
 @pytest.mark.skipif(not torch.cuda.is_available() or not RUN_CUDA_TESTS, reason="CUDA memory suite is opt-in")

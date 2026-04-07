@@ -1,9 +1,16 @@
+import json
+import subprocess
+import sys
+
 import pytest
 import torch
 
 import torchvinecopulib as tvc
 
 from . import DEVICE, correlated_raw, gaussian_copula
+
+
+pytestmark = pytest.mark.slow
 
 
 @pytest.mark.parametrize("num_obs", [1_000, 10_000])
@@ -39,3 +46,60 @@ def test_raw_scale_benchmark_smoke():
         thresh_trunc=0.05,
     )
     assert torch.isfinite(model.log_pdf(obs[:32])).all()
+
+
+def test_profile_builder_script_emits_schema(tmp_path):
+    out = tmp_path / "builder.json"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/profile_builder.py",
+            "--num-obs",
+            "128",
+            "--num-dim",
+            "4",
+            "--grid-size",
+            "33",
+            "--output",
+            str(out),
+        ],
+        check=True,
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["benchmark"] == "builder"
+    assert payload["config"]["num_dim"] == 4
+    assert payload["metrics"]["fit_seconds"] >= 0.0
+    assert payload["metrics"]["state_dict_bytes"] > 0
+
+
+def test_profile_query_script_emits_schema(tmp_path):
+    out = tmp_path / "query.json"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/profile_query.py",
+            "--num-obs",
+            "128",
+            "--num-dim",
+            "4",
+            "--grid-size",
+            "33",
+            "--batch-size",
+            "16",
+            "--cdf-samples",
+            "63",
+            "--compile-backend",
+            "eager",
+            "--output",
+            str(out),
+        ],
+        check=True,
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["benchmark"] == "query"
+    assert payload["metrics"]["queries"]["log_pdf"]["seconds"] >= 0.0
+    assert payload["metrics"]["queries"]["rosenblatt"]["numel"] == 16 * 4
+    assert payload["metrics"]["queries"]["inverse_rosenblatt"]["numel"] == 16 * 4
+    assert "compile_log_pdf" in payload["metrics"]["queries"]

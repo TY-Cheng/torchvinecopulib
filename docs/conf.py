@@ -22,6 +22,11 @@ documentation_summary = config.description
 extensions = config.get("extensions", [])
 html_theme = config.get("html_theme", "furo")
 html_title = f"{project} v{version}"
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
+templates_path = ["_templates"]
 html_theme_options = {
     "sidebar_hide_name": False,
     # "light_logo": "../torchvinecopulib.png",
@@ -33,3 +38,28 @@ html_theme_options = {
     # "titles_only": False,
 }
 autosummary_generate = True
+autosummary_imported_members = False
+autosectionlabel_prefix_document = True
+autodoc_typehints = "description"
+autodoc_default_options = {
+    "undoc-members": False,
+}
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+napoleon_include_init_with_doc = True
+myst_enable_extensions = [
+    "amsmath",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+]
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
+}
+nitpick_ignore = [
+    ("py:class", "torchvinecopulib.backends.bicop.GridReflectBicopEstimator"),
+    ("py:class", "torchvinecopulib.backends.marginal.GridKDE1D"),
+]

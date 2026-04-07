@@ -1,0 +1,270 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
+
+      - name: Lint with flake8
+        run: |
+          uv run flake8 ./torchvinecopulib --exclude .venv --count --select=E9,F63,F7,F82 --show-source --statistics
+          uv run flake8 ./torchvinecopulib --count --max-complexity=30 --max-line-length=127 --ignore=E203,W503,E501 --statistics
+
+  docs-check:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
+
+      - name: Build docs with warnings as errors
+        run: |
+          uv run sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
+
+      - name: Run docs doctest suite
+        run: |
+          uv run sphinx-build -b doctest docs/ docs/_build/doctest
+
+      - name: Docstring style smoke
+        continue-on-error: true
+        run: |
+          uv run ruff check \
+            torchvinecopulib/bicop/__init__.py \
+            torchvinecopulib/vinecop/__init__.py \
+            torchvinecopulib/util/__init__.py \
+            --select D205,D417
+
+  fast:
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
+
+      - name: Run fast pytest suite
+        run: |
+          uv run python -c "import sys; print(sys.version)"
+          uv run python -c "import torch; print(torch.cuda.is_available())"
+          uv run pytest \
+            --cov=torchvinecopulib \
+            --cov-branch \
+            --cov-report=term-missing \
+            -W error::DeprecationWarning \
+            -m "not slow and not cuda and not reference and not property" \
+            tests
+
+  full:
+    needs: [fast, docs-check]
+    runs-on: ubuntu-latest
+    env:
+      TVC_HYPOTHESIS_MAX_EXAMPLES: "100"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
+
+      - name: Run full pytest suite with branch coverage
+        run: |
+          uv run pytest \
+            --cov=torchvinecopulib \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=94 \
+            -W error::DeprecationWarning \
+            -m "not cuda and not reference" \
+            tests
+
+      - name: Upload coverage to Codacy
+        run: |
+          export CODACY_API_BASE_URL=${{ secrets.CODACY_API_BASE_URL }}
+          export CODACY_PROJECT_TOKEN=${{ secrets.CODACY_PROJECT_TOKEN }}
+          bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r ./coverage.xml
+
+  optional-reference:
+    needs: full
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu --extra reference
+
+      - name: Run optional reference tests
+        run: |
+          uv run pytest -W error::DeprecationWarning -m "reference" tests
+
+  optional-cuda:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: full
+    runs-on: ubuntu-latest
+    env:
+      TVC_RUN_CUDA_TESTS: "1"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
+
+      - name: Run optional CUDA tests
+        run: |
+          uv run pytest -W error::DeprecationWarning -m "cuda" tests
+
+  bench:
+    needs: full
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu
+
+      - name: Run benchmark smoke suite
+        run: |
+          uv run python benchmarks/profile_builder.py \
+            --num-obs 256 \
+            --num-dim 4 \
+            --grid-size 33 \
+            --output benchmarks/results/profile_builder.ci.json
+          uv run python benchmarks/profile_query.py \
+            --num-obs 256 \
+            --num-dim 4 \
+            --grid-size 33 \
+            --batch-size 32 \
+            --cdf-samples 127 \
+            --compile-backend eager \
+            --output benchmarks/results/profile_query.ci.json
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/*.json
+          if-no-files-found: error

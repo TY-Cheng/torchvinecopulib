@@ -388,6 +388,20 @@ def _build_pdf_buffers_1d(
     return cdf, slope_fwd, slope_inv, slope_pdf
 
 
+def _trapezoid_weights(
+    num_step_grid: int,
+    *,
+    step: float,
+    dtype: torch.dtype,
+    device: torch.device,
+) -> torch.Tensor:
+    weights = torch.full((num_step_grid,), step, dtype=dtype, device=device)
+    if num_step_grid > 0:
+        weights[0] = 0.5 * step
+        weights[-1] = 0.5 * step
+    return weights
+
+
 def _normalize_copula_pdf_grid(
     pdf_grid: torch.Tensor,
     *,
@@ -396,22 +410,37 @@ def _normalize_copula_pdf_grid(
     num_iter_max: int,
 ) -> torch.Tensor:
     pdf_grid = pdf_grid.clamp_min(_EPS)
-    target = 1.0 / step
-    pdf_grid *= target / pdf_grid.sum(dim=1, keepdim=True).clamp_min(_EPS)
-    pdf_grid *= target / pdf_grid.sum(dim=0, keepdim=True).clamp_min(_EPS)
-    pdf_grid /= pdf_grid.sum().clamp_min(_EPS) * step**2
+    weights = _trapezoid_weights(
+        pdf_grid.shape[0],
+        step=step,
+        dtype=pdf_grid.dtype,
+        device=pdf_grid.device,
+    )
+    pdf_grid *= weights.sum() / (pdf_grid * weights.view(1, -1)).sum(dim=1, keepdim=True).clamp_min(_EPS)
+    pdf_grid *= weights.sum() / (pdf_grid * weights.view(-1, 1)).sum(dim=0, keepdim=True).clamp_min(_EPS)
+    pdf_grid /= (
+        (pdf_grid * torch.outer(weights, weights)).sum().clamp_min(_EPS)
+    )
     err = torch.maximum(
-        (pdf_grid.sum(dim=0) * step - 1.0).abs().max(),
-        (pdf_grid.sum(dim=1) * step - 1.0).abs().max(),
+        ((pdf_grid * weights.view(-1, 1)).sum(dim=0) - 1.0).abs().max(),
+        ((pdf_grid * weights.view(1, -1)).sum(dim=1) - 1.0).abs().max(),
     )
     if float(err.item()) > marginal_tol:
         for _ in range(num_iter_max):
-            pdf_grid *= target / pdf_grid.sum(dim=0, keepdim=True).clamp_min(_EPS)
-            pdf_grid *= target / pdf_grid.sum(dim=1, keepdim=True).clamp_min(_EPS)
-            pdf_grid /= pdf_grid.sum().clamp_min(_EPS) * step**2
+            pdf_grid *= (
+                weights.sum()
+                / (pdf_grid * weights.view(-1, 1)).sum(dim=0, keepdim=True).clamp_min(_EPS)
+            )
+            pdf_grid *= (
+                weights.sum()
+                / (pdf_grid * weights.view(1, -1)).sum(dim=1, keepdim=True).clamp_min(_EPS)
+            )
+            pdf_grid /= (
+                (pdf_grid * torch.outer(weights, weights)).sum().clamp_min(_EPS)
+            )
             err = torch.maximum(
-                (pdf_grid.sum(dim=0) * step - 1.0).abs().max(),
-                (pdf_grid.sum(dim=1) * step - 1.0).abs().max(),
+                ((pdf_grid * weights.view(-1, 1)).sum(dim=0) - 1.0).abs().max(),
+                ((pdf_grid * weights.view(1, -1)).sum(dim=1) - 1.0).abs().max(),
             )
             if float(err.item()) <= marginal_tol:
                 break
@@ -425,9 +454,39 @@ def _build_pdf_buffers_2d(
     pdf_grid: torch.Tensor,
     step: float,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    cdf_grid = (pdf_grid * step**2).cumsum(dim=0).cumsum(dim=1).clamp_(0.0, 1.0)
-    hfunc_l_grid = (pdf_grid * step).cumsum(dim=1).clamp_(0.0, 1.0)
-    hfunc_r_grid = (pdf_grid * step).cumsum(dim=0).clamp_(0.0, 1.0)
+    num_step_grid = pdf_grid.shape[0]
+    axis = torch.linspace(0.0, 1.0, steps=num_step_grid, dtype=pdf_grid.dtype, device=pdf_grid.device)
+    cdf_grid = torch.zeros_like(pdf_grid)
+    cell_mass = (
+        0.25
+        * step**2
+        * (
+            pdf_grid[:-1, :-1]
+            + pdf_grid[1:, :-1]
+            + pdf_grid[:-1, 1:]
+            + pdf_grid[1:, 1:]
+        )
+    )
+    if cell_mass.numel():
+        cdf_grid[1:, 1:] = cell_mass.cumsum(dim=0).cumsum(dim=1)
+    cdf_grid[0, :] = 0.0
+    cdf_grid[:, 0] = 0.0
+    cdf_grid[:, -1] = axis
+    cdf_grid[-1, :] = axis
+    cdf_grid[-1, -1] = 1.0
+    cdf_grid.clamp_(0.0, 1.0)
+
+    hfunc_l_grid = torch.zeros_like(pdf_grid)
+    hfunc_r_grid = torch.zeros_like(pdf_grid)
+    if num_step_grid > 1:
+        hfunc_l_grid[:, 1:] = (0.5 * step * (pdf_grid[:, :-1] + pdf_grid[:, 1:])).cumsum(dim=1)
+        hfunc_r_grid[1:, :] = (0.5 * step * (pdf_grid[:-1, :] + pdf_grid[1:, :])).cumsum(dim=0)
+    hfunc_l_grid[:, 0] = 0.0
+    hfunc_l_grid[:, -1] = 1.0
+    hfunc_r_grid[0, :] = 0.0
+    hfunc_r_grid[-1, :] = 1.0
+    hfunc_l_grid.clamp_(0.0, 1.0)
+    hfunc_r_grid.clamp_(0.0, 1.0)
     return cdf_grid, hfunc_l_grid, hfunc_r_grid
 
 
