@@ -1,26 +1,24 @@
 from . import util
-from .bicop import BiCop, BiCopDiagnostics, TorchCopulaKDE2D
-from .util import TorchKDE1D
+from .backends import GridKDE1D
+from .bicop import BiCop, BiCopDiagnostics, GridReflectBicopEstimator
 from .vinecop import (
     VineBuildArtifact,
     VineBuilder,
     VineCop,
     VineCopEngine,
     VineDiagnostics,
-    VineExecutionPlan,
 )
 
 __all__ = [
     "BiCop",
     "BiCopDiagnostics",
-    "TorchCopulaKDE2D",
-    "TorchKDE1D",
+    "GridKDE1D",
+    "GridReflectBicopEstimator",
     "VineBuildArtifact",
     "VineBuilder",
     "VineCop",
     "VineCopEngine",
     "VineDiagnostics",
-    "VineExecutionPlan",
     "util",
 ]
 

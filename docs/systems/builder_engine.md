@@ -3,8 +3,7 @@
 The multivariate stack is intentionally split into three public integration points:
 
 - `VineBuilder`: structure learning, backend dispatch, and execution-plan assembly.
-- `VineBuildArtifact` / `VineExecutionPlan`: a serializable description of the fitted structure and
-  static execution ops.
+- `VineBuildArtifact`: a serializable description of the fitted structure and static execution ops.
 - `VineCopEngine`: the query-time runtime that executes `log_pdf()`, `rosenblatt()`,
   `inverse_rosenblatt()`, `cdf()`, and `sample()` from the plan.
 

@@ -58,15 +58,15 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install uv
-          python3 -m uv sync --extra cpu
+          python3 -m uv sync --extra cpu --group docs
 
       - name: Build docs with warnings as errors
         run: |
-          uv run sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
+          uv run --extra cpu --group docs sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
 
       - name: Run docs doctest suite
         run: |
-          uv run sphinx-build -b doctest docs/ docs/_build/doctest
+          uv run --extra cpu --group docs sphinx-build -b doctest docs/ docs/_build/doctest
 
       - name: Docstring style smoke
         continue-on-error: true
@@ -76,6 +76,34 @@ jobs:
             torchvinecopulib/vinecop/__init__.py \
             torchvinecopulib/util/__init__.py \
             --select D205,D417
+
+  examples-smoke:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install uv and sync deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install uv
+          python3 -m uv sync --extra cpu --group examples
+
+      - name: Generate lightweight example assets in check mode
+        run: |
+          uv run --extra cpu --group examples python scripts/generate_example_assets.py --check
 
   fast:
     needs: lint
@@ -119,7 +147,7 @@ jobs:
             tests
 
   full:
-    needs: [fast, docs-check]
+    needs: [fast, docs-check, examples-smoke]
     runs-on: ubuntu-latest
     env:
       TVC_HYPOTHESIS_MAX_EXAMPLES: "100"

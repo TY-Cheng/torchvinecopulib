@@ -6,8 +6,7 @@
 ## Overview
 
 The multivariate API is split between a public façade (`VineCop`), a builder (`VineBuilder`), a
-plan-backed runtime (`VineCopEngine`), and serializable artifacts (`VineBuildArtifact` /
-`VineExecutionPlan`).
+plan-backed runtime (`VineCopEngine`), and serializable artifacts (`VineBuildArtifact`).
 
 | Object | Purpose |
 | --- | --- |
@@ -15,18 +14,7 @@ plan-backed runtime (`VineCopEngine`), and serializable artifacts (`VineBuildArt
 | `VineBuilder` | Explicit structure-learning and plan-assembly entrypoint. |
 | `VineCopEngine` | Query-time runtime for plan-backed execution. |
 | `VineBuildArtifact` | Serializable fitted structure and execution plan. |
-| `VineExecutionPlan` | Alias of `VineBuildArtifact`, emphasizing runtime usage. |
 | `VineDiagnostics` | Aggregated diagnostics across pair-copula query paths. |
-
-## Autosummary
-
-```{autosummary}
-VineCop
-VineBuilder
-VineCopEngine
-VineBuildArtifact
-VineDiagnostics
-```
 
 ```{toctree}
 :hidden:
@@ -47,33 +35,45 @@ VineDiagnostics
 - Query methods return batched tensors with a leading dimension equal to the query batch size.
 - `fit()` is not a differentiable training step; `log_pdf()` and transform methods are.
 
-```{autoclass} torchvinecopulib.VineCop
-:members: __init__, fit, log_pdf, forward, rosenblatt, inverse_rosenblatt, sample, cdf, diagnostics, export_inference_plan, draw_lv, draw_dag
-:show-inheritance:
-```
+Detailed reference:
+
+- [VineCop detail page](../_api_stubs/torchvinecopulib.VineCop.rst)
 
 ## `VineBuilder`
 
-```{autoclass} torchvinecopulib.VineBuilder
-:members: __init__, build
-```
+Detailed reference:
+
+- [VineBuilder detail page](../_api_stubs/torchvinecopulib.VineBuilder.rst)
 
 ## `VineCopEngine`
 
-```{autoclass} torchvinecopulib.VineCopEngine
-:members: __init__, log_pdf, rosenblatt, inverse_rosenblatt, sample, cdf, forward
-:show-inheritance:
-```
+Detailed reference:
+
+- [VineCopEngine detail page](../_api_stubs/torchvinecopulib.VineCopEngine.rst)
 
 ## `VineBuildArtifact` and diagnostics
 
-`VineExecutionPlan` is an alias of `VineBuildArtifact`. Use the alias when you want to emphasize
-runtime execution rather than builder provenance.
+`VineBuildArtifact` is the serialized fit result and execution-plan payload used by
+`VineCop.from_artifact()` and `export_inference_plan()`. It stores:
 
-```{autoclass} torchvinecopulib.VineBuildArtifact
-:members:
-```
+- fitted marginals and pair-copula modules
+- learned structure metadata and edge ordering
+- backend configuration and boundary policy
+- static execution tensors for forward, log-density, and sampling paths
 
-```{autoclass} torchvinecopulib.VineDiagnostics
-:members:
-```
+Detailed reference:
+
+- [VineBuildArtifact detail page](../_api_stubs/torchvinecopulib.VineBuildArtifact.rst)
+
+`VineDiagnostics` is the aggregate multivariate snapshot returned by `VineCop.diagnostics()`.
+It records:
+
+- `num_edges`
+- `itp_failures`
+- `bisect_refinements`
+- `fallback_to_indep`
+- `max_abs_hfunc_error`
+
+Detailed reference:
+
+- [VineDiagnostics detail page](../_api_stubs/torchvinecopulib.VineDiagnostics.rst)

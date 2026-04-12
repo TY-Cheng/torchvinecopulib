@@ -34,6 +34,7 @@ class Config:
     # mmd_sigmas: list[float] = [1e-1, 1, 10]
     # mmd_lambda: float = 10.0
 
+
 config_mnist = Config(
     max_epochs=10,
     dims=(1, 28, 28),

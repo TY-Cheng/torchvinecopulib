@@ -1,3 +1,5 @@
+"""Shared backend numeric helpers and fit-result dataclasses."""
+
 from __future__ import annotations
 
 import math
@@ -163,6 +165,23 @@ def _normal_pdf(z: torch.Tensor) -> torch.Tensor:
     return torch.exp(-0.5 * z.square()) / _SQRT_2PI
 
 
+def _normal_pdf_drv(z: torch.Tensor, order: int) -> torch.Tensor:
+    if order < 0:
+        raise ValueError("Normal density derivative order must be nonnegative.")
+    z = z.to(dtype=torch.float64)
+    if order == 0:
+        return _normal_pdf(z)
+    he_nm2 = torch.ones_like(z)
+    he_nm1 = z
+    if order == 1:
+        he_n = he_nm1
+    else:
+        for degree in range(1, order):
+            he_n = z * he_nm1 - degree * he_nm2
+            he_nm2, he_nm1 = he_nm1, he_n
+    return ((-1.0) ** order) * he_n * _normal_pdf(z)
+
+
 def _normal_cdf(z: torch.Tensor) -> torch.Tensor:
     return 0.5 * (1.0 + torch.erf(z / math.sqrt(2.0)))
 
@@ -172,7 +191,9 @@ def _normal_ppf(u: torch.Tensor) -> torch.Tensor:
     return math.sqrt(2.0) * torch.special.erfinv(2.0 * u - 1.0)
 
 
-def _gaussian_kernel1d(sigma_bins: torch.Tensor, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
+def _gaussian_kernel1d(
+    sigma_bins: torch.Tensor, dtype: torch.dtype, device: torch.device
+) -> torch.Tensor:
     sigma_bins = sigma_bins.to(device=device, dtype=dtype).clamp_min(0.5)
     radius = int(torch.ceil(4.0 * sigma_bins).item())
     grid = torch.arange(-radius, radius + 1, device=device, dtype=dtype)
@@ -212,7 +233,9 @@ def _fft_conv_same_2d(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tenso
     return full[start_h : start_h + signal.shape[0], start_w : start_w + signal.shape[1]]
 
 
-def _recursive_gaussian_line(signal: torch.Tensor, sigma_bins: float, num_passes: int = 4) -> torch.Tensor:
+def _recursive_gaussian_line(
+    signal: torch.Tensor, sigma_bins: float, num_passes: int = 4
+) -> torch.Tensor:
     if sigma_bins <= 0.5 or signal.numel() < 2:
         return signal
     alpha = math.exp(-math.sqrt(2.0) / max(float(sigma_bins), 1e-6))
@@ -236,7 +259,9 @@ def _recursive_gaussian_smooth_1d(signal: torch.Tensor, sigma_bins: torch.Tensor
     return _recursive_gaussian_line(signal, float(torch.as_tensor(sigma_bins).item()))
 
 
-def _smooth_1d(signal: torch.Tensor, sigma_bins: torch.Tensor, smoother: str = "auto") -> torch.Tensor:
+def _smooth_1d(
+    signal: torch.Tensor, sigma_bins: torch.Tensor, smoother: str = "auto"
+) -> torch.Tensor:
     smoother = smoother.lower()
     if smoother == "auto":
         smoother = "fft" if signal.numel() >= 512 else "conv"
@@ -262,7 +287,9 @@ def _recursive_gaussian_smooth_2d(signal: torch.Tensor, sigma_bins: torch.Tensor
     return tmp
 
 
-def _smooth_2d(signal: torch.Tensor, sigma_bins: torch.Tensor, smoother: str = "auto") -> torch.Tensor:
+def _smooth_2d(
+    signal: torch.Tensor, sigma_bins: torch.Tensor, smoother: str = "auto"
+) -> torch.Tensor:
     smoother = smoother.lower()
     if smoother == "auto":
         smoother = (
@@ -293,7 +320,9 @@ def _smooth_2d(signal: torch.Tensor, sigma_bins: torch.Tensor, smoother: str = "
     return out.view_as(signal)
 
 
-def _linear_bin_1d(x: torch.Tensor, num_step_grid: int, x_min: float, x_max: float) -> torch.Tensor:
+def _linear_bin_1d(
+    x: torch.Tensor, num_step_grid: int, x_min: float, x_max: float
+) -> torch.Tensor:
     x = x.view(-1).to(dtype=torch.float64)
     step = max((x_max - x_min) / max(num_step_grid - 1, 1), _EPS)
     idx = ((x - x_min) / step).clamp(0.0, num_step_grid - 1.0)
@@ -377,10 +406,13 @@ def _build_pdf_buffers_1d(
     pdf: torch.Tensor,
     grid_x: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    step = float(grid_x[1] - grid_x[0])
-    cdf = (pdf * step).cumsum(dim=0)
+    if grid_x.numel() < 2:
+        raise ValueError("grid_x must contain at least two points.")
+    delta_x = (grid_x[1:] - grid_x[:-1]).to(device=pdf.device, dtype=pdf.dtype).clamp_min(_EPS)
+    cell_mass = 0.5 * (pdf[:-1] + pdf[1:]) * delta_x
+    cdf = torch.zeros_like(pdf)
+    cdf[1:] = cell_mass.cumsum(dim=0)
     cdf /= cdf[-1].clamp_min(_EPS)
-    delta_x = torch.full((grid_x.numel() - 1,), step, dtype=pdf.dtype, device=pdf.device)
     delta_cdf = (cdf[1:] - cdf[:-1]).clamp_min(_EPS)
     slope_fwd = delta_cdf / delta_x
     slope_inv = delta_x / delta_cdf
@@ -416,28 +448,26 @@ def _normalize_copula_pdf_grid(
         dtype=pdf_grid.dtype,
         device=pdf_grid.device,
     )
-    pdf_grid *= weights.sum() / (pdf_grid * weights.view(1, -1)).sum(dim=1, keepdim=True).clamp_min(_EPS)
-    pdf_grid *= weights.sum() / (pdf_grid * weights.view(-1, 1)).sum(dim=0, keepdim=True).clamp_min(_EPS)
-    pdf_grid /= (
-        (pdf_grid * torch.outer(weights, weights)).sum().clamp_min(_EPS)
-    )
+    pdf_grid *= weights.sum() / (pdf_grid * weights.view(1, -1)).sum(
+        dim=1, keepdim=True
+    ).clamp_min(_EPS)
+    pdf_grid *= weights.sum() / (pdf_grid * weights.view(-1, 1)).sum(
+        dim=0, keepdim=True
+    ).clamp_min(_EPS)
+    pdf_grid /= (pdf_grid * torch.outer(weights, weights)).sum().clamp_min(_EPS)
     err = torch.maximum(
         ((pdf_grid * weights.view(-1, 1)).sum(dim=0) - 1.0).abs().max(),
         ((pdf_grid * weights.view(1, -1)).sum(dim=1) - 1.0).abs().max(),
     )
     if float(err.item()) > marginal_tol:
         for _ in range(num_iter_max):
-            pdf_grid *= (
-                weights.sum()
-                / (pdf_grid * weights.view(-1, 1)).sum(dim=0, keepdim=True).clamp_min(_EPS)
-            )
-            pdf_grid *= (
-                weights.sum()
-                / (pdf_grid * weights.view(1, -1)).sum(dim=1, keepdim=True).clamp_min(_EPS)
-            )
-            pdf_grid /= (
-                (pdf_grid * torch.outer(weights, weights)).sum().clamp_min(_EPS)
-            )
+            pdf_grid *= weights.sum() / (pdf_grid * weights.view(-1, 1)).sum(
+                dim=0, keepdim=True
+            ).clamp_min(_EPS)
+            pdf_grid *= weights.sum() / (pdf_grid * weights.view(1, -1)).sum(
+                dim=1, keepdim=True
+            ).clamp_min(_EPS)
+            pdf_grid /= (pdf_grid * torch.outer(weights, weights)).sum().clamp_min(_EPS)
             err = torch.maximum(
                 ((pdf_grid * weights.view(-1, 1)).sum(dim=0) - 1.0).abs().max(),
                 ((pdf_grid * weights.view(1, -1)).sum(dim=1) - 1.0).abs().max(),
@@ -455,17 +485,14 @@ def _build_pdf_buffers_2d(
     step: float,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     num_step_grid = pdf_grid.shape[0]
-    axis = torch.linspace(0.0, 1.0, steps=num_step_grid, dtype=pdf_grid.dtype, device=pdf_grid.device)
+    axis = torch.linspace(
+        0.0, 1.0, steps=num_step_grid, dtype=pdf_grid.dtype, device=pdf_grid.device
+    )
     cdf_grid = torch.zeros_like(pdf_grid)
     cell_mass = (
         0.25
         * step**2
-        * (
-            pdf_grid[:-1, :-1]
-            + pdf_grid[1:, :-1]
-            + pdf_grid[:-1, 1:]
-            + pdf_grid[1:, 1:]
-        )
+        * (pdf_grid[:-1, :-1] + pdf_grid[1:, :-1] + pdf_grid[:-1, 1:] + pdf_grid[1:, 1:])
     )
     if cell_mass.numel():
         cdf_grid[1:, 1:] = cell_mass.cumsum(dim=0).cumsum(dim=1)

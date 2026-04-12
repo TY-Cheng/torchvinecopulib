@@ -3,6 +3,10 @@
 This page keeps the shortest working paths aligned with the public API. The examples below are
 executed in CI through the Sphinx doctest builder.
 
+The quickstart assumes continuous variables. If your raw observations are heavily rounded or have
+many ties, treat them as an approximation to an underlying continuous variable before fitting.
+Discrete or mixed marginals are outside the current scope of the library.
+
 ## Fit, score, and sample
 
 ```{testsetup} quickstart-fit
@@ -19,7 +23,7 @@ vc.fit(
     obs,
     mtd_vine="cvine",
     mtd_bidep="kendall_tau",
-    bicop_backend="grid_reflect",
+    bicop_backend="beta",
 )
 log_pdf = vc.log_pdf(obs[:8])
 samples = vc.sample(num_sample=16, seed=0)
@@ -46,7 +50,7 @@ vc.fit(
     obs,
     mtd_vine="rvine",
     mtd_bidep="kendall_tau",
-    bicop_backend="grid_reflect",
+    bicop_backend="beta",
 )
 ```
 

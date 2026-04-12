@@ -29,7 +29,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install uv
-          python3 -m uv sync --extra cpu
+          python3 -m uv sync --extra cpu --no-default-groups
           python3 -m uv build
 
       - name: Upload dist artifacts

@@ -1,4 +1,7 @@
+import importlib
 import importlib.metadata
+import sys
+
 import torchvinecopulib as tvc
 
 
@@ -21,5 +24,20 @@ def test_metadata_fields():
 
 
 def test_top_level_torch_kde_exports():
-    assert tvc.TorchKDE1D is not None
-    assert tvc.TorchCopulaKDE2D is not None
+    assert tvc.GridKDE1D is not None
+    assert tvc.GridReflectBicopEstimator is not None
+
+
+def test_version_fallback_when_distribution_missing(monkeypatch):
+    original_module = sys.modules["torchvinecopulib"]
+    sys.modules.pop("torchvinecopulib", None)
+
+    def missing_version(_name):
+        raise importlib.metadata.PackageNotFoundError
+
+    monkeypatch.setattr(importlib.metadata, "version", missing_version)
+    try:
+        reloaded = importlib.import_module("torchvinecopulib")
+        assert reloaded.__version__ == "0+unknown"
+    finally:
+        sys.modules["torchvinecopulib"] = original_module

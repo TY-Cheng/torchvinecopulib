@@ -20,6 +20,8 @@ copyright = config.get("copyright", f"2024-, {author}")
 version = release = config.version
 documentation_summary = config.description
 extensions = config.get("extensions", [])
+if "sphinx_design" not in extensions:
+    extensions.append("sphinx_design")
 html_theme = config.get("html_theme", "furo")
 html_title = f"{project} v{version}"
 source_suffix = {
@@ -27,6 +29,7 @@ source_suffix = {
     ".md": "markdown",
 }
 templates_path = ["_templates"]
+html_static_path = ["_static"]
 html_theme_options = {
     "sidebar_hide_name": False,
     # "light_logo": "../torchvinecopulib.png",
@@ -57,7 +60,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-    "torch": ("https://pytorch.org/docs/stable/", None),
+    "torch": ("https://docs.pytorch.org/docs/stable/", None),
 }
 nitpick_ignore = [
     ("py:class", "torchvinecopulib.backends.bicop.GridReflectBicopEstimator"),

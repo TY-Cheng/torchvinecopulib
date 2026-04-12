@@ -12,18 +12,27 @@
 
 `torchvinecopulib` is a PyTorch-first vine copula library for fitting, evaluating, and sampling
 high-dimensional dependence models on CPU or GPU. Version `1.3.0` standardizes the
-backend API around `marginal_backend` and `bicop_backend`, keeps a torch-native grid path as
-the production default, and isolates CPU-only reference oracles behind the optional
+backend API around `marginal_backend` and `bicop_backend`, uses a benchmark-selected torch-native
+`ttpi` pair-copula path as the current production default, and isolates CPU-only reference oracles behind the optional
 `reference` extra.
 
 - C-, D-, and R-vine fitting with differentiable log-density evaluation
-- Torch-native `TorchKDE1D` marginals with ISJ bandwidth by default
-- Torch-native `TorchCopulaKDE2D` pair-copula grids with `grid_reflect` and `grid_probit`
-- Optional `lp_ref` and `tll_ref` CPU reference backends
+- Torch-native 1D marginals with `grid` and `lp` backends
+- Torch-native 2D pair-copula backends: `beta`, `ttpi`, `grid_reflect`, `grid_probit`
+- Research-facing torch-native 2D backends: `ttcv`, `tll1`, `tll2`, `tll1nn`, `tll2nn`, `beta_qt`, `spline_pen`
+- Optional `tll_ref` CPU reference backend
 - Differentiable query path via `log_pdf()`, `rosenblatt()`, `cdf()`, `hfunc()`, and bilinear interpolation
 - Boundary-aware query policies via `boundary_policy="hard" | "st"`
-- Explicit `VineBuilder` / `VineExecutionPlan` / `VineCopEngine` entrypoints
+- Explicit `VineBuilder` / `VineBuildArtifact` / `VineCopEngine` entrypoints
 - Plan-backed execution engine with diagnostics export and dtype-controlled inference plan export
+
+## Scope
+
+`torchvinecopulib` currently targets continuous random variables.
+
+- The fitting and query paths assume continuous marginals or data that can be treated as continuous.
+- The current API is not designed for categorical, count, ordinal, or other genuinely discrete / mixed marginals.
+- If your data are heavily rounded or contain many ties, treat them as an approximation to an underlying continuous variable first, for example by applying a suitable jitter or other continuous relaxation before fitting.
 
 ## Citation
 
@@ -49,22 +58,32 @@ Install from PyPI with a matching PyTorch build:
 pip install torchvinecopulib torch
 ```
 
-For local development with `uv`:
+For local development with `uv` and a shared external environment:
 
 ```bash
-uv venv .venv
-source .venv/bin/activate
+export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/torchvinecopulib"
 uv sync --extra cpu
 ```
 
-For docs-only work with `pip` instead of `uv`:
+For local docs work, add the contributor-only `docs` dependency group:
 
 ```bash
-pip install -e ".[cpu,docs]"
+uv sync --extra cpu --group docs
 ```
 
-Install the optional reference backend only when you need `lp_ref`, `tll_ref`, or oracle
-comparisons:
+For example scripts and docs asset generation, add the `examples` dependency group:
+
+```bash
+uv sync --extra cpu --group examples
+```
+
+Maintained example scripts can regenerate the docs figures with:
+
+```bash
+uv run --extra cpu --group examples python scripts/generate_example_assets.py
+```
+
+Install the optional reference backend only when you need `tll_ref` or oracle comparisons:
 
 ```bash
 uv sync --extra cpu --extra reference
@@ -74,23 +93,44 @@ pip install "torchvinecopulib[reference]"
 
 ### Dependencies
 
-Current core dependencies are:
+The dependency layout is intentionally split by who consumes it:
 
-```toml
-[project]
-dependencies = [
-  "numpy>=2",
-  "scipy",
-]
+- Runtime core: `numpy`, `scipy`
+- Published extras for end users: `cpu`, `cu126`, `cu128`, `reference`
+- Local `uv` groups for contributors: `dev`, `docs`, `examples`
 
-[project.optional-dependencies]
-cpu = ["torch>=2"]
-cu126 = ["torch>=2"]
-cu128 = ["torch>=2"]
-docs = ["furo", "myst-parser", "sphinx", "sphinx_pyproject"]
-examples = ["pytorch-lightning", "tqdm"]
-reference = ["pyvinecopulib"]
-```
+In other words, `reference` remains an installable package extra because it changes library
+functionality, while `docs` and `examples` are maintained as repository-local dependency groups.
+
+### Marginal backend roles
+
+- `marginal_backend="grid"`: default `GridKDE1D` path; regular-grid Gaussian KDE with ISJ by default.
+- `marginal_backend="lp"`: torch-native continuous local-polynomial KDE inspired by `kde1d`.
+
+### Bicop backend fidelity policy
+
+The current 2D bicop surface mixes two kinds of names:
+
+- aligned `kdecopula` names with canonical `bandwidth`/`mult` semantics:
+  `ttpi`, `ttcv`, `tll1`, `tll2`, `tll1nn`, `tll2nn`, `beta`
+- repository-native engineering backends that are not claims of `kdecopula` method identity:
+  `grid_reflect`, `grid_probit`, `beta_qt`, `spline_pen`
+
+For the aligned names, `bandwidth` now mirrors the upstream `bw` object shape:
+
+- `ttpi` / `ttcv`: length-4 `(h, rho, theta1, theta2)`
+- `tll1` / `tll2`: `2x2` matrix
+- `tll1nn` / `tll2nn`: mapping with `B`, `alpha`, `kappa`
+- `beta`: positive scalar
+
+`mult` is the canonical bandwidth multiplier for aligned bicop backends.
+
+The repository now also ships locked aligned-bicop regression fixtures under
+`tests/fixtures/aligned_bicop/` and a one-time regeneration script at
+`scripts/generate_kdecopula_fixtures.py`.
+
+`MR` and `bern` from the current `kdecopula` method table are not implemented at the moment.
+The detailed fidelity audit lives in the systems docs.
 
 For CUDA builds of PyTorch, install the matching wheel index from the
 [official PyTorch instructions](https://pytorch.org/get-started/locally/).
@@ -109,7 +149,7 @@ vc.fit(
     obs,
     mtd_vine="cvine",
     mtd_bidep="kendall_tau",
-    bicop_backend="grid_reflect",
+    bicop_backend="beta",
 )
 log_pdf = vc.log_pdf(obs[:16])
 sample = vc.sample(num_sample=32, seed=0)
@@ -125,7 +165,9 @@ recovered = vc.inverse_rosenblatt(u)
   tracked on `main`.
 - `docs/_api_stubs/` contains tracked API navigation stubs for Sphinx; it is source content, not a
   build artifact, and should stay in git.
-- Examples: [`examples/`](https://github.com/TY-Cheng/torchvinecopulib/tree/main/examples)
+- Examples: see the docs examples page in `docs/examples_benchmarks.md` for the maintained
+  script-backed examples, and use the repository `examples/` directory for heavier experimental
+  workflows.
 - Test suite:
 
 ```bash
@@ -133,11 +175,39 @@ uv run coverage run --source=torchvinecopulib -m pytest tests
 uv run coverage report -m
 ```
 
+- If you use [`just`](https://github.com/casey/just), the repository also ships a thin local task
+  runner that mirrors the `uv` + GitHub Actions workflow. It reads `.env` and requires
+  `UV_PROJECT_ENVIRONMENT` to be set there so local tasks use the shared external environment
+  instead of falling back to a project-local `.venv`. This repository's examples already use
+  `.env`, so the simplest setup is to keep project-local paths such as `DIR_WORK` and
+  `UV_PROJECT_ENVIRONMENT` there.
+
+```bash
+cat > .env <<'EOF'
+DIR_WORK="$PWD"
+UV_PROJECT_ENVIRONMENT="$HOME/.venvs/torchvinecopulib"
+EOF
+
+just setup            # syncs cpu + reference + docs + examples on top of the default dev group
+just test             # installs reference; auto-runs CUDA tests only when CUDA is available
+just test cpu         # force the CPU-only suite
+just examples         # regenerate docs-facing example figures from scripts
+just examples check  # verify committed example assets are up to date
+just docs             # html + doctest
+just bench            # benchmark smoke
+just workflow
+```
+
+`just test` runs `pytest` with `--extra reference`, so the optional `pyvinecopulib`
+dependency is installed by default and `@pytest.mark.reference` tests are included. It
+also probes `torch.cuda.is_available()` first and only enables the `@pytest.mark.cuda`
+suite when a CUDA device is actually present.
+
 Build docs locally with:
 
 ```bash
-uv run sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
-uv run sphinx-build -b doctest docs/ docs/_build/doctest
+uv run --extra cpu --group docs sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
+uv run --extra cpu --group docs sphinx-build -b doctest docs/ docs/_build/doctest
 ```
 
 GitHub Actions is split into:
@@ -150,13 +220,14 @@ GitHub Actions is split into:
 
 Version `1.3.0` is a breaking release.
 
-- `kdeCDFPPF1D` was removed. Use `TorchKDE1D` instead.
-- `fastKDE` was removed from runtime dependencies and from the default KDE path.
+- `kdeCDFPPF1D` was removed. Use `GridKDE1D` instead.
+- `TorchKDE1D`, `TorchCopulaKDE2D`, and `VineExecutionPlan` were removed. Use
+  `GridKDE1D`, `GridReflectBicopEstimator`, and `VineBuildArtifact`.
 - `pyvinecopulib` moved to the optional `reference` extra.
-- `mtd_kde` is deprecated. Use `bicop_backend="grid_reflect" | "grid_probit" | "tll_ref"` and
-  `marginal_backend="grid" | "lp_ref"` instead.
-- `BiCop.fit()` and `VineCop.fit()` now normalize legacy top-level bandwidth arguments into
-  `bicop_kwargs` / `marginal_kwargs`.
+- `mtd_kde`, `kde_backend`, `mtd_tll`, `num_step_grid_kde1d`, and legacy top-level
+  `bandwidth_scale` were removed from `BiCop.fit()` / `VineCop.fit()`, and aligned bicop
+  backends now accept only canonical `mult`. Use `bicop_backend=...`, `marginal_backend=...`,
+  and explicit `bicop_kwargs` / `marginal_kwargs`.
 - `fit()` is a builder path, not a differentiable training layer. The differentiable path is
   `log_pdf()`, `rosenblatt()`, `cdf()`, `hfunc()`, and the interpolation kernels.
 - `boundary_policy="st"` keeps straight-through query gradients on clamp-heavy boundary paths.
@@ -166,12 +237,12 @@ Run the optional benchmark/profiler scripts with:
 ```bash
 uv run --extra cpu python benchmarks/profile_builder.py --device cpu
 uv run --extra cpu python benchmarks/profile_query.py --device cpu
+uv run --extra cpu --extra reference python benchmarks/compare_bicop_backends.py --device cpu
+uv run --extra cpu --extra reference python benchmarks/compare_vinecop_runtimes.py --include-reference yes
 ```
 
 ## TODO
 
-- ~~`fastkde.pdf` onto `torch.Tensor`~~
-- ~~replace runtime `fastKDE` dependency with a torch-native KDE path~~
 - vectorized MST / dependence scheduling in the builder path
 - vectorized union-find for structure learning
 - benchmark-driven auto-thresholding for builder/query backends
@@ -183,6 +254,6 @@ any numerical, documentation, or API compatibility changes explicitly.
 
 ## Third-Party Notice
 
-`torchvinecopulib` depends on PyTorch at runtime. The project also retains historical attribution
-for FastKDE and offers an optional `pyvinecopulib` reference backend. See [LICENSE](./LICENSE)
-for the full third-party license texts and attribution notes.
+`torchvinecopulib` depends on PyTorch at runtime and offers an optional `pyvinecopulib`
+reference backend for `tll_ref`. See [LICENSE](./LICENSE) for the full third-party license texts
+and attribution notes.

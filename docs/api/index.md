@@ -12,8 +12,9 @@ backends_and_utils
 
 ## Stable public surface
 
-- Pair copulas: `BiCop`, `BiCopDiagnostics`, `TorchCopulaKDE2D`
+- Pair copulas: `BiCop`, `BiCopDiagnostics`, `GridReflectBicopEstimator`
 - Multivariate vines: `VineCop`, `VineBuilder`, `VineCopEngine`, `VineBuildArtifact`,
-  `VineExecutionPlan`, `VineDiagnostics`
-- Utilities: `TorchKDE1D`, `kendall_tau()`, `kendall_tau_matrix()`, `solve_ITP()`,
-  `empirical_pobs()`, `ENUM_FUNC_BIDEP`
+  `VineDiagnostics`
+- Utilities and standalone backends: `GridKDE1D`,
+  `torchvinecopulib.backends.LocalPolynomialKDE1D`, `kendall_tau()`, `kendall_tau_matrix()`,
+  `solve_ITP()`, `empirical_pobs()`, `ENUM_FUNC_BIDEP`

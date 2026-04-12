@@ -1,221 +1,137 @@
-# Manual
-/scratch
-/docs/.DS_Store
-# Docs sources, API stubs, and templates are tracked; only local build artifacts stay ignored.
-/docs/_build/
-/Styles
-/data
-/out
+# Project-local artifacts
+/scratch/
+/Styles/
+/data/
+/out/
 /benchmarks/results/
-*.pkl
-*.svg
-*.bench.json
+/docs/_build/
 checkpoints/
 MNIST/
 logs/
-examples/MNIST
-examples/logs
-examples/checkpoints
+examples/MNIST/
+examples/logs/
+examples/checkpoints/
 examples/**/*.gz
 # examples/**/*.ipynb
+*.pkl
+*.svg
+*.bench.json
+*.csv
+*.mat
 
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# Byte-compiled / optimized / DLL files
+# Python caches and compiled files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
-# Distribution / packaging
+# Test, coverage, and analysis outputs
+.coverage
+.coverage.*
+.hypothesis/
+.pytest_cache/
+.tox/
+.nox/
+.cache/
+cover/
+coverage.xml
+htmlcov/
+nosetests.xml
+*.cover
+*.py,cover
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Build and packaging artifacts
 .Python
 build/
-develop-eggs/
 dist/
+wheels/
 downloads/
+develop-eggs/
 eggs/
 .eggs/
 lib/
 lib64/
 parts/
 sdist/
-var/
-wheels/
 share/python-wheels/
+target/
+var/
+*.egg
+*.egg-info
 *.egg-info/
 .installed.cfg
-*.egg
 MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-.python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-uv.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
-.pdm.toml
-.pdm-python
-.pdm-build/
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
+# Virtual environments and local configuration
 .env
 .env.*
 !.env.example
-.venv
+.venv/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+.python-version
 
-# Spyder project settings
+# Lockfiles and local package-manager state
+# Keep uv.lock ignored for this library repo's current policy.
+uv.lock
+poetry.lock
+.pdm.toml
+.pdm-python
+.pdm-build/
+__pypackages__/
+
+# Notebook and REPL state
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# Framework and runtime byproducts
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+instance/
+.webassets-cache
+.scrapy
+celerybeat-schedule
+celerybeat.pid
+*.mo
+*.pot
+*.sage.py
+/site/
+
+# Editor settings
 .spyderproject
 .spyproject
-
-# Rope project settings
 .ropeproject
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
+# .idea/
 
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# General
+# macOS and filesystem noise
 .DS_Store
 .AppleDouble
 .LSOverride
-
-# Icon must end with two \r
 Icon
-
-# Thumbnails
 ._*
-
-# Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
 .Spotlight-V100
@@ -223,26 +139,15 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
 .AppleDB
 .AppleDesktop
 Network Trash Folder
 Temporary Items
 .apdisk
 
-.vscode/*
-# !.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
+# Python build tool helpers
+.pybuilder/
+cython_debug/
 
-# Local History for Visual Studio Code
-.history/
-
-# Built Visual Studio Code Extensions
-*.vsix
-
-*.csv
-*.mat
+# PyPI configuration
+.pypirc

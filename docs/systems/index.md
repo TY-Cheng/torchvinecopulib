@@ -6,6 +6,7 @@ These pages describe the implementation choices that matter when you integrate
 ```{toctree}
 :maxdepth: 1
 
+backends
 builder_engine
 dtype_and_boundary_policy
 benchmarks

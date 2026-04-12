@@ -4,7 +4,6 @@ import torch
 import torchvinecopulib.util as util_mod
 from torchvinecopulib.util import (
     ENUM_FUNC_BIDEP,
-    TorchKDE1D,
     chatterjee_xi,
     empirical_pobs,
     ferreira_tail_dep_coeff,
@@ -13,6 +12,7 @@ from torchvinecopulib.util import (
     mutual_info,
     solve_ITP,
 )
+from torchvinecopulib.backends import GridKDE1D
 
 from . import DTYPE
 
@@ -54,7 +54,7 @@ def test_torch_kde_inverse_and_integral():
         ],
         dim=0,
     )
-    kde = TorchKDE1D(x, num_step_grid=257, bandwidth="isj")
+    kde = GridKDE1D(x, num_step_grid=257, bandwidth="isj")
     delta = (kde.x_max - kde.x_min) / (kde.num_step_grid - 1)
     assert pytest.approx(1.0, rel=2e-2) == (kde.grid_pdf.sum() * delta).item()
     xs = torch.linspace(kde.x_min + 0.3, kde.x_max - 0.3, 50, dtype=DTYPE).view(-1, 1)
@@ -66,7 +66,7 @@ def test_torch_kde_inverse_and_integral():
 
 def test_torch_kde_small_sample_fallback():
     x = torch.tensor([[0.0], [0.1], [0.2], [0.25]], dtype=DTYPE)
-    kde = TorchKDE1D(x, num_step_grid=65, bandwidth="isj")
+    kde = GridKDE1D(x, num_step_grid=65, bandwidth="isj")
     assert kde.bandwidth.item() > 0.0
     assert kde.bandwidth_method in {"isj", "silverman"}
 
@@ -163,6 +163,33 @@ def test_kendall_tau_matrix_tie_heavy_parity(tie_heavy_obs):
     assert torch.allclose(p_torch, p_scipy, atol=1e-4, rtol=1e-4)
 
 
+def test_kendall_tau_matrix_torch_keeps_float64_reduction(monkeypatch):
+    captured = {}
+    real_einsum = torch.einsum
+
+    def wrapped_einsum(equation, *operands, **kwargs):
+        if equation == "bnk,bnl->kl":
+            captured["dtypes"] = tuple(op.dtype for op in operands)
+        return real_einsum(equation, *operands, **kwargs)
+
+    monkeypatch.setattr(torch, "einsum", wrapped_einsum)
+    obs = torch.tensor(
+        [
+            [0.0, 0.2, 0.9],
+            [0.0, 0.2, 0.7],
+            [0.1, 0.2, 0.5],
+            [0.1, 0.4, 0.5],
+            [0.3, 0.4, 0.1],
+            [0.3, 0.9, 0.1],
+        ],
+        dtype=DTYPE,
+    )
+    tau, pvalue = kendall_tau_matrix(obs, backend="torch", max_scratch_bytes=256)
+    assert captured["dtypes"] == (torch.float64, torch.float64)
+    assert torch.isfinite(tau).all()
+    assert torch.isfinite(pvalue).all()
+
+
 def test_kendall_tau_auto_uses_scipy_on_cpu(monkeypatch):
     called = {"scipy": False}
 
@@ -176,6 +203,14 @@ def test_kendall_tau_auto_uses_scipy_on_cpu(monkeypatch):
     stat = kendall_tau(x, y, backend="auto")
     assert called["scipy"]
     assert torch.allclose(stat, torch.tensor([0.25, 0.75], dtype=DTYPE))
+
+
+def test_kendall_tau_small_sample_and_empty_matrix_edges():
+    approx = util_mod._kendall_tau_pvalue_approx(torch.tensor([0.2], dtype=DTYPE), num_obs=1)
+    assert torch.allclose(approx, torch.ones(1, dtype=DTYPE))
+    tau, pvalue = kendall_tau_matrix(torch.empty(8, 0, dtype=DTYPE), backend="torch")
+    assert tau.shape == (0, 0)
+    assert pvalue.shape == (0, 0)
 
 
 @pytest.mark.parametrize("scenario", ["independent", "weak", "strong"])

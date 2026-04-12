@@ -1,3 +1,9 @@
+"""Smoke and schema checks for benchmark entrypoints.
+
+These tests verify that benchmark scripts execute and emit stable structured outputs.
+They do not validate the statistical or performance conclusions of the benchmarks.
+"""
+
 import json
 import subprocess
 import sys
@@ -103,3 +109,120 @@ def test_profile_query_script_emits_schema(tmp_path):
     assert payload["metrics"]["queries"]["rosenblatt"]["numel"] == 16 * 4
     assert payload["metrics"]["queries"]["inverse_rosenblatt"]["numel"] == 16 * 4
     assert "compile_log_pdf" in payload["metrics"]["queries"]
+
+
+def test_compare_marginal_backends_script_emits_schema(tmp_path):
+    out = tmp_path / "marginal.json"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/compare_marginal_backends.py",
+            "--train-size",
+            "96",
+            "--test-size",
+            "192",
+            "--fit-grid-size",
+            "65",
+            "--eval-grid-size",
+            "129",
+            "--quantile-size",
+            "63",
+            "--repeats",
+            "1",
+            "--scenarios",
+            "normal",
+            "--output",
+            str(out),
+        ],
+        check=True,
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["benchmark"] == "marginal_backends"
+    assert payload["config"]["scenarios"] == ["normal"]
+    backends = payload["results"]["normal"]["backends"]
+    assert set(backends) == {"grid", "lp"}
+    for backend_name, report in backends.items():
+        assert report["runs"][0]["backend_name"] == backend_name
+        assert report["summary"]["fit_seconds"]["mean"] >= 0.0
+
+
+def test_compare_bicop_backends_script_emits_schema(tmp_path):
+    out = tmp_path / "bicop.json"
+    md = tmp_path / "bicop.md"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/compare_bicop_backends.py",
+            "--train-sizes",
+            "96",
+            "--grid-sizes",
+            "33",
+            "--query-size",
+            "48",
+            "--repeats",
+            "1",
+            "--families",
+            "gaussian",
+            "--backends",
+            "grid_reflect",
+            "ttcv",
+            "ttpi",
+            "--output",
+            str(out),
+            "--markdown-output",
+            str(md),
+        ],
+        check=True,
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["benchmark"] == "bicop_backends"
+    assert payload["config"]["families"] == ["gaussian"]
+    assert payload["summary"]["winner"] in {"grid_reflect", "ttcv", "ttpi"}
+    scores = payload["summary"]["backend_scores"]
+    assert set(scores) == {"grid_reflect", "ttcv", "ttpi"}
+    assert "composite" in scores["grid_reflect"]
+    assert payload["environment"]["default_bicop_backend"] == "beta"
+    assert md.exists()
+
+
+def test_compare_vinecop_runtimes_script_emits_schema(tmp_path):
+    out = tmp_path / "vinecop_runtimes.json"
+    md = tmp_path / "vinecop_runtimes.md"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/compare_vinecop_runtimes.py",
+            "--num-obs",
+            "128",
+            "--num-dim",
+            "4",
+            "--repeats",
+            "1",
+            "--warmup",
+            "0",
+            "--sample-size",
+            "32",
+            "--query-size",
+            "32",
+            "--include-reference",
+            "no",
+            "--include-cuda",
+            "no",
+            "--output",
+            str(out),
+            "--markdown-output",
+            str(md),
+        ],
+        check=True,
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["benchmark"] == "vinecop_runtimes"
+    assert payload["config"]["include_reference"] is False
+    assert payload["config"]["include_cuda"] is False
+    assert payload["environment"]["default_bicop_backend"] == "beta"
+    assert set(payload["results"][0]["engines"]) == {"tvc_cpu"}
+    assert payload["results"][0]["engines"]["tvc_cpu"]["fit_seconds"]["summary"]["mean"] >= 0.0
+    assert md.exists()

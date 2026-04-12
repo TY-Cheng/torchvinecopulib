@@ -1,7 +1,6 @@
-"""Utility routines for dependence measures and root finding.
+"""Public helper routines for dependence measures and root finding.
 
-Torch-native marginal and bicop KDE implementations live under `torchvinecopulib.backends` and
-are re-exported here for backward compatibility.
+The standalone torch-native KDE classes belong to :mod:`torchvinecopulib.backends`.
 """
 
 from __future__ import annotations
@@ -12,14 +11,10 @@ from typing import Callable, Literal
 
 import torch
 
-from ..backends.bicop import TorchCopulaKDE2D
 from ..backends.common import _EPS, fit_grid_reflect_bicop
-from ..backends.marginal import TorchKDE1D
 
 __all__ = [
     "ENUM_FUNC_BIDEP",
-    "TorchKDE1D",
-    "TorchCopulaKDE2D",
     "chatterjee_xi",
     "empirical_pobs",
     "ferreira_tail_dep_coeff",
@@ -94,13 +89,16 @@ def kendall_tau_matrix(
     x_work = x.to(dtype=torch.float64)
     concordance = torch.zeros((num_dim, num_dim), dtype=torch.float64, device=x.device)
     ordered_ties = torch.zeros((num_dim,), dtype=torch.float64, device=x.device)
-    bytes_per_scalar = x_work.element_size() + torch.tensor([], dtype=torch.float32).element_size()
-    block_rows = max(1, min(num_obs, max_scratch_bytes // max(num_obs * num_dim * bytes_per_scalar, 1)))
+    # `diff` and the sign reduction both stay in float64 so concordance counts remain exact.
+    bytes_per_scalar = 2 * x_work.element_size()
+    block_rows = max(
+        1, min(num_obs, max_scratch_bytes // max(num_obs * num_dim * bytes_per_scalar, 1))
+    )
     for idx in range(0, num_obs, block_rows):
         block = x_work[idx : idx + block_rows]
         diff = block[:, None, :] - x_work[None, :, :]
-        signs = torch.sign(diff).to(dtype=torch.float32)
-        concordance += torch.einsum("bnk,bnl->kl", signs, signs).to(dtype=torch.float64)
+        signs = torch.sign(diff)
+        concordance += torch.einsum("bnk,bnl->kl", signs, signs)
         ordered_ties += diff.eq(0.0).sum(dim=(0, 1)).to(dtype=torch.float64)
     ordered_ties -= float(num_obs)
     denom_vec = (num_obs * (num_obs - 1) - ordered_ties).clamp_min(1.0)
@@ -284,11 +282,17 @@ def solve_ITP(
     if failed.any():
         used_fallback = used_fallback | failed
         if failure_policy == "raise":
-            raise RuntimeError("ITP root finding failed to bracket or converge for one or more samples.")
+            raise RuntimeError(
+                "ITP root finding failed to bracket or converge for one or more samples."
+            )
         fallback_denom = y_b - y_a
         fallback_denom = torch.where(
             fallback_denom.abs() <= _EPS,
-            torch.where(fallback_denom < 0.0, -torch.full_like(fallback_denom, _EPS), torch.full_like(fallback_denom, _EPS)),
+            torch.where(
+                fallback_denom < 0.0,
+                -torch.full_like(fallback_denom, _EPS),
+                torch.full_like(fallback_denom, _EPS),
+            ),
             fallback_denom,
         )
         fallback_linear = (

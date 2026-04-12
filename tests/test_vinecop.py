@@ -5,6 +5,7 @@ import networkx as nx
 import pytest
 import torch
 
+from torchvinecopulib.backends import DEFAULT_BICOP_BACKEND
 from torchvinecopulib.vinecop import VineCop
 from torchvinecopulib.vinecop import VineBuilder
 
@@ -22,14 +23,22 @@ def _fit_vine(
     marginal_backend: str = "grid",
     bicop_backend: str = "grid_reflect",
 ) -> tuple[torch.Tensor, VineCop]:
-    obs = gaussian_copula(num_obs=300, rho=0.55, dim=5) if is_cop_scale else correlated_raw(300, 0.55, 5)
+    obs = (
+        gaussian_copula(num_obs=300, rho=0.55, dim=5)
+        if is_cop_scale
+        else correlated_raw(300, 0.55, 5)
+    )
     vc = VineCop(num_dim=5, is_cop_scale=is_cop_scale, num_step_grid=65).to(DEVICE)
+    if marginal_backend == "grid":
+        marginal_kwargs = {"bandwidth": "isj"}
+    else:
+        marginal_kwargs = {"degree": 1}
     vc.fit(
         obs.to(DEVICE),
         mtd_vine=mtd_vine,
         mtd_bidep=mtd_bidep,
         marginal_backend=marginal_backend,
-        marginal_kwargs={"bandwidth": "isj"} if marginal_backend == "grid" else None,
+        marginal_kwargs=marginal_kwargs,
         bicop_backend=bicop_backend,
         bicop_kwargs={"bandwidth": "silverman"} if bicop_backend != "tll_ref" else None,
         thresh_trunc=None,
@@ -42,6 +51,7 @@ def test_init_defaults():
     assert vc.num_dim == 4
     assert vc.sample_order == (0, 1, 2, 3)
     assert len(vc.bicops) == 6
+    assert vc.bicop_backend == DEFAULT_BICOP_BACKEND
 
 
 def test_unfitted_query_paths_raise():
@@ -157,8 +167,8 @@ def test_draw_lv_and_draw_dag():
     plt.close(fig2)
 
 
-def test_lp_ref_marginal_backend_smoke():
-    obs, vc = _fit_vine(False, "rvine", "kendall_tau", marginal_backend="lp_ref")
+def test_lp_torch_marginal_backend_smoke():
+    obs, vc = _fit_vine(False, "rvine", "kendall_tau", marginal_backend="lp")
     lp = vc.log_pdf(obs[:32])
     assert torch.isfinite(lp).all()
 
@@ -170,12 +180,17 @@ def test_invalid_backend_kwargs_raise():
         vc.fit(obs, marginal_kwargs={"unknown": 1})
 
 
-def test_legacy_backend_alias_warns_and_maps():
+def test_removed_legacy_vine_fit_kwargs_raise_typeerror():
     obs = gaussian_copula(num_obs=128, rho=0.35, dim=4).to(DEVICE)
     vc = VineCop(num_dim=4, is_cop_scale=True, num_step_grid=33).to(DEVICE)
-    with pytest.deprecated_call():
+    with pytest.raises(TypeError):
         vc.fit(obs, mtd_kde="fastKDE", thresh_trunc=None)
-    assert vc.bicop_backend == "grid_reflect"
+    with pytest.raises(TypeError):
+        vc.fit(obs, num_step_grid_kde1d=129, thresh_trunc=None)
+    with pytest.raises(TypeError):
+        vc.fit(obs, bandwidth_scale=1.2, thresh_trunc=None)
+    with pytest.raises(TypeError):
+        vc.fit(obs, smoother="recursive", thresh_trunc=None)
 
 
 def test_vinecop_loads_legacy_state_without_extra_state():
@@ -192,6 +207,34 @@ def test_vinecop_loads_legacy_state_without_extra_state():
     assert fresh.num_obs.item() == vc.num_obs.item()
 
 
+def test_fit_without_backend_uses_current_default():
+    obs = gaussian_copula(num_obs=128, rho=0.35, dim=4).to(DEVICE)
+    vc = VineCop(num_dim=4, is_cop_scale=True, num_step_grid=33).to(DEVICE)
+    vc.fit(obs, thresh_trunc=None)
+    assert vc.bicop_backend == DEFAULT_BICOP_BACKEND
+    assert vc.engine.artifact.bicop_backend == DEFAULT_BICOP_BACKEND
+
+
+def test_ttcv_backend_artifact_roundtrip():
+    obs = gaussian_copula(num_obs=128, rho=0.35, dim=4).to(DEVICE)
+    vc = VineCop(num_dim=4, is_cop_scale=True, num_step_grid=33).to(DEVICE)
+    vc.fit(
+        obs,
+        bicop_backend="ttcv",
+        bicop_kwargs={
+            "bandwidth": "auto",
+            "selector_grid_size": 9,
+            "selector_num_refine": 2,
+            "selector_sample_cap": 128,
+        },
+        thresh_trunc=None,
+    )
+    assert vc.engine is not None
+    clone = VineCop.from_artifact(vc.engine.artifact).to(DEVICE)
+    assert clone.engine.artifact.bicop_backend == "ttcv"
+    assert torch.isfinite(clone.log_pdf(obs[:16])).all()
+
+
 @pytest.mark.reference
 @pytest.mark.skipif(not HAS_REFERENCE, reason="pyvinecopulib reference backend not installed")
 def test_reference_backend_smoke():
@@ -206,8 +249,14 @@ def test_engine_proxy_and_from_artifact_roundtrip():
     assert vc.engine is not None
     assert not hasattr(vc.engine, "_owner")
     assert torch.allclose(vc.engine.log_pdf(obs[:16]), vc.log_pdf(obs[:16]), atol=1e-6)
-    assert torch.allclose(vc.engine.sample(num_sample=8, seed=7), vc.sample(num_sample=8, seed=7), atol=1e-6)
-    assert torch.allclose(vc.engine.cdf(obs[:4], num_sample=127, seed=5), vc.cdf(obs[:4], num_sample=127, seed=5), atol=1e-6)
+    assert torch.allclose(
+        vc.engine.sample(num_sample=8, seed=7), vc.sample(num_sample=8, seed=7), atol=1e-6
+    )
+    assert torch.allclose(
+        vc.engine.cdf(obs[:4], num_sample=127, seed=5),
+        vc.cdf(obs[:4], num_sample=127, seed=5),
+        atol=1e-6,
+    )
     assert torch.allclose(vc.engine(obs[:16]), vc.forward(obs[:16]), atol=1e-6)
     clone = VineCop.from_artifact(vc.engine.artifact)
     clone = clone.to(DEVICE)
@@ -320,14 +369,16 @@ def test_builder_build_exposes_artifact_metadata():
     assert artifact.boundary_policy == "hard"
     assert len(artifact.level_edge_tensors) == vc.num_dim - 1
     assert artifact.source_vertices
-    assert artifact.bicop_backend == "grid_reflect"
+    assert artifact.bicop_backend == DEFAULT_BICOP_BACKEND
 
 
 def test_boundary_policy_propagates_via_state_and_artifact():
     obs = gaussian_copula(num_obs=128, rho=0.35, dim=4).to(DEVICE)
     vc = VineCop(num_dim=4, is_cop_scale=True, num_step_grid=33, boundary_policy="st").to(DEVICE)
     vc.fit(obs, mtd_bidep="kendall_tau", thresh_trunc=None)
-    clone = VineCop(num_dim=4, is_cop_scale=True, num_step_grid=33, boundary_policy="hard").to(DEVICE)
+    clone = VineCop(num_dim=4, is_cop_scale=True, num_step_grid=33, boundary_policy="hard").to(
+        DEVICE
+    )
     clone.load_state_dict(vc.state_dict())
     assert clone.boundary_policy == "st"
     assert all(bicop.boundary_policy == "st" for bicop in clone.bicops.values())
@@ -361,19 +412,50 @@ def test_draw_helpers_can_save_files(tmp_path):
     plt.close(fig2)
 
 
-def test_conflicting_legacy_kwargs_warn():
+def test_canonical_backend_kwargs_smoke():
     obs = correlated_raw(200, 0.4, 4).to(DEVICE)
     vc = VineCop(num_dim=4, is_cop_scale=False, num_step_grid=33).to(DEVICE)
-    with pytest.deprecated_call():
+    vc.fit(
+        obs,
+        bicop_backend="grid_reflect",
+        marginal_kwargs={
+            "bandwidth": "silverman",
+            "bandwidth_scale": 1.1,
+            "num_step_grid": 65,
+            "smoother": "recursive",
+        },
+        bicop_kwargs={"bandwidth_scale": 0.9, "num_iter_max": 3},
+        bandwidth=0.2,
+        num_iter_max=4,
+    )
+    assert torch.isfinite(vc.log_pdf(obs[:16])).all()
+
+
+def test_vinecop_uses_mult_for_aligned_bicop_backends():
+    obs = correlated_raw(200, 0.4, 4).to(DEVICE)
+    vc = VineCop(num_dim=4, is_cop_scale=False, num_step_grid=33).to(DEVICE)
+    vc.fit(
+        obs,
+        bicop_backend="ttpi",
+        bicop_kwargs={
+            "mult": 0.85,
+            "selector_grid_size": 9,
+            "selector_num_refine": 2,
+            "selector_sample_cap": 128,
+        },
+    )
+    assert vc.bicop_backend == "ttpi"
+    assert vc.engine.artifact.bicop_backend == "ttpi"
+
+
+def test_vinecop_rejects_removed_aligned_bandwidth_scale_kwarg():
+    obs = correlated_raw(160, 0.35, 4).to(DEVICE)
+    vc = VineCop(num_dim=4, is_cop_scale=False, num_step_grid=33).to(DEVICE)
+    with pytest.raises(ValueError):
         vc.fit(
             obs,
-            marginal_kwargs={"bandwidth": "silverman", "bandwidth_scale": 1.1, "num_step_grid": 65},
-            bicop_kwargs={"bandwidth_scale": 0.9, "num_iter_max": 3},
-            bandwidth=0.2,
-            bandwidth_scale=1.2,
-            num_iter_max=4,
-            num_step_grid_kde1d=129,
-            smoother="recursive",
+            bicop_backend="ttpi",
+            bicop_kwargs={"bandwidth_scale": 0.9},
         )
 
 

@@ -12,6 +12,11 @@ import torch
 from torch.special import ndtr
 
 import torchvinecopulib as tvc
+from torchvinecopulib.backends import (
+    DEFAULT_BICOP_BACKEND,
+    PUBLIC_BICOP_BACKENDS,
+    default_bicop_kwargs,
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -22,8 +27,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument(
         "--bicop-backend",
-        choices=("grid_reflect", "grid_probit", "tll_ref"),
-        default="grid_reflect",
+        choices=PUBLIC_BICOP_BACKENDS + ("tll_ref",),
+        default=DEFAULT_BICOP_BACKEND,
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
@@ -76,14 +81,18 @@ def main() -> None:
         raise RuntimeError("CUDA benchmark requested but torch.cuda.is_available() is False.")
     device = torch.device(args.device)
     obs = _make_obs(args.num_obs, args.num_dim, device, args.seed)
-    model = tvc.VineCop(num_dim=args.num_dim, is_cop_scale=True, num_step_grid=args.grid_size).to(device)
+    model = tvc.VineCop(num_dim=args.num_dim, is_cop_scale=True, num_step_grid=args.grid_size).to(
+        device
+    )
     fit_kwargs = {
         "mtd_bidep": "kendall_tau",
         "thresh_trunc": 0.05,
         "bicop_backend": args.bicop_backend,
     }
-    if args.bicop_backend != "tll_ref":
-        fit_kwargs["bicop_kwargs"] = {"bandwidth": "silverman"}
+    fit_kwargs["bicop_kwargs"] = default_bicop_kwargs(
+        args.bicop_backend,
+        num_step_grid=args.grid_size,
+    )
 
     metrics: dict[str, int | float | str] = {}
 

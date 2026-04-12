@@ -2,13 +2,12 @@
 
 ## Unreleased
 
-### Documentation
+### Cleanup
 
-- Rebuilt the docs around `Sphinx + MyST + Furo` with curated Quickstart, Theory, Systems, API,
-  and benchmark entrypoints.
-- Replaced the old `sphinx-apidoc --force` flow with hand-maintained API landing pages plus
-  controlled `_generated` stubs.
-- Added doctested quickstart examples and stricter warning-free Sphinx builds.
+- Removed the experimental `fastkde` and `lp_ref` marginal backends after benchmark review.
+- Simplified the public 1D marginal surface back to `marginal_backend="grid" | "lp"`.
+- Reworked the marginal benchmark script so each scenario family now jitters its distribution
+  parameters across repeats instead of benchmarking one fixed distribution per family.
 
 ### Infrastructure
 
@@ -33,7 +32,6 @@
 
 - Added the internal backend registry/factory architecture under `torchvinecopulib.backends`.
 - Added the `grid_probit` bicop backend alongside `grid_reflect` and `tll_ref`.
-- Added the `lp_ref` marginal backend for CPU-only reference fits.
 - Added the `recursive` smoother option for torch-native grid backends.
 - Added `get_extra_state()` / `set_extra_state()` metadata for `BiCop` and `VineCop`.
 - Added optional CUDA profiler and memory regression tests plus benchmark scripts under
@@ -59,7 +57,6 @@
 ### Breaking Changes
 
 - Removed the legacy `kdeCDFPPF1D` API.
-- Removed `fastkde` from runtime dependencies and from the default KDE path.
 - Moved `pyvinecopulib` to the optional `reference` extra.
 - Deprecated `mtd_kde` in favor of `bicop_backend` and `marginal_backend`.
 

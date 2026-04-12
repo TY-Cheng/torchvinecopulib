@@ -11,7 +11,9 @@ from . import DEVICE, DTYPE
 
 
 UNIT_FLOATS = st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False)
-INTERIOR_FLOATS = st.floats(min_value=1e-3, max_value=1 - 1e-3, allow_nan=False, allow_infinity=False)
+INTERIOR_FLOATS = st.floats(
+    min_value=1e-3, max_value=1 - 1e-3, allow_nan=False, allow_infinity=False
+)
 
 
 @pytest.mark.property
@@ -21,9 +23,15 @@ def test_bicop_boundary_identities_hold(fitted_bicop, u, v):
     pts_zero_u = torch.tensor([[0.0, v]], dtype=DTYPE, device=DEVICE)
     pts_zero_v = torch.tensor([[u, 0.0]], dtype=DTYPE, device=DEVICE)
     pts_one = torch.tensor([[1.0, 1.0]], dtype=DTYPE, device=DEVICE)
-    assert torch.allclose(fitted_bicop.cdf(pts_zero_u), torch.zeros(1, 1, dtype=DTYPE, device=DEVICE), atol=1e-10)
-    assert torch.allclose(fitted_bicop.cdf(pts_zero_v), torch.zeros(1, 1, dtype=DTYPE, device=DEVICE), atol=1e-10)
-    assert torch.allclose(fitted_bicop.cdf(pts_one), torch.ones(1, 1, dtype=DTYPE, device=DEVICE), atol=1e-10)
+    assert torch.allclose(
+        fitted_bicop.cdf(pts_zero_u), torch.zeros(1, 1, dtype=DTYPE, device=DEVICE), atol=1e-10
+    )
+    assert torch.allclose(
+        fitted_bicop.cdf(pts_zero_v), torch.zeros(1, 1, dtype=DTYPE, device=DEVICE), atol=1e-10
+    )
+    assert torch.allclose(
+        fitted_bicop.cdf(pts_one), torch.ones(1, 1, dtype=DTYPE, device=DEVICE), atol=1e-10
+    )
 
 
 @pytest.mark.property
@@ -43,7 +51,9 @@ def test_independent_copula_closed_form(u, v):
     obs = torch.tensor([[u, v]], dtype=DTYPE, device=DEVICE)
     assert torch.allclose(cop.pdf(obs), torch.ones(1, 1, dtype=DTYPE, device=DEVICE))
     assert torch.allclose(cop.log_pdf(obs), torch.zeros(1, 1, dtype=DTYPE, device=DEVICE))
-    assert torch.allclose(cop.cdf(obs), torch.tensor([[u * v]], dtype=DTYPE, device=DEVICE), atol=1e-10)
+    assert torch.allclose(
+        cop.cdf(obs), torch.tensor([[u * v]], dtype=DTYPE, device=DEVICE), atol=1e-10
+    )
 
 
 @pytest.mark.property

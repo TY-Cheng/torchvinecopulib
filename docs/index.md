@@ -1,13 +1,21 @@
 # torchvinecopulib
 
-[![Lint Pytest](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/python-package.yml)
-[![Deploy Docs](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/static.yml/badge.svg?branch=main)](https://ty-cheng.github.io/torchvinecopulib/)
+[![CI](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/ci.yml)
+[![Docs](https://github.com/TY-Cheng/torchvinecopulib/actions/workflows/docs.yml/badge.svg?branch=main)](https://ty-cheng.github.io/torchvinecopulib/)
 [![PyPI - Version](https://img.shields.io/pypi/v/torchvinecopulib)](https://pypi.org/project/torchvinecopulib/)
 
 `torchvinecopulib` is a PyTorch-first vine copula library for fitting, evaluating, and sampling
 high-dimensional dependence models on CPU or GPU. The project targets researchers and engineers
 who need differentiable query paths, explicit builder/engine boundaries, and numerically stable
 copula estimation without leaving the PyTorch ecosystem.
+
+## Scope
+
+`torchvinecopulib` currently targets continuous random variables.
+
+- The public fitting and query APIs assume continuous marginals, or data that can reasonably be treated as continuous.
+- Discrete or mixed marginals such as categorical, count, or ordinal variables are not a supported target for the current library design.
+- If observations are heavily rounded or contain many ties, apply an appropriate jitter or other continuous relaxation before fitting.
 
 ## What lives here
 
@@ -26,12 +34,24 @@ pip install torchvinecopulib torch
 For local development with `uv`:
 
 ```bash
-uv venv .venv
-source .venv/bin/activate
 uv sync --extra cpu
 ```
 
-Install the optional reference backend only when you need `lp_ref`, `tll_ref`, or oracle
+For local docs work, add the contributor-only `docs` dependency group:
+
+```bash
+uv sync --extra cpu --group docs
+```
+
+If you prefer an external project environment instead of a local `.venv`, set
+`UV_PROJECT_ENVIRONMENT` before syncing:
+
+```bash
+export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/torchvinecopulib"
+uv sync --extra cpu
+```
+
+Install the optional reference backend only when you need `tll_ref` or reference/oracle
 comparisons:
 
 ```bash

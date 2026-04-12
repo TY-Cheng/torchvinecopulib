@@ -1,10 +1,3 @@
-# List/Specify python version
-# uv python list
-# uv python pin python3.13
-# Install default + dev dependencies with torch for CPU/cu126:
-# uv sync --extra cpu -U
-# uv sync --extra cu126 -U
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -40,40 +33,37 @@ dependencies = ["numpy>=2", "scipy"]
 
 [dependency-groups]
 dev = [
-    "blitz-bayesian-pytorch",
-    "ccxt",
     "coverage",
-    "datasets",
-    "docformatter",
     "flake8",
-    "furo",
     "hypothesis",
-    "ipykernel",
-    "kagglehub",
     "matplotlib",
-    "missingno",
     "mypy",
-    "myst-parser",
-    "pandas",
+    "networkx",
     "pytest-cov",
     "pytest",
-    "python-dotenv",
     "ruff",
-    "scikit-learn",
+]
+docs = [
+    "furo",
+    "myst-parser",
+    "sphinx-design",
     "sphinx_pyproject",
     "sphinx",
-    "tokenize-rt",
+]
+examples = [
+    "blitz-bayesian-pytorch",
+    "pandas",
+    "pytorch-lightning",
+    "python-dotenv",
+    "scikit-learn",
     "torchvision",
-    "ucimlrepo",
-    "yfinance",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
 cpu = ["torch>=2"]
 cu126 = ["torch>=2"]
 cu128 = ["torch>=2"]
-docs = ["furo", "myst-parser", "sphinx", "sphinx_pyproject"]
-examples = ["pytorch-lightning", "tqdm"]
 reference = ["pyvinecopulib"]
 
 [tool.uv]
@@ -124,16 +114,6 @@ docstring-code-line-length = 99
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 99
 max-line-length = 99
-
-[tool.docformatter]
-wrap-summaries = 99
-wrap-descriptions = 99
-blank-lines-around-summary = true
-in-place = true
-make-summary-multi-line = true
-pre-summary-space = true
-recursive = true
-skip-ignore = false
 
 [tool.flake8]
 max-line-length = 127
