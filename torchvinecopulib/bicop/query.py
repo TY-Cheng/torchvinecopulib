@@ -24,6 +24,7 @@ class BiCopQueryMixin:
         eps: float,
         use_boundary_policy: bool,
     ) -> torch.Tensor:
+        """Clamp query inputs to the admissible copula domain."""
         lower, upper = eps, 1.0 - eps
         clamped = obs.clamp(lower, upper)
         if use_boundary_policy and self.boundary_policy == "st":
@@ -38,6 +39,7 @@ class BiCopQueryMixin:
         eps: float,
         use_boundary_policy: bool,
     ) -> torch.Tensor:
+        """Evaluate a stored bicop grid by bilinear interpolation."""
         idx = (
             self._clamp_unit(obs, eps=eps, use_boundary_policy=use_boundary_policy)
             / self.step_grid
@@ -112,6 +114,7 @@ class BiCopQueryMixin:
 
     @torch.no_grad()
     def diagnostics(self) -> BiCopDiagnostics:
+        """Return query-path diagnostics accumulated on the current bicop instance."""
         return BiCopDiagnostics(
             itp_failures_l=int(self.hinv_fallback_l),
             itp_failures_r=int(self.hinv_fallback_r),
@@ -124,6 +127,14 @@ class BiCopQueryMixin:
         )
 
     def cdf(self, obs: torch.Tensor) -> torch.Tensor:
+        """Evaluate the copula CDF.
+
+        Args:
+            obs: Query points with shape `(batch, 2)`.
+
+        Returns:
+            Tensor of shape `(batch, 1)` containing `C(u_1, u_2)`.
+        """
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs.prod(dim=1, keepdim=True)
@@ -135,6 +146,16 @@ class BiCopQueryMixin:
         ).unsqueeze(dim=1)
 
     def hfunc_l(self, obs: torch.Tensor) -> torch.Tensor:
+        """Evaluate the left conditional CDF.
+
+        This method returns `P(U_2 <= u_2 | U_1 = u_1)` at query points `(u_1, u_2)`.
+
+        Args:
+            obs: Query points with shape `(batch, 2)`.
+
+        Returns:
+            Tensor of shape `(batch, 1)`.
+        """
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [1]]
@@ -146,6 +167,16 @@ class BiCopQueryMixin:
         ).unsqueeze(dim=1)
 
     def hfunc_r(self, obs: torch.Tensor) -> torch.Tensor:
+        """Evaluate the right conditional CDF.
+
+        This method returns `P(U_1 <= u_1 | U_2 = u_2)` at query points `(u_1, u_2)`.
+
+        Args:
+            obs: Query points with shape `(batch, 2)`.
+
+        Returns:
+            Tensor of shape `(batch, 1)`.
+        """
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [0]]
@@ -158,6 +189,20 @@ class BiCopQueryMixin:
 
     @torch.no_grad()
     def hinv_l(self, obs: torch.Tensor) -> torch.Tensor:
+        """Invert the left conditional CDF.
+
+        Args:
+            obs: Tensor of shape `(batch, 2)` whose columns are `(u_1, p)`, with
+                `p = P(U_2 <= u_2 | U_1 = u_1)`.
+
+        Returns:
+            Tensor of shape `(batch, 1)` containing the recovered `u_2`.
+
+        Notes:
+            This is a stabilized query path. It uses ITP root finding, then a bisection refinement
+            when needed, and finally falls back to the independence map if the inversion remains
+            numerically unreliable. It is not documented as a differentiable operator.
+        """
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [1]]
@@ -193,6 +238,18 @@ class BiCopQueryMixin:
 
     @torch.no_grad()
     def hinv_r(self, obs: torch.Tensor) -> torch.Tensor:
+        """Invert the right conditional CDF.
+
+        Args:
+            obs: Tensor of shape `(batch, 2)` whose columns are `(p, u_2)`, with
+                `p = P(U_1 <= u_1 | U_2 = u_2)`.
+
+        Returns:
+            Tensor of shape `(batch, 1)` containing the recovered `u_1`.
+
+        Notes:
+            This is a stabilized query path and is not documented as a differentiable operator.
+        """
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return obs[:, [0]]
@@ -227,6 +284,14 @@ class BiCopQueryMixin:
         return root
 
     def pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        """Evaluate the copula density.
+
+        Args:
+            obs: Query points with shape `(batch, 2)`.
+
+        Returns:
+            Tensor of shape `(batch, 1)` containing `c(u_1, u_2)`.
+        """
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.ones_like(obs[:, [0]])
@@ -238,6 +303,14 @@ class BiCopQueryMixin:
         ).unsqueeze(dim=1)
 
     def log_pdf(self, obs: torch.Tensor) -> torch.Tensor:
+        """Evaluate the log copula density.
+
+        Args:
+            obs: Query points with shape `(batch, 2)`.
+
+        Returns:
+            Tensor of shape `(batch, 1)` containing `log c(u_1, u_2)`.
+        """
         obs = obs.to(device=self.device, dtype=self.dtype)
         if self.is_indep:
             return torch.zeros_like(obs[:, [0]])
@@ -251,6 +324,17 @@ class BiCopQueryMixin:
         is_sobol: bool = False,
         generator: torch.Generator | None = None,
     ) -> torch.Tensor:
+        """Draw samples from the fitted bicop model.
+
+        Args:
+            num_sample: Number of observations to generate.
+            seed: Optional seed used by the Sobol path.
+            is_sobol: Whether to use a scrambled Sobol sequence instead of pseudorandom uniforms.
+            generator: Optional torch generator used by the pseudorandom path.
+
+        Returns:
+            Tensor of shape `(num_sample, 2)` on the bicop device and dtype.
+        """
         device, dtype = self.device, self.dtype
         if is_sobol:
             obs = (

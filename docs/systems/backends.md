@@ -1,20 +1,20 @@
 # Estimator backends
 
-`torchvinecopulib` uses the words `marginal_backend` and `bicop_backend` deliberately:
-they select estimator backends, not a catalog of named parametric copula families.
+`torchvinecopulib` uses the terms `marginal_backend` and `bicop_backend` deliberately: they denote
+estimator backends, not a catalog of named parametric copula families.
 
 For bivariate copulas, the public `BiCop` object stores a numerical approximation to a continuous
 pair-copula on a regular grid, together with cumulative buffers used for query-time interpolation.
 The current torch-native default is `bicop_backend="beta"`, selected from the synthetic benchmark
 suite described in [Systems: benchmark interpretation](./benchmarks.md).
 
-The 2D bicop surface now has two roles:
+The current bicop backends fall into two roles:
 
-- stable production defaults: `beta`, `ttpi`, `grid_reflect`, `grid_probit`
-- research-facing experimental backends: `ttcv`, `tll1`, `tll2`, `tll1nn`, `tll2nn`, `beta_qt`, `spline_pen`
+- production defaults: `beta`, `ttpi`, `grid_reflect`, `grid_probit`
+- research backends: `ttcv`, `tll1`, `tll2`, `tll1nn`, `tll2nn`, `beta_qt`, `spline_pen`
 
-All of them still end by materializing the same `pdf_grid` / `cdf_grid` / `hfunc_*_grid`
-representation, so query-time code stays backend-agnostic.
+All are ultimately materialized into the same `pdf_grid` / `cdf_grid` / `hfunc_*_grid`
+representation, so the query runtime remains backend-agnostic.
 
 ## Common bivariate representation
 
@@ -262,7 +262,7 @@ nonnegativity numerically before the usual copula renormalization step.
 This backend is intentionally documented as a Dou-inspired approximation, not a literal reproduction
 of the paper's SCAD-penalized modified-EM algorithm.
 
-## Fidelity audit against `kdecopula`
+## Fidelity Against `kdecopula`
 
 The current upstream reference point for named nonparametric bicop methods is
 `kdecopula` 0.9.3. Its public method table is:
@@ -318,7 +318,7 @@ The checked-in fixture file can be regenerated with
 torch-native regression fixture; on machines with `Rscript` plus `kdecopula`, it can regenerate the
 same schema from the external reference implementation.
 
-### What this means for `spline_pen`
+### Implications for `spline_pen`
 
 `spline_pen` is the backend with the largest fidelity gap.
 
@@ -356,8 +356,7 @@ After fitting the reference bicop model, `torchvinecopulib` evaluates the fitted
 the same regular unit-square grid and constructs the same cumulative buffers as the native
 backends.
 
-This backend is best understood as a reference or oracle comparison path rather than the default
-production path.
+This backend is best understood as a reference or oracle path rather than a production default.
 
 Official reference implementation:
 
@@ -444,11 +443,11 @@ Useful external references:
 - [Wen and Wu (2018), *Transformation-Kernel Estimation of Copula Densities*](https://doi.org/10.1080/07350015.2018.1469999)
 - [Nagler, Schellhase, and Czado, `kdecopula` reference manual](https://tnagler.github.io/kdecopula/reference/kdecop.html)
 
-## What is fast and good in this runtime?
+## Current Runtime Strengths
 
-For the current `BiCop -> pdf_grid/cdf_grid/hfunc/hinv` design, the fastest useful answer is not a
-single universal estimator family. Different synthetic geometries still favor different backends.
-Within the current repository:
+For the current `BiCop -> pdf_grid/cdf_grid/hfunc/hinv` design, no single estimator dominates every
+regime. Different synthetic geometries still favor different backends. Within the current
+repository:
 
 - `ttpi` is the strongest benchmark-backed default.
 - `beta` is the simplest strong alternative when you want faster or lighter fit-time behavior.
@@ -456,13 +455,13 @@ Within the current repository:
 - `ttcv`, `tll1`, `tll2`, `tll1nn`, and `tll2nn` are the research-facing choices when you are
   willing to spend more fit-time for a more specialized fit.
 
-That is why the package keeps a benchmark-backed default instead of claiming that one nonparametric
-pair-copula estimator is always best.
+Accordingly, the package keeps a benchmark-backed default rather than claiming universal dominance
+for any single nonparametric pair-copula estimator.
 
-## What is not a natural fit for this runtime?
+## Less Natural Fits
 
-Some model families can certainly be made to work, but they are not the most natural next additions
-for the current runtime contract.
+Some model families can be integrated in principle, but they are not the most natural extensions of
+the current runtime contract.
 
 ### Gaussian-process or flow-based density models
 

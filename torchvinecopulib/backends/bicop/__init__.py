@@ -20,7 +20,9 @@ from ..common import (
     BicopFitResult,
     _EPS,
     _build_pdf_buffers_2d,
+    _copula_normalization_diagnostics,
     _normalize_backend_kwargs,
+    _normalize_copula_pdf_grid,
     fit_grid_probit_bicop,
     fit_grid_reflect_bicop,
 )
@@ -95,7 +97,7 @@ class GridReflectBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
     ) -> None:
         super().__init__(num_step_grid=num_step_grid)
         self.fit(
@@ -134,6 +136,7 @@ class GridReflectBicopEstimator(BaseBiCopEstimator):
             marginal_tol=marginal_tol,
             num_iter_max=num_iter_max,
         )
+        step = 1.0 / max(num_step_grid - 1, 1)
         return BicopFitResult(
             pdf_grid=pdf_grid,
             cdf_grid=cdf_grid,
@@ -148,6 +151,11 @@ class GridReflectBicopEstimator(BaseBiCopEstimator):
                 "marginal_tol": float(marginal_tol),
                 "num_iter_max": int(num_iter_max),
                 "num_step_grid": int(num_step_grid),
+                **_copula_normalization_diagnostics(
+                    pdf_grid,
+                    step=step,
+                    marginal_tol=marginal_tol,
+                ),
             },
         )
 
@@ -160,7 +168,7 @@ class GridReflectBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
     ) -> None:
         self._assign_result(
             self.fit_reference(
@@ -185,7 +193,7 @@ class GridProbitBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
     ) -> None:
         super().__init__(num_step_grid=num_step_grid)
         self.fit(
@@ -206,7 +214,7 @@ class GridProbitBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
     ) -> None:
         pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, h = fit_grid_probit_bicop(
             obs=obs,
@@ -217,6 +225,7 @@ class GridProbitBicopEstimator(BaseBiCopEstimator):
             marginal_tol=marginal_tol,
             num_iter_max=num_iter_max,
         )
+        step = 1.0 / max(self.num_step_grid - 1, 1)
         self._assign_result(
             BicopFitResult(
                 pdf_grid=pdf_grid,
@@ -232,6 +241,11 @@ class GridProbitBicopEstimator(BaseBiCopEstimator):
                     "marginal_tol": float(marginal_tol),
                     "num_iter_max": int(num_iter_max),
                     "num_step_grid": int(self.num_step_grid),
+                    **_copula_normalization_diagnostics(
+                        pdf_grid,
+                        step=step,
+                        marginal_tol=marginal_tol,
+                    ),
                 },
             )
         )
@@ -251,7 +265,7 @@ class _BaseTllTorchBicopEstimator(BaseBiCopEstimator):
         mult: float | None = None,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         ridge: float = 1e-6,
         nn_k: int = 64,
         nn_alpha: float = 0.5,
@@ -284,7 +298,7 @@ class _BaseTllTorchBicopEstimator(BaseBiCopEstimator):
         mult: float | None = None,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         ridge: float = 1e-6,
         nn_k: int = 64,
         nn_alpha: float = 0.5,
@@ -360,7 +374,7 @@ class _BaseTtBicopEstimator(BaseBiCopEstimator):
         bandwidth: str | float | torch.Tensor = "auto",
         mult: float | None = None,
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         selector_grid_size: int = 17,
         selector_num_refine: int = 3,
         selector_sample_cap: int = 2048,
@@ -385,7 +399,7 @@ class _BaseTtBicopEstimator(BaseBiCopEstimator):
         bandwidth: str | float | torch.Tensor = "auto",
         mult: float | None = None,
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         selector_grid_size: int = 17,
         selector_num_refine: int = 3,
         selector_sample_cap: int = 2048,
@@ -435,7 +449,7 @@ class BetaBicopEstimator(BaseBiCopEstimator):
         mult: float | None = None,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
     ) -> None:
         super().__init__(num_step_grid=num_step_grid)
         self.fit(
@@ -456,7 +470,7 @@ class BetaBicopEstimator(BaseBiCopEstimator):
         mult: float | None = None,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
     ) -> None:
         pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, bandwidth_summary, config = fit_beta_bicop(
             obs=obs,
@@ -490,7 +504,7 @@ class BetaQtBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         transform_shape: float = 2.0,
     ) -> None:
         super().__init__(num_step_grid=num_step_grid)
@@ -513,7 +527,7 @@ class BetaQtBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         transform_shape: float = 2.0,
     ) -> None:
         pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, bandwidth_summary, config = (
@@ -551,7 +565,7 @@ class SplinePenBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         num_basis: int = 17,
         penalty: float = 1e-2,
         spline_degree: int = 3,
@@ -578,7 +592,7 @@ class SplinePenBicopEstimator(BaseBiCopEstimator):
         bandwidth_scale: float = 1.0,
         smoother: str = "auto",
         marginal_tol: float = 1e-3,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         num_basis: int = 17,
         penalty: float = 1e-2,
         spline_degree: int = 3,
@@ -626,24 +640,20 @@ def _lazy_pyvinecopulib():
 
 
 class TllRefBicopEstimator(BaseBiCopEstimator):
-    """Reference bicop backend based on pyvinecopulib's TLL family.
+    """Reference bicop backend delegated to `pyvinecopulib`'s TLL family.
 
-    This backend delegates fitting to ``pyvinecopulib.Bicop`` with
-    ``family_set=[pv.tll]`` and exposes the local-likelihood choices
-    ``"constant"``, ``"linear"``, and ``"quadratic"`` through
-    ``FitControlsBicop.nonparametric_method``.
+    This backend fits `pyvinecopulib.Bicop` with `family_set=[pv.tll]`, evaluates the fitted
+    reference model on the common unit-square grid, and then constructs the same cumulative buffers
+    used by the native torch backends. It is intended primarily for reference comparisons and
+    regression checks rather than as the lightweight production path.
 
-    Official docs:
-    - https://vinecopulib.github.io/pyvinecopulib/_generate/pyvinecopulib.BicopFamily.html
-    - https://vinecopulib.github.io/pyvinecopulib/_generate/pyvinecopulib.FitControlsBicop.__init__.html
-
-    Background literature:
-    - Geenens, Charpentier, and Paindaveine (2017), "Probit Transformation for
-      Nonparametric Kernel Estimation of the Copula Density", Bernoulli 23(3),
-      1848-1873. https://doi.org/10.3150/15-BEJ798
-    - Nagler (2018), "kdecopula: An R Package for the Kernel Estimation of
-      Bivariate Copula Densities", Journal of Statistical Software 84(7), 1-22.
-      https://doi.org/10.18637/jss.v084.i07
+    References:
+        - https://vinecopulib.github.io/pyvinecopulib/_generate/pyvinecopulib.BicopFamily.html
+        - https://vinecopulib.github.io/pyvinecopulib/_generate/pyvinecopulib.FitControlsBicop.__init__.html
+        - Geenens, Charpentier, and Paindaveine (2017), Bernoulli 23(3), 1848-1873.
+          https://doi.org/10.3150/15-BEJ798
+        - Nagler (2018), Journal of Statistical Software 84(7), 1-22.
+          https://doi.org/10.18637/jss.v084.i07
     """
 
     def __init__(
@@ -680,6 +690,12 @@ class TllRefBicopEstimator(BaseBiCopEstimator):
         )
         step = 1.0 / max(self.num_step_grid - 1, 1)
         pdf_grid /= pdf_grid.sum().clamp_min(_EPS) * step**2
+        pdf_grid = _normalize_copula_pdf_grid(
+            pdf_grid,
+            step=step,
+            marginal_tol=1e-3,
+            num_iter_max=2000,
+        )
         cdf_grid, hfunc_l_grid, hfunc_r_grid = _build_pdf_buffers_2d(pdf_grid=pdf_grid, step=step)
         self._assign_result(
             BicopFitResult(
@@ -692,6 +708,13 @@ class TllRefBicopEstimator(BaseBiCopEstimator):
                 backend_config={
                     "nonparametric_method": nonparametric_method,
                     "num_step_grid": int(self.num_step_grid),
+                    "marginal_tol": 1e-3,
+                    "num_iter_max": 2000,
+                    **_copula_normalization_diagnostics(
+                        pdf_grid,
+                        step=step,
+                        marginal_tol=1e-3,
+                    ),
                 },
             )
         )
@@ -746,7 +769,7 @@ def default_bicop_kwargs(backend_name: str, *, num_step_grid: int) -> dict[str, 
         "num_step_grid": int(num_step_grid),
         "smoother": "auto",
         "marginal_tol": 1e-3,
-        "num_iter_max": 5,
+        "num_iter_max": 2000,
     }
     if backend_name in {"grid_reflect", "grid_probit"}:
         return {
@@ -760,7 +783,7 @@ def default_bicop_kwargs(backend_name: str, *, num_step_grid: int) -> dict[str, 
             "num_step_grid": int(num_step_grid),
             "smoother": "auto",
             "marginal_tol": 1e-3,
-            "num_iter_max": 5,
+            "num_iter_max": 2000,
             "ridge": 1e-6,
         }
     if backend_name in {"tll1nn", "tll2nn"}:
@@ -770,7 +793,7 @@ def default_bicop_kwargs(backend_name: str, *, num_step_grid: int) -> dict[str, 
             "num_step_grid": int(num_step_grid),
             "smoother": "auto",
             "marginal_tol": 1e-3,
-            "num_iter_max": 5,
+            "num_iter_max": 2000,
             "ridge": 1e-6,
             "nn_k": 64,
             "nn_alpha": 0.5,
@@ -785,7 +808,7 @@ def default_bicop_kwargs(backend_name: str, *, num_step_grid: int) -> dict[str, 
             "num_step_grid": int(num_step_grid),
             "smoother": "auto",
             "marginal_tol": 1e-3,
-            "num_iter_max": 5,
+            "num_iter_max": 2000,
         }
     if backend_name == "beta_qt":
         return {
@@ -798,7 +821,7 @@ def default_bicop_kwargs(backend_name: str, *, num_step_grid: int) -> dict[str, 
             "mult": 1.0,
             "num_step_grid": int(num_step_grid),
             "marginal_tol": 1e-3,
-            "num_iter_max": 5,
+            "num_iter_max": 2000,
             "selector_grid_size": 17,
             "selector_num_refine": 3,
             "selector_sample_cap": 2048,

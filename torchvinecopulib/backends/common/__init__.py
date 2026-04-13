@@ -434,6 +434,43 @@ def _trapezoid_weights(
     return weights
 
 
+def _copula_normalization_diagnostics(
+    pdf_grid: torch.Tensor,
+    *,
+    step: float,
+    marginal_tol: float,
+) -> dict[str, float | bool]:
+    """Summarize the marginal normalization quality of a copula density grid.
+
+    Args:
+        pdf_grid: Copula density grid on the unit square.
+        step: Uniform grid spacing on the unit square.
+        marginal_tol: Target upper bound on the maximum absolute marginal residual.
+
+    Returns:
+        JSON-serializable diagnostics containing row and column residuals, total mass, and a flag
+        indicating whether the requested marginal tolerance was met.
+    """
+    weights = _trapezoid_weights(
+        pdf_grid.shape[0],
+        step=step,
+        dtype=pdf_grid.dtype,
+        device=pdf_grid.device,
+    )
+    row_err = ((pdf_grid * weights.view(1, -1)).sum(dim=1) - 1.0).abs().max()
+    col_err = ((pdf_grid * weights.view(-1, 1)).sum(dim=0) - 1.0).abs().max()
+    max_err = torch.maximum(row_err, col_err)
+    total_mass = (pdf_grid * torch.outer(weights, weights)).sum()
+    return {
+        "normalization_max_abs_row_resid": float(row_err.item()),
+        "normalization_max_abs_col_resid": float(col_err.item()),
+        "normalization_max_abs_resid": float(max_err.item()),
+        "normalization_total_mass": float(total_mass.item()),
+        "normalization_target_tol": float(marginal_tol),
+        "normalization_within_tol": bool(float(max_err.item()) <= float(marginal_tol)),
+    }
+
+
 def _normalize_copula_pdf_grid(
     pdf_grid: torch.Tensor,
     *,

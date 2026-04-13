@@ -33,7 +33,10 @@ plan-backed runtime (`VineCopEngine`), and serializable artifacts (`VineBuildArt
 - `fit(obs=...)` expects shape `[num_obs, num_dim]`.
 - When `is_cop_scale=False`, marginal transforms are part of the builder path.
 - Query methods return batched tensors with a leading dimension equal to the query batch size.
-- `fit()` is not a differentiable training step; `log_pdf()` and transform methods are.
+- `fit()` is not a differentiable training step.
+- `log_pdf()`, `cdf()`, and `rosenblatt()` are differentiable query paths.
+- `sample()` and `inverse_rosenblatt()` are stabilized runtime operators and are not documented as
+  differentiable.
 
 Detailed reference:
 

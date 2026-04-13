@@ -26,6 +26,9 @@ stabilized root finding, and independence fallbacks as a last-resort statistical
 ## Numerical notes
 
 - The builder path does not preserve a training graph.
-- The query path is differentiable where the underlying interpolation kernels are differentiable.
+- Forward Rosenblatt evaluation is differentiable where the underlying interpolation kernels are
+  differentiable.
+- The inverse Rosenblatt path relies on stabilized inverse-conditionals and is not documented as a
+  differentiable operator.
 - Boundary handling is controlled by `boundary_policy` on query-time pair-copula evaluation; see
   [Dtype and boundary policy](../systems/dtype_and_boundary_policy.md).

@@ -13,6 +13,7 @@ from .common import (
     _SQRT_2PI,
     _bilinear_bin_2d_unit,
     _build_pdf_buffers_2d,
+    _copula_normalization_diagnostics,
     _interp_rect_2d,
     _mirror_grid_2d,
     _normal_pdf,
@@ -812,6 +813,11 @@ def fit_tll_torch_bicop(
         "nn_min_scale": float(nn_min_scale),
         "nn_max_scale": float(nn_max_scale),
         "nn_chunk_size": int(nn_chunk_size),
+        **_copula_normalization_diagnostics(
+            pdf_grid,
+            step=1.0 / max(num_step_grid - 1, 1),
+            marginal_tol=marginal_tol,
+        ),
     }
     return pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, bandwidth_summary, config
 
@@ -1416,6 +1422,11 @@ def fit_tt_bicop(
         "marginal_tol": float(marginal_tol),
         "num_iter_max": int(num_iter_max),
         "num_step_grid": int(num_step_grid),
+        **_copula_normalization_diagnostics(
+            pdf_grid,
+            step=step,
+            marginal_tol=marginal_tol,
+        ),
     }
     return pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, params, config
 
@@ -1478,6 +1489,11 @@ def fit_beta_bicop(
         "marginal_tol": float(marginal_tol),
         "num_iter_max": int(num_iter_max),
         "num_step_grid": int(num_step_grid),
+        **_copula_normalization_diagnostics(
+            pdf_grid,
+            step=step,
+            marginal_tol=marginal_tol,
+        ),
     }
     return pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, bandwidth_summary, config
 
@@ -1609,6 +1625,11 @@ def fit_beta_qt_bicop(
         "marginal_tol": float(marginal_tol),
         "num_iter_max": int(num_iter_max),
         "num_step_grid": int(num_step_grid),
+        **_copula_normalization_diagnostics(
+            pdf_grid,
+            step=step,
+            marginal_tol=marginal_tol,
+        ),
     }
     return pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, bandwidth_summary, config
 
@@ -1730,5 +1751,10 @@ def fit_spline_pen_bicop(
         "marginal_tol": float(marginal_tol),
         "num_iter_max": int(num_iter_max),
         "num_step_grid": int(num_step_grid),
+        **_copula_normalization_diagnostics(
+            pdf_grid,
+            step=step,
+            marginal_tol=marginal_tol,
+        ),
     }
     return pdf_grid, cdf_grid, hfunc_l_grid, hfunc_r_grid, bandwidth_summary, config

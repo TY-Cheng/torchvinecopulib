@@ -179,7 +179,7 @@ def torch_copula_kde_grid(
     bandwidth_scale: float = 1.0,
     smoother: str = "auto",
     marginal_tol: float = 1e-3,
-    num_iter_max: int = 5,
+    num_iter_max: int = 2000,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     return fit_grid_reflect_bicop(
         obs=obs,

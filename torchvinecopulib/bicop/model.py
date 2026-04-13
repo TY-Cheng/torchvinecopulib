@@ -28,6 +28,20 @@ class BiCop(
     BiCopPlotMixin,
     torch.nn.Module,
 ):
+    """Continuous bivariate copula model backed by regular-grid buffers.
+
+    The fitted object stores a copula density grid together with cumulative buffers for `cdf()`,
+    conditional CDF evaluation, and stabilized inverse-conditional queries. Build-time estimation is
+    executed under `torch.no_grad()`, whereas forward query methods such as `pdf()`, `log_pdf()`,
+    `cdf()`, and `hfunc_*()` remain torch-native runtime operators.
+
+    Args:
+        num_step_grid: Number of grid points per axis used by the stored copula surface.
+        boundary_policy: Query-time boundary handling. `"hard"` applies a standard clamp;
+            `"st"` uses a straight-through clamp so the forward pass stays in-domain while the
+            backward pass preserves the interior gradient signal.
+    """
+
     _EPS: float = _EPS
 
     def __init__(
@@ -95,7 +109,7 @@ class BiCop(
     def fit(
         self,
         obs: torch.Tensor,
-        num_iter_max: int = 5,
+        num_iter_max: int = 2000,
         is_tau_est: bool = False,
         *,
         bicop_backend: str | None = None,
@@ -103,6 +117,18 @@ class BiCop(
         bandwidth: str | float | torch.Tensor = "silverman",
         generator: torch.Generator | None = None,
     ) -> None:
+        """Fit a nonparametric bivariate copula from observations on the unit square.
+
+        Args:
+            obs: Pseudo-observations with shape `(num_obs, 2)` and values in `[0, 1]`.
+            num_iter_max: Maximum number of copula-margin renormalization iterations forwarded to
+                the selected backend.
+            is_tau_est: Whether to estimate and store Kendall's tau from `obs`.
+            bicop_backend: Backend name. If `None`, the current package default is used.
+            bicop_kwargs: Backend-specific keyword arguments after canonical normalization.
+            bandwidth: Legacy convenience argument forwarded through the fit-request normalizer.
+            generator: Reserved for API compatibility. It is currently unused by the builder path.
+        """
         del generator
         device, dtype = self.device, self.dtype
         obs = obs.to(device=device, dtype=dtype).clamp(min=0.0, max=1.0)

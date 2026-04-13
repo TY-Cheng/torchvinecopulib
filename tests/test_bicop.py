@@ -21,6 +21,16 @@ def _fit_bicop(bicop_backend: str = "grid_reflect") -> tuple[torch.Tensor, tvc.B
     return U, cop
 
 
+def _max_marginal_resid(cop: tvc.BiCop) -> float:
+    step = 1.0 / max(cop.num_step_grid - 1, 1)
+    weights = torch.full((cop.num_step_grid,), step, dtype=cop.dtype, device=cop.device)
+    weights[0] = 0.5 * step
+    weights[-1] = 0.5 * step
+    row = (cop._pdf_grid * weights.view(1, -1)).sum(dim=1)
+    col = (cop._pdf_grid * weights.view(-1, 1)).sum(dim=0)
+    return float(torch.maximum((row - 1.0).abs().max(), (col - 1.0).abs().max()).item())
+
+
 def test_device_and_dtype():
     cop = tvc.BiCop(num_step_grid=16)
     assert cop.device.type == "cpu"
@@ -170,6 +180,70 @@ def test_pdf_integrates_to_one():
     assert pytest.approx(1.0, rel=2e-2) == approx_mass
     assert torch.isfinite(cop._pdf_grid).all()
     assert (cop._pdf_grid >= 0.0).all()
+
+
+@pytest.mark.parametrize(
+    ("backend_name", "backend_kwargs"),
+    [
+        ("grid_reflect", {"bandwidth": "silverman"}),
+        (
+            "ttpi",
+            {
+                "bandwidth": "auto",
+                "mult": 1.0,
+                "selector_grid_size": 9,
+                "selector_num_refine": 2,
+                "selector_sample_cap": 256,
+            },
+        ),
+    ],
+)
+def test_backend_config_reports_normalization_diagnostics(backend_name, backend_kwargs):
+    obs = gaussian_copula(num_obs=512, rho=0.55).to(DEVICE)
+    cop = tvc.BiCop(num_step_grid=65).to(DEVICE)
+    cop.fit(obs, bicop_backend=backend_name, bicop_kwargs=backend_kwargs)
+    for key in (
+        "normalization_max_abs_row_resid",
+        "normalization_max_abs_col_resid",
+        "normalization_max_abs_resid",
+        "normalization_total_mass",
+        "normalization_target_tol",
+        "normalization_within_tol",
+    ):
+        assert key in cop.backend_config
+    assert cop.backend_config["normalization_max_abs_resid"] == pytest.approx(
+        _max_marginal_resid(cop), abs=1e-12
+    )
+    assert cop.backend_config["normalization_within_tol"] == (
+        cop.backend_config["normalization_max_abs_resid"]
+        <= cop.backend_config["normalization_target_tol"]
+    )
+
+
+@pytest.mark.parametrize("backend_name", ["ttpi", "ttcv"])
+def test_tt_backends_default_normalization_residual_is_small(backend_name):
+    obs = gaussian_copula(num_obs=512, rho=0.6).to(DEVICE)
+    cop = tvc.BiCop(num_step_grid=65).to(DEVICE)
+    cop.fit(
+        obs,
+        bicop_backend=backend_name,
+        bicop_kwargs={
+            "bandwidth": "auto",
+            "mult": 1.0,
+            "selector_grid_size": 9,
+            "selector_num_refine": 2,
+            "selector_sample_cap": 256,
+        },
+    )
+    assert _max_marginal_resid(cop) < 2e-2
+
+
+@pytest.mark.skipif(not HAS_REFERENCE, reason="pyvinecopulib reference backend unavailable")
+def test_tll_ref_normalizes_margins():
+    obs = gaussian_copula(num_obs=512, rho=0.6).to(DEVICE)
+    cop = tvc.BiCop(num_step_grid=65).to(DEVICE)
+    cop.fit(obs, bicop_backend="tll_ref", bicop_kwargs={"nonparametric_method": "linear"})
+    assert _max_marginal_resid(cop) < 2e-2
 
 
 def test_sample_shape_dtype_and_uniform_marginals():

@@ -5,8 +5,9 @@
 
 ## Overview
 
-`BiCop` is the public bivariate copula interface. It owns the fitted density and conditional CDF
-grids, exposes differentiable query methods, and handles stabilized inverse conditional sampling.
+`BiCop` is the public interface for continuous bivariate copulas. It stores the fitted density and
+conditional CDF grids, exposes differentiable forward queries, and provides stabilized inverse
+conditional evaluation for sampling and Rosenblatt-style transforms.
 
 Backend formulas, `tll_ref` references, and backend-selection guidance live in
 [Systems: estimator backends](../systems/backends.md).
@@ -34,6 +35,8 @@ The current default for `BiCop.fit(..., bicop_backend=None)` is `bicop_backend="
 - Query methods expect shape `[batch, 2]`.
 - The default runtime dtype is `float64`.
 - `log_pdf()`, `cdf()`, and `hfunc_*()` are differentiable query paths.
+- `hinv_*()` are stabilized inverse-query routines; they are not documented as differentiable
+  operators.
 - Public bicop backends are `grid_reflect`, `grid_probit`, `ttcv`, `ttpi`, `tll1`, `tll2`,
   `tll1nn`, `tll2nn`, `beta`, `beta_qt`, `spline_pen`, and `tll_ref`.
 - The aligned `kdecopula` names now use canonical `bandwidth` object shapes plus `mult`:
@@ -50,7 +53,7 @@ Detailed reference:
 
 `BiCopDiagnostics` is the immutable snapshot returned by `BiCop.diagnostics()`.
 
-It records left/right query-path fallback counters and worst-case residual errors:
+It records left/right inversion fallback counters and worst-case conditional-CDF residuals:
 
 - `itp_failures_l`, `itp_failures_r`
 - `bisect_refinements_l`, `bisect_refinements_r`
@@ -63,9 +66,9 @@ Detailed reference:
 
 ## `GridReflectBicopEstimator`
 
-`GridReflectBicopEstimator` is the reflected-grid 2D KDE class used by
-`bicop_backend="grid_reflect"`. It is not the same thing as the newer `tt*`, `beta`, `tll*`, or
-`spline_pen` research backends.
+`GridReflectBicopEstimator` is the reflected-grid KDE estimator used by
+`bicop_backend="grid_reflect"`. It is a direct unit-square smoother and should not be conflated
+with the transformed, local-likelihood, beta-kernel, or spline-based backends.
 
 Detailed reference:
 
