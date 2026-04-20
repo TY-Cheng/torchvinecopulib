@@ -44,11 +44,11 @@ dev = [
     "ruff",
 ]
 docs = [
-    "furo",
-    "myst-parser",
-    "sphinx-design",
-    "sphinx_pyproject",
-    "sphinx",
+    "mkdocs",
+    "mkdocs-autorefs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+    "pymdown-extensions",
 ]
 examples = [
     "blitz-bayesian-pytorch",
@@ -133,29 +133,3 @@ markers = [
     "reference: tests that rely on optional reference implementations",
     "slow: long-running tests that are excluded from the default fast feedback loop",
 ]
-
-[tool.sphinx-pyproject]
-source-dir = "docs"
-build-dir = "docs/_build"
-all_files = true
-extensions = [
-    "myst_parser",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autosectionlabel",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.coverage",
-    "sphinx.ext.doctest",
-    "sphinx.ext.extlinks",
-    "sphinx.ext.githubpages",
-    "sphinx.ext.graphviz",
-    "sphinx.ext.ifconfig",
-    "sphinx.ext.imgconverter",
-    "sphinx.ext.inheritance_diagram",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.todo",
-    "sphinx.ext.viewcode",
-]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-html_theme = "furo"

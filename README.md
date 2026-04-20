@@ -161,18 +161,27 @@ recovered = vc.inverse_rosenblatt(u)
 
 - Documentation: [GitHub Pages](https://ty-cheng.github.io/torchvinecopulib/)
 - Quickstart, theory notes, systems notes, and API reference all live under the docs site.
-- Docs are built in GitHub Actions and deployed from the `gh-pages` branch. Generated HTML is not
-  tracked on `main`.
-- `docs/_api_stubs/` contains tracked API navigation stubs for Sphinx; it is source content, not a
-  build artifact, and should stay in git.
+- Docs are built with MkDocs Material and rendered API sections via `mkdocstrings`.
+- Docs are built in GitHub Actions and deployed through the official GitHub Pages artifact
+  workflow. The generated `site/` output is not tracked on `main`.
 - Examples: see the docs examples page in `docs/examples_benchmarks.md` for the maintained
   script-backed examples, and use the repository `examples/` directory for heavier experimental
   workflows.
 - Test suite:
 
 ```bash
-uv run coverage run --source=torchvinecopulib -m pytest tests
-uv run coverage report -m
+just test cpu
+# or, if you want the explicit repo-bound pytest command:
+uv run --extra cpu --extra reference pytest \
+  --cov=torchvinecopulib \
+  --cov-branch \
+  --cov-report=term-missing \
+  --cov-report=xml:coverage.xml \
+  --cov-report=html \
+  --cov-fail-under=94 \
+  -W error::DeprecationWarning \
+  -m "not cuda" \
+  tests
 ```
 
 - If you use [`just`](https://github.com/casey/just), the repository also ships a thin local task
@@ -193,7 +202,7 @@ just test             # installs reference; auto-runs CUDA tests only when CUDA 
 just test cpu         # force the CPU-only suite
 just examples         # regenerate docs-facing example figures from scripts
 just examples check  # verify committed example assets are up to date
-just docs             # html + doctest
+just docs             # MkDocs build + docs smoke tests
 just bench            # benchmark smoke
 just workflow
 ```
@@ -206,14 +215,16 @@ suite when a CUDA device is actually present.
 Build docs locally with:
 
 ```bash
-uv run --extra cpu --group docs sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
-uv run --extra cpu --group docs sphinx-build -b doctest docs/ docs/_build/doctest
+uv run --extra cpu --group docs mkdocs serve
+uv run --extra cpu --group docs mkdocs build --strict
+uv run --extra cpu pytest tests/test_docs_smoke.py -q
 ```
 
 GitHub Actions is split into:
 
-- `ci.yml`: lint, docs-check, fast/full tests, optional reference/CUDA jobs, benchmark smoke.
-- `docs.yml`: cloud build + deploy of docs to `gh-pages`.
+- `ci.yml`: lint, MkDocs docs-check, fast/full tests, optional reference/CUDA jobs, benchmark
+  smoke.
+- `docs.yml`: cloud build + deploy of docs through the official GitHub Pages artifact workflow.
 - `release.yml`: build distributions and publish tagged releases.
 
 ## Migration

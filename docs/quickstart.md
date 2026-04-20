@@ -1,7 +1,8 @@
 # Quickstart
 
 This page keeps the shortest working paths aligned with the public API. The examples below are
-executed in CI through the Sphinx doctest builder.
+maintained as readable Markdown snippets, while executable smoke coverage for the documented
+contracts lives in `tests/test_docs_smoke.py`.
 
 The quickstart assumes continuous variables. If your raw observations are heavily rounded or have
 many ties, treat them as an approximation to an underlying continuous variable before fitting.
@@ -9,15 +10,12 @@ Discrete or mixed marginals are outside the current scope of the library.
 
 ## Fit, score, and sample
 
-```{testsetup} quickstart-fit
+```python
 import torch
 import torchvinecopulib as tvc
 
 torch.manual_seed(0)
 obs = torch.rand(96, 4, dtype=torch.float64)
-```
-
-```{testcode} quickstart-fit
 vc = tvc.VineCop(num_dim=4, is_cop_scale=True, num_step_grid=33)
 vc.fit(
     obs,
@@ -39,7 +37,7 @@ This path is the standard entrypoint when observations are already on copula sca
 
 ## Rosenblatt roundtrip
 
-```{testsetup} quickstart-rosenblatt
+```python
 import torch
 import torchvinecopulib as tvc
 
@@ -52,9 +50,6 @@ vc.fit(
     mtd_bidep="kendall_tau",
     bicop_backend="beta",
 )
-```
-
-```{testcode} quickstart-rosenblatt
 u = vc.rosenblatt(obs[:8])
 recovered = vc.inverse_rosenblatt(u)
 

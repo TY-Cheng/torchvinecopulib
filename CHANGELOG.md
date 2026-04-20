@@ -12,8 +12,8 @@
 ### Infrastructure
 
 - Split GitHub Actions into `ci.yml`, `docs.yml`, and `release.yml`.
-- Moved docs deployment to a dedicated cloud-built `gh-pages` branch workflow instead of relying on
-  generated HTML in the main branch.
+- Migrated docs from Sphinx to MkDocs Material and moved deployment to the official GitHub Pages
+  artifact workflow instead of relying on generated HTML in the main branch.
 - Added a docs-only optional dependency set and public project URLs for docs, changelog, and issue
   tracking.
 

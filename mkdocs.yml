@@ -1,0 +1,110 @@
+site_name: torchvinecopulib
+site_url: https://ty-cheng.github.io/torchvinecopulib/
+repo_url: https://github.com/TY-Cheng/torchvinecopulib
+repo_name: TY-Cheng/torchvinecopulib
+edit_uri: edit/main/docs/
+docs_dir: docs
+site_dir: site
+strict: true
+use_directory_urls: false
+exclude_docs: |
+  /_build/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Theory:
+      - Vine Decomposition: theory/vine_decomposition.md
+      - Rosenblatt Transforms: theory/rosenblatt.md
+  - Systems:
+      - Estimator Backends: systems/backends.md
+      - Builder and Engine: systems/builder_engine.md
+      - Dtype and Boundary Policy: systems/dtype_and_boundary_policy.md
+      - Benchmark Interpretation: systems/benchmarks.md
+  - API:
+      - Reference Overview: api/index.md
+      - BiCop API: api/bicop.md
+      - VineCop API: api/vinecop.md
+      - Backends and Utilities: api/backends_and_utils.md
+  - Examples and Benchmarks: examples_benchmarks.md
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths:
+            - .
+          options:
+            annotations_path: brief
+            docstring_style: google
+            docstring_options:
+              ignore_init_summary: true
+            filters:
+              - "!^_[^_]"
+            group_by_category: true
+            line_length: 88
+            members_order: source
+            merge_init_into_class: true
+            modernize_annotations: true
+            separate_signature: true
+            show_bases: false
+            show_root_full_path: false
+            show_root_members_full_path: false
+            show_object_full_path: false
+            show_signature: true
+            show_signature_annotations: true
+            show_source: false
+            signature_crossrefs: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path:
+        - .
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+watch:
+  - examples

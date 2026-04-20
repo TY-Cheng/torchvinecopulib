@@ -1,8 +1,5 @@
 # Backends and utilities
 
-```{currentmodule} torchvinecopulib
-```
-
 ## Overview
 
 These objects support the public vine API but are also useful on their own when you need
@@ -11,35 +8,25 @@ standalone marginals, dependence measures, or root-finding utilities.
 Implementation notes for the torch-native marginal and bicop estimators live in the
 [Systems: estimator backends](../systems/backends.md) page.
 
-```{toctree}
-:hidden:
-
-../_api_stubs/torchvinecopulib.GridKDE1D
-../_api_stubs/torchvinecopulib.backends.LocalPolynomialKDE1D
-../_api_stubs/torchvinecopulib.util.ENUM_FUNC_BIDEP
-../_api_stubs/torchvinecopulib.util.empirical_pobs
-../_api_stubs/torchvinecopulib.util.kendall_tau
-../_api_stubs/torchvinecopulib.util.kendall_tau_matrix
-../_api_stubs/torchvinecopulib.util.solve_ITP
-```
-
 ## `GridKDE1D`
 
 `GridKDE1D` is the regular-grid torch-native 1D KDE class used by the default
 `marginal_backend="grid"` path.
 
-Detailed reference:
-
-- [GridKDE1D detail page](../_api_stubs/torchvinecopulib.GridKDE1D.rst)
+::: torchvinecopulib.GridKDE1D
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `LocalPolynomialKDE1D`
 
 `LocalPolynomialKDE1D` is the torch-native continuous local-polynomial marginal estimator exposed
 under `marginal_backend="lp"`.
 
-Detailed reference:
-
-- [LocalPolynomialKDE1D detail page](../_api_stubs/torchvinecopulib.backends.LocalPolynomialKDE1D.rst)
+::: torchvinecopulib.backends.LocalPolynomialKDE1D
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## Dependence measures
 
@@ -61,36 +48,40 @@ Current members:
 - `kendall_tau`
 - `mutual_info`
 
-Detailed reference:
-
-- [ENUM_FUNC_BIDEP detail page](../_api_stubs/torchvinecopulib.util.ENUM_FUNC_BIDEP.rst)
+::: torchvinecopulib.util.ENUM_FUNC_BIDEP
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `kendall_tau`
 
 `kendall_tau(x, y)` returns a length-2 tensor containing the Kendall tau statistic and its
 associated p-value. The backend can be selected explicitly or left on `backend="auto"`.
 
-Detailed reference:
-
-- [kendall_tau detail page](../_api_stubs/torchvinecopulib.util.kendall_tau.rst)
+::: torchvinecopulib.util.kendall_tau
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `kendall_tau_matrix`
 
 `kendall_tau_matrix(x)` computes square tau and p-value matrices for multivariate observations
 shaped `[num_obs, num_dim]`.
 
-Detailed reference:
-
-- [kendall_tau_matrix detail page](../_api_stubs/torchvinecopulib.util.kendall_tau_matrix.rst)
+::: torchvinecopulib.util.kendall_tau_matrix
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `empirical_pobs`
 
 `empirical_pobs(x)` converts a 1D sample into empirical pseudo-observations using rank order and
 the standard `rank / (n + 1)` normalization.
 
-Detailed reference:
-
-- [empirical_pobs detail page](../_api_stubs/torchvinecopulib.util.empirical_pobs.rst)
+::: torchvinecopulib.util.empirical_pobs
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## Root finding
 
@@ -98,6 +89,7 @@ Detailed reference:
 implements an interval-preserving ITP iteration with optional fallback policies for unbracketed or
 non-converged samples.
 
-Detailed reference:
-
-- [solve_ITP detail page](../_api_stubs/torchvinecopulib.util.solve_ITP.rst)
+::: torchvinecopulib.util.solve_ITP
+    options:
+      heading_level: 3
+      show_root_heading: false

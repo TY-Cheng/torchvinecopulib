@@ -21,11 +21,16 @@ numerically stable copula estimation within the PyTorch ecosystem.
 
 ## Contents
 
-- **Quickstart**: shortest working paths for `fit -> log_pdf -> sample` and Rosenblatt roundtrips.
-- **Theory**: vine decomposition, pseudo-observations, and Rosenblatt transforms.
-- **Systems**: builder vs engine, dtype policy, boundary semantics, and benchmark interpretation.
-- **API Reference**: curated entrypoints for `BiCop`, `VineCop`, execution plans, and utilities.
-- **Examples / Benchmarks**: runnable scripts, benchmark JSON outputs, and profiling entrypoints.
+- [Quickstart](quickstart.md): shortest working paths for `fit -> log_pdf -> sample` and
+  Rosenblatt roundtrips.
+- [Theory](theory/vine_decomposition.md): implementation-facing notes on vine decomposition and
+  Rosenblatt transforms.
+- [Systems](systems/backends.md): builder vs engine, dtype policy, boundary semantics, and
+  benchmark interpretation.
+- [API Reference](api/index.md): curated entrypoints for `BiCop`, `VineCop`, execution plans, and
+  utilities.
+- [Examples and benchmarks](examples_benchmarks.md): maintained scripts, committed figures, and
+  benchmark entrypoints.
 
 ## Install
 
@@ -60,19 +65,6 @@ comparisons:
 uv sync --extra cpu --extra reference
 ```
 
-## Documentation map
-
-```{toctree}
-:maxdepth: 2
-:caption: Documentation
-
-quickstart
-theory/index
-systems/index
-api/index
-examples_benchmarks
-```
-
 ## Runtime notes
 
 - `fit()` is a builder path and does not preserve an autograd graph.
@@ -82,9 +74,3 @@ examples_benchmarks
   query paths and are not documented as differentiable operators.
 - The default production path uses torch-native grid backends. CPU-only reference backends remain
   optional through the `reference` extra.
-
-## Indices
-
-- {ref}`genindex`
-- {ref}`modindex`
-- {ref}`search`

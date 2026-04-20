@@ -9,11 +9,14 @@ concurrency:
   group: docs-deploy-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout code
@@ -36,37 +39,27 @@ jobs:
           python3 -m pip install uv
           python3 -m uv sync --extra cpu --group docs --no-default-groups
 
-      - name: Build Sphinx docs
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build MkDocs site
         run: |
-          uv run --extra cpu --group docs --no-default-groups sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
+          uv run --extra cpu --group docs --no-default-groups mkdocs build --strict
 
       - name: Upload built docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: docs-site
-          path: docs/_build/html
+          path: site
           if-no-files-found: error
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download built docs
-        uses: actions/download-artifact@v4
-        with:
-          name: docs-site
-          path: docs/_build/html
-
-      - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          force_orphan: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: docs/_build/html
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

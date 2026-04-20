@@ -7,13 +7,13 @@ quickstart pages.
 
 Maintained example scripts:
 
-1. {download}`examples/0_bicop.py <../examples/0_bicop.py>`:
+1. [`examples/0_bicop.py`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/examples/0_bicop.py):
    fit a bivariate copula and compare fitted samples to the observations.
-2. {download}`examples/1_vinecop.py <../examples/1_vinecop.py>`:
+2. [`examples/1_vinecop.py`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/examples/1_vinecop.py):
    fit a multivariate vine and inspect the learned dependency structure.
-3. {download}`examples/2_num_hfunc.py <../examples/2_num_hfunc.py>`:
+3. [`examples/2_num_hfunc.py`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/examples/2_num_hfunc.py):
    study how sampling order changes the number of `hfunc` calls.
-4. {download}`examples/3_bicop_tll.py <../examples/3_bicop_tll.py>`:
+4. [`examples/3_bicop_tll.py`](https://github.com/TY-Cheng/torchvinecopulib/blob/main/examples/3_bicop_tll.py):
    compare several torch-native bicop backends on the same pseudo-observations.
 
 These four scripts remain the single source of truth for the docs-facing example figures. The docs
@@ -27,51 +27,35 @@ uv run --extra cpu --group examples python scripts/generate_example_assets.py
 The generated docs figures below are exported by the same pipeline and committed under
 `docs/_static/examples/`.
 
-::::{dropdown} `examples/0_bicop.py`
-:open: false
+??? example "`examples/0_bicop.py`"
 
-```{literalinclude} ../examples/0_bicop.py
-:language: python
-:lines: 18-61
-:caption: examples/0_bicop.py
-```
-::::
+    ```python
+    --8<-- "examples/0_bicop.py"
+    ```
 
 ![Bicop sample cloud](_static/examples/bicop_sample.svg)
 
-::::{dropdown} `examples/1_vinecop.py`
-:open: false
+??? example "`examples/1_vinecop.py`"
 
-```{literalinclude} ../examples/1_vinecop.py
-:language: python
-:lines: 18-60
-:caption: examples/1_vinecop.py
-```
-::::
+    ```python
+    --8<-- "examples/1_vinecop.py"
+    ```
 
 ![Vine structure](_static/examples/vinecop_structure.svg)
 
-::::{dropdown} `examples/2_num_hfunc.py`
-:open: false
+??? example "`examples/2_num_hfunc.py`"
 
-```{literalinclude} ../examples/2_num_hfunc.py
-:language: python
-:lines: 45-112
-:caption: examples/2_num_hfunc.py
-```
-::::
+    ```python
+    --8<-- "examples/2_num_hfunc.py"
+    ```
 
 ![Sampling-order h-function counts](_static/examples/num_hfunc.svg)
 
-::::{dropdown} `examples/3_bicop_tll.py`
-:open: false
+??? example "`examples/3_bicop_tll.py`"
 
-```{literalinclude} ../examples/3_bicop_tll.py
-:language: python
-:lines: 19-75
-:caption: examples/3_bicop_tll.py
-```
-::::
+    ```python
+    --8<-- "examples/3_bicop_tll.py"
+    ```
 
 ![Bicop backend comparison](_static/examples/bicop_backend_comparison.svg)
 

@@ -1,8 +1,5 @@
 # BiCop API
 
-```{currentmodule} torchvinecopulib
-```
-
 ## Overview
 
 `BiCop` is the public interface for continuous bivariate copulas. It stores the fitted density and
@@ -18,14 +15,6 @@ The current default for `BiCop.fit(..., bicop_backend=None)` is `bicop_backend="
 | `BiCop` | Fit and query a bivariate copula on observations shaped `[num_obs, 2]`. |
 | `BiCopDiagnostics` | Query-time counters for root-finding fallbacks and residual errors. |
 | `GridReflectBicopEstimator` | Reflected-grid 2D KDE backend used by the default grid pair-copula estimator. |
-
-```{toctree}
-:hidden:
-
-../_api_stubs/torchvinecopulib.BiCop
-../_api_stubs/torchvinecopulib.BiCopDiagnostics
-../_api_stubs/torchvinecopulib.GridReflectBicopEstimator
-```
 
 ## `BiCop`
 
@@ -45,9 +34,10 @@ The current default for `BiCop.fit(..., bicop_backend=None)` is `bicop_backend="
 - `beta_qt` and `spline_pen` remain repository-native research backends, and `tll_ref` remains the
   CPU reference path backed by `pyvinecopulib`.
 
-Detailed reference:
-
-- [BiCop detail page](../_api_stubs/torchvinecopulib.BiCop.rst)
+::: torchvinecopulib.BiCop
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `BiCopDiagnostics`
 
@@ -60,9 +50,10 @@ It records left/right inversion fallback counters and worst-case conditional-CDF
 - `fallback_to_indep_l`, `fallback_to_indep_r`
 - `max_abs_hfunc_error_l`, `max_abs_hfunc_error_r`
 
-Detailed reference:
-
-- [BiCopDiagnostics detail page](../_api_stubs/torchvinecopulib.BiCopDiagnostics.rst)
+::: torchvinecopulib.BiCopDiagnostics
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `GridReflectBicopEstimator`
 
@@ -70,6 +61,7 @@ Detailed reference:
 `bicop_backend="grid_reflect"`. It is a direct unit-square smoother and should not be conflated
 with the transformed, local-likelihood, beta-kernel, or spline-based backends.
 
-Detailed reference:
-
-- [GridReflectBicopEstimator detail page](../_api_stubs/torchvinecopulib.GridReflectBicopEstimator.rst)
+::: torchvinecopulib.GridReflectBicopEstimator
+    options:
+      heading_level: 3
+      show_root_heading: false

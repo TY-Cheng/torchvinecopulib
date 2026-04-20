@@ -82,7 +82,7 @@ examples mode="write": require-external-env
     @case "{{ mode }}" in \
       write) \
         uv run --extra cpu --group examples python scripts/generate_example_assets.py; \
-        uvx ruff format .; \
+        uv run ruff format .; \
         ;; \
       check) \
         uv run --extra cpu --group examples python scripts/generate_example_assets.py --check; \
@@ -96,8 +96,8 @@ examples mode="write": require-external-env
     esac
 
 docs: require-external-env
-    uv run --extra cpu --group docs sphinx-build -b html -n -W --keep-going docs/ docs/_build/html
-    uv run --extra cpu --group docs sphinx-build -b doctest docs/ docs/_build/doctest
+    uv run --extra cpu --group docs mkdocs build --strict
+    uv run --extra cpu pytest tests/test_docs_smoke.py -q
 
 bench: require-external-env
     uv run --extra cpu python benchmarks/profile_builder.py \

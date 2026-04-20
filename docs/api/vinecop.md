@@ -1,8 +1,5 @@
 # VineCop API
 
-```{currentmodule} torchvinecopulib
-```
-
 ## Overview
 
 The multivariate API is split between a public façade (`VineCop`), a builder (`VineBuilder`), a
@@ -16,16 +13,6 @@ plan-backed runtime (`VineCopEngine`), and serializable artifacts (`VineBuildArt
 | `VineBuildArtifact` | Serializable fitted structure and execution plan. |
 | `VineDiagnostics` | Aggregated diagnostics across pair-copula query paths. |
 
-```{toctree}
-:hidden:
-
-../_api_stubs/torchvinecopulib.VineCop
-../_api_stubs/torchvinecopulib.VineBuilder
-../_api_stubs/torchvinecopulib.VineCopEngine
-../_api_stubs/torchvinecopulib.VineBuildArtifact
-../_api_stubs/torchvinecopulib.VineDiagnostics
-```
-
 ## `VineCop`
 
 **Input contract**
@@ -38,21 +25,24 @@ plan-backed runtime (`VineCopEngine`), and serializable artifacts (`VineBuildArt
 - `sample()` and `inverse_rosenblatt()` are stabilized runtime operators and are not documented as
   differentiable.
 
-Detailed reference:
-
-- [VineCop detail page](../_api_stubs/torchvinecopulib.VineCop.rst)
+::: torchvinecopulib.VineCop
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `VineBuilder`
 
-Detailed reference:
-
-- [VineBuilder detail page](../_api_stubs/torchvinecopulib.VineBuilder.rst)
+::: torchvinecopulib.VineBuilder
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `VineCopEngine`
 
-Detailed reference:
-
-- [VineCopEngine detail page](../_api_stubs/torchvinecopulib.VineCopEngine.rst)
+::: torchvinecopulib.VineCopEngine
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 ## `VineBuildArtifact` and diagnostics
 
@@ -64,9 +54,10 @@ Detailed reference:
 - backend configuration and boundary policy
 - static execution tensors for forward, log-density, and sampling paths
 
-Detailed reference:
-
-- [VineBuildArtifact detail page](../_api_stubs/torchvinecopulib.VineBuildArtifact.rst)
+::: torchvinecopulib.VineBuildArtifact
+    options:
+      heading_level: 3
+      show_root_heading: false
 
 `VineDiagnostics` is the aggregate multivariate snapshot returned by `VineCop.diagnostics()`.
 It records:
@@ -77,6 +68,7 @@ It records:
 - `fallback_to_indep`
 - `max_abs_hfunc_error`
 
-Detailed reference:
-
-- [VineDiagnostics detail page](../_api_stubs/torchvinecopulib.VineDiagnostics.rst)
+::: torchvinecopulib.VineDiagnostics
+    options:
+      heading_level: 3
+      show_root_heading: false
