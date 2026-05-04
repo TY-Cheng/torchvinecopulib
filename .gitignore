@@ -74,6 +74,7 @@ MANIFEST
 .env
 .env.*
 !.env.example
+.serena/
 .venv/
 env/
 venv/

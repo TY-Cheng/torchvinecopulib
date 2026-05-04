@@ -187,9 +187,9 @@ uv run --extra cpu --extra reference pytest \
 - If you use [`just`](https://github.com/casey/just), the repository also ships a thin local task
   runner that mirrors the `uv` + GitHub Actions workflow. It reads `.env` and requires
   `UV_PROJECT_ENVIRONMENT` to be set there so local tasks use the shared external environment
-  instead of falling back to a project-local `.venv`. This repository's examples already use
-  `.env`, so the simplest setup is to keep project-local paths such as `DIR_WORK` and
-  `UV_PROJECT_ENVIRONMENT` there.
+  instead of falling back to a project-local `.venv`. The path must be absolute and must point
+  outside the repository root. This repository's examples already use `.env`, so the simplest
+  setup is to keep machine-local settings such as `DIR_WORK` and `UV_PROJECT_ENVIRONMENT` there.
 
 ```bash
 cat > .env <<'EOF'
