@@ -13,7 +13,7 @@
 `torchvinecopulib` is a PyTorch-first vine copula library for fitting, evaluating, and sampling
 high-dimensional dependence models on CPU or GPU. Version `1.3.0` standardizes the
 backend API around `marginal_backend` and `bicop_backend`, uses a benchmark-selected torch-native
-`ttpi` pair-copula path as the current production default, and isolates CPU-only reference oracles behind the optional
+`beta` pair-copula path as the current production default, and isolates CPU-only reference oracles behind the optional
 `reference` extra.
 
 - C-, D-, and R-vine fitting with differentiable log-density evaluation

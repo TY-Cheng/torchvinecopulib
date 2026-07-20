@@ -10,7 +10,7 @@ suite described in [Systems: benchmark interpretation](./benchmarks.md).
 
 The current bicop backends fall into two roles:
 
-- production defaults: `beta`, `ttpi`, `grid_reflect`, `grid_probit`
+- production backends: `beta`, `ttpi`, `grid_reflect`, `grid_probit`
 - research backends: `ttcv`, `tll1`, `tll2`, `tll1nn`, `tll2nn`, `beta_qt`, `spline_pen`
 
 All are ultimately materialized into the same `pdf_grid` / `cdf_grid` / `hfunc_*_grid`
@@ -449,8 +449,8 @@ For the current `BiCop -> pdf_grid/cdf_grid/hfunc/hinv` design, no single estima
 regime. Different synthetic geometries still favor different backends. Within the current
 repository:
 
-- `ttpi` is the strongest benchmark-backed default.
-- `beta` is the simplest strong alternative when you want faster or lighter fit-time behavior.
+- `beta` is the current benchmark-backed default.
+- `ttpi` is the strongest tapered-transformation alternative when selector cost is acceptable.
 - `grid_reflect` and `grid_probit` remain strong simple baselines.
 - `ttcv`, `tll1`, `tll2`, `tll1nn`, and `tll2nn` are the research-facing choices when you are
   willing to spend more fit-time for a more specialized fit.
